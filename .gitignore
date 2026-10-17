@@ -1,0 +1,7 @@
+weights/
+cache/
+runs/
+data/
+bundle/
+*.part
+__pycache__/
