@@ -4,10 +4,12 @@ Domain-adapt the RF-DETR Nano backbone by distilling DINOv3 ViT-L/16 into it wit
 (`method="distillation"` = DistillationV3) on your own images, then compare stock vs distilled
 backbone features. Everything is prepared/tested on an online PC and run on an offline PC.
 
-Pinned stack: Python 3.11.14, torch 2.8.0+cu126, torchvision 0.23.0+cu126, lightly-train 0.17.0,
+Pinned stack: Python 3.11.14, torch 2.8.0+cu128, torchvision 0.23.0+cu128, lightly-train 0.17.0,
 rfdetr 1.5.2 (lightly-train 0.17's `[rfdetr]` extra requires `rfdetr>=1.4.1,<1.6`), transformers 4.57.6.
-NVIDIA driver: >= 560.35 recommended (native CUDA 12.6), >= 525.60.13 floor (CUDA 12 minor-version
-compatibility). The CUDA runtime ships inside the pip wheels; no system CUDA toolkit is needed.
+NVIDIA driver: >= 570 (CUDA 12.8; also the minimum for RTX 50-series). The cu128 torch/torchvision wheels
+contain sm_120 kernels (RTX 5090) and sm_86 (A6000; the 4090's sm_89 runs them); cu126 has no sm_120 and fails
+with "no kernel image" on a 5090.
+The CUDA runtime ships inside the pip wheels; no system CUDA toolkit is needed.
 
 ## Command order
 
@@ -103,10 +105,13 @@ even if a library swallowed the exception. `ALLOW_NETWORK=1` disables it.
 ## What was tested (online, no GPU) and how
 All on CPU (no GPU available for testing), synthetic 3-class shapes dataset, `tests/run_smoke.sh`:
 - `setup_env.sh` (fresh create and update path) → `download_weights.sh` (real downloads, MD5 OK) →
-  `pack_env.sh` (env.tar.gz 3.7 GB, project.tar 1.5 GB) → `unpack_offline.sh` into a new directory with the
+  `pack_env.sh` (env.tar.gz 4.2 GB, project.tar 1.5 GB) → `unpack_offline.sh` into a new directory with the
   original conda install hidden, `env -i` and an empty `$HOME`, **inside `unshare -rn` (no network interface)**
   → `tests/run_smoke.sh` passed: preflight, guard controls, COCO + YOLO splits, 1-epoch distillation
   (teacher by name), `load_backbone`, negative tests, `compare_features` (+teacher, PCA), `finetune_detector`.
+- cu128 kernels (no GPU here, so checked statically): `torch._C._cuda_getArchFlags()` = sm_70 sm_75 sm_80
+  sm_86 sm_90 sm_100 sm_120, and the CUDA fatbins in `libtorch_cuda.so` and torchvision's `_C.so` contain sm_120
+  cubins. Installed packages match `environment.yml` exactly (`pip check` clean).
 - `--teacher hf` distillation and `convert_hf_dinov3.py`: tested in a separate CPU venv with the same package
   versions, on an HF folder rebuilt from the real ViT-L weights (not on the gated original).
 - Negative tests: missing / unexpected / reshaped key, modified decoder, unchanged encoder, held-out image
@@ -116,8 +121,8 @@ All on CPU (no GPU available for testing), synthetic 3-class shapes dataset, `te
 ## What was NOT tested (you must run these)
 - Anything on GPU: CUDA init, the driver version floor, bf16-mixed training, memory/batch size. Run
   `python check_offline.py` (prints driver, GPUs, bf16) and the GPU smoke step (`--smoke --smoke-images 256
-  --batch-size 64`) on **both** the 4090 and the A6000; lower `--batch-size` if it OOMs. Batch 64 is a
-  starting guess, not a measured value.
+  --batch-size 64`) on every GPU you will use (RTX 5090; 4090/A6000 if still used); lower `--batch-size`
+  if it OOMs. Batch 64 is a starting guess, not a measured value.
 - Full-length distillation (100 epochs default) and its effect on your data; the default LR comes from
   LightlyTrain (AdamW 5e-4 × sqrt(batch/1536)); `--lr` overrides it.
 - Your real dataset through `make_splits.py` (COCO and YOLO paths were tested on synthetic data only).
