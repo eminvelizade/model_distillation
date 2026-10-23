@@ -2,10 +2,12 @@
 
 With the network guard on, it: imports every library the pipeline uses (import-time network calls
 would fail here), checks weight files + MD5, builds the student (RF-DETR Nano) and the teacher
-(dinov3/vitl16 via LightlyTrain's own loader, from cache), runs one 384x384 forward each, and reports
-GPU / driver / bf16 support. Exit code 0 = ready to run without network.
+(DINOv3 via LightlyTrain's own loader, from cache, in bf16 as in distill.py), runs one 384x384 forward
+each, and reports GPU / driver / bf16 support. Exit code 0 = ready to run without network.
 
-    python check_offline.py [--no-md5] [--device cpu]
+    python check_offline.py [--no-md5] [--device cpu] [--teacher-model dinov3/vith16plus]
+
+Without --teacher-model every teacher found in the cache is checked (at least one is required).
 """
 
 import offline_guard  # noqa: F401  (must be first)
@@ -36,6 +38,8 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--no-md5", action="store_true")
     p.add_argument("--device", default=None)
+    p.add_argument("--teacher-model", choices=list(offline_guard.TEACHERS), action="append",
+                   help="teacher(s) to check (repeatable); default: all present in the cache")
     a = p.parse_args()
 
     for k in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "LIGHTLY_TRAIN_EVENTS_DISABLED", "LIGHTLY_DID_VERSION_CHECK"):
@@ -55,29 +59,40 @@ def main() -> None:
     print(f"[check] torch {torch.__version__}, transformers {transformers.__version__}, lightly-train {lightly_train.__version__}")
     print(f"[check] {gpu_report()}")
 
+    teachers = a.teacher_model or [n for n in offline_guard.TEACHERS if offline_guard.teacher_cache_file(n).is_file()]
+    assert teachers, "no teacher in the cache; run download_weights.sh [--teacher-model ...]"
     md5 = not a.no_md5
     offline_guard.require_file(offline_guard.NANO_WEIGHTS, check_md5=md5)
-    offline_guard.require_file(offline_guard.TEACHER_CACHE_FILE, check_md5=md5)
-    print(f"[check] weight files present{' (md5 ok)' if md5 else ''}")
+    for name in teachers:
+        offline_guard.require_file(offline_guard.teacher_cache_file(name), check_md5=md5)
+    print(f"[check] weight files present{' (md5 ok)' if md5 else ''}: nano + {teachers}")
 
     device = a.device or ("cuda" if torch.cuda.is_available() else "cpu")
     from rfdetr import RFDETRNano
-    from lightly_train._models.dinov3.dinov3_package import DINOV3_PACKAGE
+
+    import teacher as teacher_lib
 
     student = RFDETRNano(pretrain_weights=str(offline_guard.NANO_WEIGHTS), device=device)
     enc = student.model.model.backbone[0].encoder.eval()
-    teacher = DINOV3_PACKAGE.get_model("vitl16").to(device).eval()  # load_weights=True -> cache file, no download
     x = torch.randn(1, 3, 384, 384, device=device)
     with torch.no_grad():
         s = enc(x)[-1]
-        t = teacher.forward_features(x)["x_norm_patchtokens"]
     assert tuple(s.shape) == (1, 384, 24, 24), s.shape
-    assert tuple(t.shape) == (1, 576, 1024), t.shape
-    print(f"[check] student last stage {tuple(s.shape)}, teacher patch tokens {tuple(t.shape)} on {device}")
-
-    if offline_guard.HF_TEACHER_CONVERTED.is_file():
-        teacher.load_state_dict(torch.load(offline_guard.HF_TEACHER_CONVERTED, map_location=device, weights_only=True))
-        print(f"[check] converted HF teacher loads strictly: {offline_guard.HF_TEACHER_CONVERTED}")
+    print(f"[check] student last stage {tuple(s.shape)} on {device}")
+    for name in teachers:
+        teacher = teacher_lib.build(name).to(device)  # from cache file, no download
+        with torch.no_grad():
+            t = teacher.forward_features(x)["x_norm_patchtokens"]
+        dim = offline_guard.TEACHERS[name][1]
+        assert tuple(t.shape) == (1, 576, dim) and t.dtype == torch.bfloat16 and t.isfinite().all(), (t.shape, t.dtype)
+        print(f"[check] teacher {name} patch tokens {tuple(t.shape)} {t.dtype} on {device}")
+        if name == "dinov3/vitl16" and offline_guard.HF_TEACHER_CONVERTED.is_file():
+            sd = torch.load(offline_guard.HF_TEACHER_CONVERTED, map_location="cpu", weights_only=True)
+            teacher.load_state_dict(sd, strict=True)
+            print(f"[check] converted HF teacher loads strictly: {offline_guard.HF_TEACHER_CONVERTED}")
+        del teacher
+        if device == "cuda":
+            torch.cuda.empty_cache()
 
     offline_guard.assert_no_network_attempts()
     print("[check] OFFLINE CHECK PASSED")

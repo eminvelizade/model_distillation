@@ -1,6 +1,7 @@
-# RF-DETR Nano ← DINOv3 ViT-L/16 backbone distillation (offline-ready)
+# RF-DETR Nano ← DINOv3 ViT backbone distillation (offline-ready)
 
-Domain-adapt the RF-DETR Nano backbone by distilling DINOv3 ViT-L/16 into it with LightlyTrain
+Domain-adapt the RF-DETR Nano backbone by distilling a DINOv3 ViT teacher (default ViT-L/16; ViT-H+/16 and
+ViT-7B/16 via `--teacher-model`) into it with LightlyTrain
 (`method="distillation"` = DistillationV3) on your own images, then compare stock vs distilled
 backbone features. Everything is prepared/tested on an online PC and run on an offline PC.
 
@@ -19,6 +20,7 @@ git clone <this repo> && cd model_distillation
 bash setup_env.sh                      # creates conda env "rfdetr-distill" from environment.yml
 conda activate rfdetr-distill
 bash download_weights.sh               # Nano + teacher into weights/ and cache/, MD5-checked, then check_offline.py
+#   other/more teachers: bash download_weights.sh --teacher-model dinov3/vith16plus [--teacher-model dinov3/vit7b16]
 # optional fallback teacher: put the HF folder at weights/dinov3-vitl16/ BEFORE download_weights.sh
 #   (config.json, model.safetensors, preprocessor_config.json) -> converted to weights/dinov3_vitl16_from_hf.pt
 bash tests/run_smoke.sh                # full pipeline on synthetic data, network guard on
@@ -42,7 +44,8 @@ CUDA_VISIBLE_DEVICES=0 python distill.py --data data/ds --out runs/distill_smoke
 CUDA_VISIBLE_DEVICES=0 python distill.py --data data/ds --out runs/distill --epochs 100 --batch-size 64
 # 4. load into RF-DETR Nano, assert no skipped/mismatched keys
 python load_backbone.py --ckpt runs/distill/rf-detr-nano-distilled.pth
-# 5. features: stock vs distilled on held-out images (+ teacher reference, PCA plot)
+#    other teacher (downloaded on the online PC): add --teacher-model dinov3/vith16plus | dinov3/vit7b16
+# 5. features: stock vs distilled on held-out images (+ teacher reference, PCA plot); use the same --teacher-model
 python compare_features.py --data data/ds --split valid --distilled runs/distill/rf-detr-nano-distilled.pth --teacher --pca-plot
 # 6. optional: same detector recipe from both backbones, test mAP
 CUDA_VISIBLE_DEVICES=0 python finetune_detector.py --data data/ds --distilled runs/distill/rf-detr-nano-distilled.pth --epochs 50
@@ -53,12 +56,13 @@ CUDA_VISIBLE_DEVICES=0 python finetune_detector.py --data data/ds --distilled ru
 |---|---|
 | `offline_guard.py` | imported first by every script: offline env vars, project-local caches, blocks any non-loopback connection/DNS lookup **and** configured proxies; a swallowed attempt still exits the process with code 3 |
 | `make_splits.py` | COCO or YOLO → RF-DETR layout `train/ valid/ test/` (`_annotations.coco.json`), duplicate images (md5) kept in one split |
-| `distill.py` | LightlyTrain distillation, student `RFDETRNano(pretrain_weights=…)`, teacher `dinov3/vitl16`, 384×384, ImageNet mean/std, bf16 on GPU; `--smoke`; `--teacher hf` |
+| `distill.py` | LightlyTrain distillation, student `RFDETRNano(pretrain_weights=…)`, teacher `--teacher-model` (default `dinov3/vitl16`) held in bf16, 384×384, ImageNet mean/std, bf16-mixed on GPU; `--smoke`; `--teacher hf` |
+| `teacher.py` | DINOv3 teacher → bf16 weights (RoPE periods kept as in the checkpoint), bf16 input cast; used by distill / compare / check |
 | `load_backbone.py` | strict key/shape check, proves rfdetr's own (strict=False) loader applied every tensor, only encoder tensors differ from stock |
-| `compare_features.py` | ROI-pooled per-object features from the last encoder stage; kNN + linear probe (grouped by image); linear CKA, token cosine; optional teacher CKA and PCA plot |
+| `compare_features.py` | ROI-pooled per-object features from the last encoder stage; kNN + linear probe (grouped by image); linear CKA, token cosine; optional teacher CKA (`--teacher --teacher-model …`) and PCA plot |
 | `finetune_detector.py` | identical RF-DETR recipe from stock and distilled init; test mAP50:95 / mAP50 |
 | `convert_hf_dinov3.py` | HF DINOv3 folder → LightlyTrain native state dict, verified against transformers' model |
-| `check_offline.py` | preflight: imports, weights + MD5, student/teacher forward, GPU/driver/bf16 report |
+| `check_offline.py` | preflight: imports, weights + MD5, student/teacher forward (every cached teacher, or `--teacher-model`), GPU/driver/bf16 report |
 | `setup_env.sh`, `download_weights.sh`, `pack_env.sh`, `unpack_offline.sh` | env / weights / bundle |
 | `tests/` | synthetic dataset, smoke pipeline, guard positive controls, negative tests |
 
@@ -75,7 +79,24 @@ CUDA_VISIBLE_DEVICES=0 python finetune_detector.py --data data/ds --distilled ru
   here `cache/lightly-train/models/`). If the file exists, it is loaded and nothing is downloaded.
   LightlyTrain does not verify size/hash: a truncated download stays in the cache and fails later with
   "PytorchStreamReader failed reading zip archive" (happened during testing) → `download_weights.sh` checks MD5.
-- **HF fallback**: `facebook/dinov3-vitl16-pretrain-lvd1689m` on HF is gated (manual approval, HF token
+- **Teachers** (`--teacher-model`, same S3 bucket, no token; `download_weights.sh --teacher-model …` fetches them
+  and checks MD5). vith16plus/vit7b16 are S3 multipart uploads, so their ETag is not an MD5; the MD5s below were
+  computed from full downloads whose multipart ETags matched S3 and whose SHA-256 prefixes match Meta's
+  published hashes in LightlyTrain's `backbones.py` (`7c1da9a5`, `a955f4ea`).
+
+  | `--teacher-model` | params | file size | MD5 | dim | teacher in bf16 |
+  |---|---|---|---|---|---|
+  | `dinov3/vitl16` (default) | 0.30 B | 1,213,050,671 | `07469a2d507f0e58a0a9e0675a289e57` | 1024 | 0.6 GB |
+  | `dinov3/vith16plus` | 0.84 B | 3,363,232,567 | `9daf5fc59373a063e403d85443a769b9` | 1280 | 1.7 GB |
+  | `dinov3/vit7b16` | 6.72 B | 26,864,407,683 | `f3c39447f01f8ce96d1ebea5f3bb61a6` | 4096 | 13.4 GB |
+- **Teacher in bf16**: LightlyTrain builds the teacher in fp32 and leaves it there (`bf16-mixed` only autocasts
+  matmuls). `distill.py` wraps LightlyTrain's `get_teacher` to cast the frozen teacher's weights to bf16 (RoPE
+  periods keep the checkpoint dtype) and hand fp32 features to the loss; the student still trains in
+  `bf16-mixed`. bf16 vs fp32 teacher on the same input (CPU, real weights): patch-token cosine mean 0.9999 /
+  min 0.9993 (ViT-L), 0.9999 / 0.9995 (ViT-H+).
+  ViT-7B: the checkpoint is fp32, so building the teacher needs ~54 GB **CPU RAM** at peak (fp32 model +
+  loaded state dict) before the cast; on the GPU it then takes ~13.4 GB plus activations. Not tested on GPU.
+- **HF fallback** (ViT-L/16 only): `facebook/dinov3-vitl16-pretrain-lvd1689m` on HF is gated (manual approval, HF token
   needed to download). `teacher_weights` must be a state dict for LightlyTrain's own DINOv3 code (loaded
   strictly), so `convert_hf_dinov3.py` converts the HF folder and verifies it against transformers' model.
   Tested on an HF folder rebuilt from the real ViT-L weights: max abs diff 3.5e-6 vs transformers (fp32 RoPE);
@@ -118,11 +139,19 @@ All on CPU (no GPU available for testing), synthetic 3-class shapes dataset, `te
   leaked into train → each is rejected.
 - The smoke numbers (kNN, CKA, mAP) are meaningless (1 epoch, 16 synthetic images); they only show the code runs.
 
+- `--teacher-model` (CPU venv with the pinned lightly-train/rfdetr/torch 2.8.0+cpu): `download_weights.sh
+  --teacher-model dinov3/vith16plus` (real download, MD5 OK, `check_offline.py`), then `tests/run_smoke.sh` with
+  `SMOKE_TEACHER_MODEL=dinov3/vitl16` and `=dinov3/vith16plus` both passed (teacher reported as bf16 inside
+  LightlyTrain, also under `32-true`). ViT-7B: checkpoint MD5/ETag/SHA-256 verified by streaming the full file;
+  architecture + bf16 cast checked on the `meta` device only (tokens (1, 576, 4096)); never run with real weights.
+
 ## What was NOT tested (you must run these)
 - Anything on GPU: CUDA init, the driver version floor, bf16-mixed training, memory/batch size. Run
   `python check_offline.py` (prints driver, GPUs, bf16) and the GPU smoke step (`--smoke --smoke-images 256
   --batch-size 64`) on every GPU you will use (RTX 5090; 4090/A6000 if still used); lower `--batch-size`
   if it OOMs. Batch 64 is a starting guess, not a measured value.
+- ViT-H+/ViT-7B teachers on GPU: memory and speed at your batch size (7B teacher: ~13.4 GB of weights in bf16,
+  ~54 GB CPU RAM while loading). Run the GPU smoke step with the teacher you intend to use.
 - Full-length distillation (100 epochs default) and its effect on your data; the default LR comes from
   LightlyTrain (AdamW 5e-4 × sqrt(batch/1536)); `--lr` overrides it.
 - Your real dataset through `make_splits.py` (COCO and YOLO paths were tested on synthetic data only).

@@ -12,9 +12,9 @@ ENV_NAME=${ENV_NAME:-rfdetr-distill}
 OUT=$(realpath -m "${1:-bundle}")
 mkdir -p "$OUT"
 
-for f in weights/rf-detr-nano.pth cache/lightly-train/models/dinov3_vitl16_lvd1689m.pth; do
-  [ -f "$f" ] || { echo "[pack] missing $f -> run download_weights.sh first"; exit 1; }
-done
+[ -f weights/rf-detr-nano.pth ] || { echo "[pack] missing weights/rf-detr-nano.pth -> run download_weights.sh first"; exit 1; }
+ls cache/lightly-train/models/dinov3_*_lvd1689m.pth >/dev/null 2>&1 \
+  || { echo "[pack] no DINOv3 teacher in cache/lightly-train/models -> run download_weights.sh first"; exit 1; }
 
 CONDA=${CONDA_EXE:-$(command -v conda || command -v mamba)}
 PREFIX=$("$CONDA" run -n "$ENV_NAME" python -c "import sys; print(sys.prefix)")
