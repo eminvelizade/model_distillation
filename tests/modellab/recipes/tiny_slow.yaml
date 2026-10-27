@@ -1,0 +1,8 @@
+# CPU test: a long-running run for cancel / restart-recovery tests.
+name: tiny-slow
+dataset: tiny
+seed: 7
+tags: [test]
+stages:
+  - {name: finetune, type: finetune, model: rfdetr/nano, batch_size: 2, budget: {epochs: 50}}
+  - {name: eval, type: eval, model: {from: finetune}, latency: false}

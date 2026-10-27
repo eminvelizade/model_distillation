@@ -33,9 +33,11 @@ HF_TEACHER_DIR = WEIGHTS_DIR / "dinov3-vitl16"
 HF_TEACHER_CONVERTED = WEIGHTS_DIR / "dinov3_vitl16_from_hf.pt"
 
 # Supported teachers: LightlyTrain name -> (cache file name LightlyTrain looks for, embed dim, MD5).
-# vitl16 MD5 = S3 ETag (single-part upload); vith16plus/vit7b16 are multipart uploads (ETag is not an
+# vits16/vitb16/vitl16 MD5 = S3 ETag (single-part upload); vith16plus/vit7b16 are multipart uploads (ETag is not an
 # MD5), so their MD5s were computed from full downloads (which also matched the multipart ETags).
 TEACHERS = {
+    "dinov3/vits16": ("dinov3_vits16_lvd1689m.pth", 384, "56187a1b9ae31e9e57272381c5fd5812"),
+    "dinov3/vitb16": ("dinov3_vitb16_lvd1689m.pth", 768, "3843a030991de9939ee2c15f68f4f834"),
     "dinov3/vitl16": ("dinov3_vitl16_lvd1689m.pth", 1024, "07469a2d507f0e58a0a9e0675a289e57"),
     "dinov3/vith16plus": ("dinov3_vith16plus_lvd1689m.pth", 1280, "9daf5fc59373a063e403d85443a769b9"),
     "dinov3/vit7b16": ("dinov3_vit7b16_lvd1689m.pth", 4096, "f3c39447f01f8ce96d1ebea5f3bb61a6"),

@@ -1,0 +1,24 @@
+name: baseline-stock-vs-finetuned
+description: |
+  Baseline: stock COCO-pretrained RF-DETR Nano (scored by class name on the dataset's classes) vs the same model
+  fine-tuned on the dataset. Also probes the backbone features of both (kNN / linear probe, CKA, PCA).
+dataset: coco-vehicles
+seed: 42
+tags: [baseline]
+stages:
+  - name: finetune
+    type: finetune
+    model: rfdetr/nano
+    batch_size: 16
+    budget: {epochs: 20, minutes: 60}
+  - name: eval_stock
+    type: eval
+    model: rfdetr/nano
+    label: RF-DETR Nano stock (COCO)
+  - name: eval_finetuned
+    type: eval
+    model: {from: finetune}
+    label: RF-DETR Nano fine-tuned
+  - name: features
+    type: features
+    models: [rfdetr/nano, {from: finetune}]

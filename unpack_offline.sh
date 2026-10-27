@@ -30,6 +30,7 @@ export LIGHTLY_TRAIN_EVENTS_DISABLED=1 LIGHTLY_DID_VERSION_CHECK=True NO_ALBUMEN
 export LIGHTLY_TRAIN_CACHE_DIR="$TARGET/project/cache/lightly-train"
 export HF_HOME="$TARGET/project/cache/huggingface" TORCH_HOME="$TARGET/project/cache/torch"
 export MPLCONFIGDIR="$TARGET/project/cache/matplotlib"
+export PATH="$TARGET/project/bin:\$PATH"   # modellab CLI
 cd "$TARGET/project"
 EOF
 
@@ -38,4 +39,4 @@ set +u
 source "$TARGET/activate.sh"
 set -u
 python check_offline.py
-echo "[unpack] OK. Use: source $TARGET/activate.sh"
+echo "[unpack] OK. Use: source $TARGET/activate.sh   then: python app.py  (ModelLab UI)  or  modellab --help"

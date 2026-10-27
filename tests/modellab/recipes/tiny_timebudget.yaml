@@ -1,0 +1,9 @@
+# CPU test: wall-clock budgets stop all three training loops early (epochs set high on purpose).
+name: tiny-timebudget
+dataset: tiny
+seed: 7
+tags: [test]
+stages:
+  - {name: distill, type: distill, student: rfdetr/nano, teacher: dinov3/vitt16-notpretrained, batch_size: 4, budget: {epochs: 200, minutes: 0.3}}
+  - {name: finetune, type: finetune, model: rfdetr/nano, batch_size: 2, budget: {epochs: 200, minutes: 0.3}}
+  - {name: lt, type: finetune, model: ltdetr/dinov3-vitt16-test, batch_size: 2, budget: {epochs: 200, minutes: 0.3}}

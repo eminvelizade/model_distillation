@@ -1,5 +1,10 @@
 # RF-DETR Nano ← DINOv3 ViT backbone distillation (offline-ready)
 
+> **ModelLab** (new): a local web app + CLI to run, queue and compare fine-tune / distill / benchmark experiments on
+> top of these scripts: `python app.py` → http://127.0.0.1:8765, or `bin/modellab run recipes/<template>.yaml`.
+> See [docs/MODELLAB.md](docs/MODELLAB.md) (usage, eval definition, what is and isn't tested) and
+> [docs/MODELLAB_VERIFICATION.md](docs/MODELLAB_VERIFICATION.md) (what lightly-train / rfdetr actually support).
+
 Domain-adapt the RF-DETR Nano backbone by distilling a DINOv3 ViT teacher (default ViT-L/16; ViT-H+/16 and
 ViT-7B/16 via `--teacher-model`) into it with LightlyTrain
 (`method="distillation"` = DistillationV3) on your own images, then compare stock vs distilled

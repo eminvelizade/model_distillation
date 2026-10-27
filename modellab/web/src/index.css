@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+body { min-height: 100vh; }
+::selection { background: rgba(167, 139, 250, 0.35); }
+.scroll-thin::-webkit-scrollbar { height: 8px; width: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: rgba(120, 120, 160, 0.35); border-radius: 8px; }

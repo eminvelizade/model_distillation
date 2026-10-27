@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ONLINE PC. Bundle everything the offline PC needs into one directory:
 #   <out>/env.tar.gz      conda-pack of the env (python + all pip wheels incl. CUDA runtime)
-#   <out>/project.tar     this repo: code + weights/ + cache/ (no runs/, data/, .git)
+#   <out>/project.tar     this repo: code + prebuilt ModelLab UI + weights/ + cache/ (no runs/, data/, .git, node_modules)
 #   <out>/SHA256SUMS
 #   <out>/unpack_offline.sh
 # Data is NOT included; copy your dataset separately.
@@ -21,8 +21,12 @@ PREFIX=$("$CONDA" run -n "$ENV_NAME" python -c "import sys; print(sys.prefix)")
 rm -f "$OUT/env.tar.gz"
 "$PREFIX/bin/conda-pack" -p "$PREFIX" -o "$OUT/env.tar.gz" --n-threads -1
 
+# ModelLab: the prebuilt UI (modellab/web/dist) ships, Node and node_modules do not (not needed at runtime).
+[ -f modellab/web/dist/index.html ] || { echo "[pack] modellab/web/dist missing -> cd modellab/web && npm ci && npm run build"; exit 1; }
+git rev-parse HEAD > GIT_COMMIT 2>/dev/null || true   # env.json records it on the offline PC (no .git there)
 tar --exclude=./runs --exclude=./data --exclude=./bundle --exclude=./.git --exclude='*.part' \
-    --exclude='__pycache__' -cf "$OUT/project.tar" .
+    --exclude='__pycache__' --exclude=./modellab/web/node_modules --exclude=./datasets.json \
+    -cf "$OUT/project.tar" .
 cp unpack_offline.sh "$OUT/"
 (cd "$OUT" && sha256sum env.tar.gz project.tar > SHA256SUMS)
 du -sh "$OUT"/*

@@ -1,0 +1,34 @@
+name: chain-finetuned-teacher
+description: |
+  Fine-tune a DINOv3 ViT-B/16 detector (LT-DETR) on the data, use its fine-tuned backbone as the distillation
+  teacher for RF-DETR Nano, then fine-tune and evaluate Nano. The fine-tuned teacher is evaluated too.
+dataset: coco-vehicles
+seed: 42
+tags: [chain]
+stages:
+  - name: teacher_ft
+    type: finetune
+    model: ltdetr/dinov3-vitb16
+    image_size: 384
+    batch_size: 16
+    budget: {epochs: 20, minutes: 60}
+  - name: distill
+    type: distill
+    student: rfdetr/nano
+    teacher: {from: teacher_ft}
+    batch_size: 64
+    budget: {epochs: 30, minutes: 60}
+  - name: finetune
+    type: finetune
+    model: rfdetr/nano
+    init: {from: distill}
+    batch_size: 16
+    budget: {epochs: 20, minutes: 45}
+  - name: eval
+    type: eval
+    model: {from: finetune}
+    label: nano <- fine-tuned ViT-B teacher
+  - name: eval_teacher
+    type: eval
+    model: {from: teacher_ft}
+    label: LT-DETR ViT-B/16 teacher

@@ -33,7 +33,7 @@ while [ $# -gt 0 ]; do
   case $1 in
     --teacher-model) TEACHERS+=("${2:?--teacher-model needs a value}"); shift 2 ;;
     --teacher-model=*) TEACHERS+=("${1#*=}"); shift ;;
-    *) echo "usage: $0 [--teacher-model dinov3/vitl16|dinov3/vith16plus|dinov3/vit7b16]..."; exit 2 ;;
+    *) echo "usage: $0 [--teacher-model dinov3/vits16|vitb16|vitl16|vith16plus|vit7b16]..."; exit 2 ;;
   esac
 done
 [ ${#TEACHERS[@]} -gt 0 ] || TEACHERS=(dinov3/vitl16)
@@ -41,10 +41,12 @@ done
 # MD5s must match offline_guard.TEACHERS (vith16plus/vit7b16 are S3 multipart uploads: ETag is not an MD5).
 teacher_md5() {
   case $1 in
+    dinov3/vits16)     echo 56187a1b9ae31e9e57272381c5fd5812 ;;
+    dinov3/vitb16)     echo 3843a030991de9939ee2c15f68f4f834 ;;
     dinov3/vitl16)     echo 07469a2d507f0e58a0a9e0675a289e57 ;;
     dinov3/vith16plus) echo 9daf5fc59373a063e403d85443a769b9 ;;
     dinov3/vit7b16)    echo f3c39447f01f8ce96d1ebea5f3bb61a6 ;;
-    *) echo "[download] unknown teacher '$1' (dinov3/vitl16, dinov3/vith16plus, dinov3/vit7b16)" >&2; exit 2 ;;
+    *) echo "[download] unknown teacher '$1' (dinov3/vits16, vitb16, vitl16, vith16plus, vit7b16)" >&2; exit 2 ;;
   esac
 }
 for t in "${TEACHERS[@]}"; do teacher_md5 "$t" > /dev/null; done  # validate names before downloading

@@ -69,7 +69,6 @@ def main() -> None:
 
     import torch
     import lightly_train
-    from lightly_train._methods.distillationv3 import distillationv3
     from rfdetr import RFDETRNano
 
     import teacher
@@ -101,16 +100,7 @@ def main() -> None:
         method_args["teacher_weights"] = str(offline_guard.require_file(offline_guard.HF_TEACHER_CONVERTED))
 
     # LightlyTrain builds the teacher in fp32; hold it in bf16 and hand fp32 features to the loss.
-    get_teacher = distillationv3.get_teacher
-
-    def get_bf16_teacher(*args, **kwargs):
-        wrapped = teacher.to_bf16(get_teacher(*args, **kwargs))
-        forward_features = wrapped.forward_features
-        wrapped.forward_features = lambda *a_, **k_: {k: v.float() for k, v in forward_features(*a_, **k_).items()}
-        print(f"[distill] teacher {a.teacher_model} ({a.teacher}) in {next(wrapped.parameters()).dtype}")
-        return wrapped
-
-    distillationv3.get_teacher = get_bf16_teacher
+    teacher.patch_lightly_get_teacher(lambda msg: print(f"[distill] {msg} ({a.teacher})"))
 
     lightly_train.pretrain(
         out=str(a.out),

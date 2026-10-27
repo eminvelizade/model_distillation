@@ -1,0 +1,26 @@
+name: teacher-size-sweep
+description: |
+  Distill DINOv3 ViT-S / B / L / H+ into RF-DETR Nano, then fine-tune and evaluate each (one run per teacher).
+  Same seed, data and budgets for all four, so the leaderboard shows the effect of teacher size alone.
+dataset: coco-vehicles
+seed: 42
+tags: [sweep, teacher-size]
+matrix:
+  teacher: [dinov3/vits16, dinov3/vitb16, dinov3/vitl16, dinov3/vith16plus]
+stages:
+  - name: distill
+    type: distill
+    student: rfdetr/nano
+    teacher: ${teacher}
+    batch_size: 64
+    budget: {epochs: 30, minutes: 60}
+  - name: finetune
+    type: finetune
+    model: rfdetr/nano
+    init: {from: distill}
+    batch_size: 16
+    budget: {epochs: 20, minutes: 60}
+  - name: eval
+    type: eval
+    model: {from: finetune}
+    label: nano <- ${teacher}

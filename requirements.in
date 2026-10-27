@@ -3,3 +3,8 @@ torchvision==0.23.0+cu128
 lightly-train[rfdetr]==0.17.0
 rfdetr==1.5.2
 scikit-learn
+# ModelLab web app + tests
+fastapi
+uvicorn
+pytest
+httpx
