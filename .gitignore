@@ -8,3 +8,4 @@ __pycache__/
 modellab/web/node_modules/
 datasets.json
 GIT_COMMIT
+vendor/

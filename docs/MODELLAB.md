@@ -79,13 +79,32 @@ modellab dataset list | info <name>
   page flag rows as **not comparable** when the eval code or the evaluated data hash differs (and warn when latency was
   measured on a different device/setting).
 - Cross-check on the tiny CPU set: ModelLab's mAP for an RF-DETR fine-tune agrees with rfdetr's own validation number
-  within 0.015 (5 images). The residual difference is PIL vs tensor resizing.
+  within 0.015 (5 images). **Caveat:** the first check was made while rfdetr was (unknowingly) validating at native image
+  size (see the albumentations bug below). Repeated after the fix, on COCO-sized images with real resizing: ModelLab
+  valid mAP50:95 0.5615 vs rfdetr's own 0.5727 (regular weights) / 0.5477 (EMA weights), 5 images.
 
-Two bugs were found and fixed while building this. Both are worth knowing about if you use these tools elsewhere:
-- **Off-by-one class mapping.** rfdetr trains COCO-layout datasets with `label = index of the category sorted by id`
+Three bugs were found and fixed (two while building this, one on the first real run on a user's PC). All three are
+worth knowing about if you use these tools elsewhere:
+- **rfdetr silently skips all image transforms (resize + augmentation) with the pinned albumentations 1.3.1.** rfdetr 1.5.2
+  builds them with `BboxParams(clip=...)`, which needs albumentations >= 1.4.8; with 1.3.1 it catches the error, logs
+  one warning (`Failed to initialize Resize ... unexpected keyword argument 'clip'. Skipping.` /
+  `Built 0 Albumentations transforms`) and trains and validates on **native-size, un-augmented images**. On real photos
+  this crashed fine-tuning at the end of epoch 1 (`Backbone requires input shape to be divisible by 32, but got
+  [2, 3, 427, 640]`); on images whose sides happen to be multiples of 32 it did not crash and trained at the wrong scale,
+  **so earlier fine-tune results of this repo (including `finetune_detector.py` smoke numbers) used no resize and no
+  augmentation**. My synthetic test images were all multiples of 32, which hid it; `tests/make_synthetic_dataset.py
+  --sizes coco` (now the default for the ModelLab tests) produces COCO-like sizes.
+  No single pip pin fixes it (checked): albumentations 1.3.1 breaks rfdetr, 1.4.24 fixes rfdetr but crashes LightlyTrain's
+  LT-DETR training (its `ScaleJitter` has no `always_apply`; its metadata excludes 1.4.*), and 2.0.8 breaks rfdetr's
+  training crop. **Fix:** the environment keeps 1.3.1 for LightlyTrain, `setup_env.sh` installs albumentations 1.4.24 into
+  `vendor/albumentations14/`, and processes that train with rfdetr select it before importing rfdetr
+  (`modellab/compat.py`). Because ModelLab runs each stage in its own process, the two never meet. The rfdetr fine-tune
+  stage, `check_offline.py` and `finetune_detector.py` verify the transforms really build (`modellab/preflight.py`) and
+  fail with a clear message instead of silently skipping them.
+- **Off-by-one class mapping** (found while building). rfdetr trains COCO-layout datasets with `label = index of the category sorted by id`
   (0-based), but `RFDETR.class_names` is 1-based. Mapping predictions through `class_names` scored a fine-tuned model
   at 0.256 instead of 0.555.
-- **Annotation id 0.** pycocotools treats a matched ground-truth annotation with `id == 0` as unmatched.
+- **Annotation id 0** (found while building). pycocotools treats a matched ground-truth annotation with `id == 0` as unmatched.
   `make_splits.py` numbered annotations from 0 (now from 1; the content hash ignores ids). The evaluator also renumbers
   them internally.
 

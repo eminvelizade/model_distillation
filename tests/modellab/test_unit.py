@@ -204,3 +204,55 @@ def test_ui_is_served_without_external_assets(client):
     js = next((ROOT / "modellab/web/dist/assets").glob("*.js")).read_text()
     assert "fonts.googleapis" not in js and "cdn." not in js
     assert client.get("/leaderboard").status_code == 200  # SPA fallback
+
+
+# ---------- rfdetr input pipeline (regression: transforms were silently dropped -> native-size images) ----------
+
+CHECK_PIPELINE = r"""
+import json, sys
+import offline_guard
+from modellab import preflight
+version = preflight.ensure_rfdetr_transforms()   # selects vendored albumentations BEFORE importing rfdetr
+from pathlib import Path
+from rfdetr.datasets.coco import CocoDetection, make_coco_transforms_square_div_64
+root = Path(sys.argv[1]); out = {"albumentations": version}
+for split, kind in (("valid", "val"), ("train", "train")):
+    t = make_coco_transforms_square_div_64(kind, 384, multi_scale=True, expanded_scales=True, skip_random_resize=True,
+                                           patch_size=16, num_windows=2)
+    ds = CocoDetection(root / split, root / split / "_annotations.coco.json", transforms=t, remap_category_ids=True)
+    samples = [ds[i] for i in range(len(ds))]
+    out[kind] = sorted({tuple(s[0].shape) for s in samples})
+    out[kind + "_boxes_ok"] = all(((s[1]["boxes"] >= 0) & (s[1]["boxes"] <= 1)).all().item() for s in samples if len(s[1]["boxes"]))
+print("RESULT " + json.dumps(out))
+"""
+
+
+def test_rfdetr_transforms_build_and_resize_non_aligned_images(lab, tiny_dataset):
+    """The tiny dataset has COCO-like sizes (640x612, 500x375, ...: NOT multiples of 32). In a process that selects the
+    rfdetr-compatible albumentations, every val/train sample must come out as a square multiple of 32."""
+    import subprocess
+    import sys
+
+    sizes = {(im["width"], im["height"]) for im in json.loads((tiny_dataset / "valid" / "_annotations.coco.json").read_text())["images"]}
+    assert any(w % 32 or h % 32 for w, h in sizes), sizes  # the fixture must really contain unaligned images
+    r = subprocess.run([sys.executable, "-c", CHECK_PIPELINE, str(tiny_dataset)], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    out = json.loads(next(l for l in r.stdout.splitlines() if l.startswith("RESULT ")).removeprefix("RESULT "))
+    assert out["albumentations"].startswith("1.4.")
+    assert out["val"] == [[3, 384, 384]] and out["train"] == [[3, 544, 544]], out
+    assert out["val_boxes_ok"] and out["train_boxes_ok"]
+
+
+def test_environment_albumentations_for_lightlytrain_is_unchanged():
+    """LightlyTrain stages must keep the pip-resolved 1.3.1 (1.4.* crashes LT-DETR); only rfdetr training uses vendor/."""
+    import albumentations
+
+    assert albumentations.__version__ == "1.3.1", albumentations.__version__
+
+
+def test_compat_refuses_when_albumentations_already_imported(lab):
+    """In a process where albumentations 1.3.1 is already loaded, selecting 1.4.x is impossible: must fail loudly."""
+    from modellab import compat
+
+    with pytest.raises(RuntimeError, match="rfdetr needs albumentations"):
+        compat.use_rfdetr_albumentations()

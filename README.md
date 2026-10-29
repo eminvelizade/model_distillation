@@ -120,7 +120,7 @@ CUDA_VISIBLE_DEVICES=0 python finetune_detector.py --data data/ds --distilled ru
 | LightlyTrain telemetry → `eu.i.posthog.com` (errors swallowed) | during `pretrain` | `LIGHTLY_TRAIN_EVENTS_DISABLED=1` |
 | `lightly` (dependency) version check → `api.lightly.ai` (background thread on `import lightly`) | any LightlyTrain import | `LIGHTLY_DID_VERSION_CHECK=True` (found by the guard) |
 | HF hub (DINOv2 configs/weights in rfdetr) | not used by Nano (patch 16 → hub weights skipped, config is a local JSON) | `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1` |
-| albumentations update check | albumentations ≥1.4 only (pinned 1.3.1 has none) | `NO_ALBUMENTATIONS_UPDATE=1` |
+| albumentations update check | albumentations ≥1.4 only (env: 1.3.1 has none; the vendored 1.4.24 used by rfdetr training does) | `NO_ALBUMENTATIONS_UPDATE=1` |
 | torch hub / timm | LightlyTrain downloads via `torch.hub.download_url_to_file` into its own cache; timm is not used by this pipeline (not installed) | `TORCH_HOME` → `cache/torch` |
 
 The guard (`offline_guard.py`) is the "fail if a network call is attempted" check: any non-loopback

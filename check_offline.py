@@ -67,6 +67,10 @@ def main() -> None:
         offline_guard.require_file(offline_guard.teacher_cache_file(name), check_md5=md5)
     print(f"[check] weight files present{' (md5 ok)' if md5 else ''}: nano + {teachers}")
 
+    from modellab import preflight
+
+    print(f"[check] rfdetr image transforms (resize + augmentation) build with albumentations {preflight.check_in_subprocess()}")
+
     device = a.device or ("cuda" if torch.cuda.is_available() else "cpu")
     from rfdetr import RFDETRNano
 

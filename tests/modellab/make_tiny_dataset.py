@@ -19,10 +19,12 @@ def main() -> None:
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--n", type=int, default=40)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--sizes", choices=["aligned", "coco"], default="coco",
+                   help="coco (default): image sizes that are NOT multiples of 32, like real COCO photos")
     a = p.parse_args()
     raw = a.out.parent / (a.out.name + "_raw")
     subprocess.run([sys.executable, str(ROOT / "tests/make_synthetic_dataset.py"), "--out", str(raw), "--n", str(a.n),
-                    "--format", "coco", "--seed", str(a.seed)], check=True)
+                    "--format", "coco", "--seed", str(a.seed), "--sizes", a.sizes], check=True)
     subprocess.run([sys.executable, str(ROOT / "make_splits.py"), "--format", "coco", "--coco-json",
                     str(raw / "annotations.json"), "--images-dir", str(raw / "images"), "--out", str(a.out), "--copy"],
                    check=True)

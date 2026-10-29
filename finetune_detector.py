@@ -41,6 +41,10 @@ def main() -> None:
     p.add_argument("--smoke", action="store_true")
     a = p.parse_args()
 
+    from modellab import preflight
+
+    # rfdetr silently drops resize/augmentation with albumentations 1.3.1: select 1.4.x BEFORE importing rfdetr
+    print(f"[finetune] rfdetr image transforms OK with albumentations {preflight.ensure_rfdetr_transforms()}")
     import torch
     from rfdetr import RFDETRNano
 

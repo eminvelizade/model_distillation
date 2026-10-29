@@ -21,6 +21,7 @@ PREFIX=$("$CONDA" run -n "$ENV_NAME" python -c "import sys; print(sys.prefix)")
 rm -f "$OUT/env.tar.gz"
 "$PREFIX/bin/conda-pack" -p "$PREFIX" -o "$OUT/env.tar.gz" --n-threads -1
 
+[ -d vendor/albumentations14 ] || { echo "[pack] vendor/albumentations14 missing -> re-run setup_env.sh (rfdetr needs it)"; exit 1; }
 # ModelLab: the prebuilt UI (modellab/web/dist) ships, Node and node_modules do not (not needed at runtime).
 [ -f modellab/web/dist/index.html ] || { echo "[pack] modellab/web/dist missing -> cd modellab/web && npm ci && npm run build"; exit 1; }
 git rev-parse HEAD > GIT_COMMIT 2>/dev/null || true   # env.json records it on the offline PC (no .git there)

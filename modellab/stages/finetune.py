@@ -26,9 +26,11 @@ def run(ctx):
 
 
 def _rfdetr(ctx, det):
-    import rfdetr
+    from modellab import hooks, preflight
 
-    from modellab import hooks
+    # rfdetr silently drops ALL resize/augmentation with albumentations 1.3.1: select 1.4.x BEFORE importing rfdetr
+    ctx.log(f"rfdetr image transforms OK with albumentations {preflight.ensure_rfdetr_transforms()}")
+    import rfdetr
 
     st, ds = ctx.st, ctx.dataset()
     init = ctx.input(st["init"])["checkpoint"] if isinstance(st["init"], dict) else ctx.stock_weights(det.id)

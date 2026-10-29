@@ -12,6 +12,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 CLASSES = ["circle", "square", "triangle"]
+SIZES = {"aligned": [(640, 480), (512, 512), (480, 640)],
+         "coco": [(640, 480), (640, 427), (500, 375), (640, 612), (427, 640), (333, 500)]}
 
 
 def draw_image(rng: random.Random, w: int, h: int):
@@ -40,13 +42,15 @@ def main() -> None:
     p.add_argument("--n", type=int, default=40)
     p.add_argument("--format", choices=["coco", "yolo"], default="coco")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--sizes", choices=["aligned", "coco"], default="aligned",
+                   help="aligned: multiples of 32 (fast smoke tests); coco: real COCO-like sizes, NOT multiples of 32")
     a = p.parse_args()
     rng = random.Random(a.seed)
     img_dir = a.out / "images"
     img_dir.mkdir(parents=True, exist_ok=True)
     coco = {"images": [], "annotations": [], "categories": [{"id": i + 1, "name": c} for i, c in enumerate(CLASSES)]}
     for i in range(a.n):
-        w, h = rng.choice([(640, 480), (512, 512), (480, 640)])
+        w, h = rng.choice(SIZES[a.sizes])
         img, boxes = draw_image(rng, w, h)
         name = f"img_{i:04d}.jpg"
         img.save(img_dir / name, quality=90)
