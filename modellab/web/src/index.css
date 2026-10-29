@@ -2,9 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-html { color-scheme: light; }
-html.dark { color-scheme: dark; }
-body { min-height: 100vh; }
-::selection { background: rgba(167, 139, 250, 0.35); }
+/* Theme tokens as RGB triplets so Tailwind opacity modifiers work (bg-surface/80 …). */
+:root {
+  color-scheme: light;
+  --canvas: 248 248 250;
+  --surface: 255 255 255;
+  --raised: 243 243 246;
+  --line: 230 230 235;
+  --fg: 17 17 22;
+  --muted: 92 92 106;
+  --subtle: 140 140 154;
+  --accent: 112 76 255;
+}
+html.dark {
+  color-scheme: dark;
+  --canvas: 9 9 11;
+  --surface: 17 17 21;
+  --raised: 26 26 32;
+  --line: 39 39 46;
+  --fg: 244 244 247;
+  --muted: 166 166 178;
+  --subtle: 108 108 122;
+  --accent: 154 130 255;
+}
+
+body {
+  min-height: 100vh;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: rgb(124 92 255 / 0.28); }
+
+.scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(120 120 140 / .35) transparent; }
 .scroll-thin::-webkit-scrollbar { height: 8px; width: 8px; }
-.scroll-thin::-webkit-scrollbar-thumb { background: rgba(120, 120, 160, 0.35); border-radius: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: rgb(120 120 140 / 0.35); border-radius: 8px; }
+.scroll-none { scrollbar-width: none; }
+.scroll-none::-webkit-scrollbar { display: none; }
+
+/* Soft aurora behind the top of every page. */
+.aurora {
+  background:
+    radial-gradient(60rem 22rem at 18% -6rem, rgb(124 92 255 / .10), transparent 70%),
+    radial-gradient(40rem 18rem at 85% -8rem, rgb(20 184 166 / .07), transparent 70%);
+}
+html.dark .aurora {
+  background:
+    radial-gradient(60rem 22rem at 18% -6rem, rgb(124 92 255 / .16), transparent 70%),
+    radial-gradient(40rem 18rem at 85% -8rem, rgb(20 184 166 / .08), transparent 70%);
+}
+
+/* Fine grid used on hero cards. */
+.grid-bg {
+  background-image:
+    linear-gradient(rgb(255 255 255 / .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / .05) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse at 70% 0%, black 20%, transparent 75%);
+}
+
+.shimmer {
+  background-image: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / .45) 50%, transparent 100%);
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}

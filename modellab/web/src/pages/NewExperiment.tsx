@@ -1,7 +1,8 @@
 import { Children, isValidElement, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowDown, ArrowUp, BadgeCheck, Code2, FlaskConical, Layers, ListPlus, Loader2, Play, Plus, ScanSearch, Shuffle, Target, Trash2, Wand2, X } from "lucide-react";
 import { api, Catalog, Preview } from "../api";
-import { Button, Card, cx, Field, inputCls, Mascot, Tag, Toast } from "../ui";
+import { Button, Callout, Card, cx, Field, IconButton, inputCls, Mascot, PageHeader, Segmented, Tag, Toast, Yaml } from "../ui";
 
 type Ref = { from: string };
 type Stage = Record<string, any> & { name: string; type: string };
@@ -11,12 +12,22 @@ const isRef = (v: unknown): v is Ref => !!v && typeof v === "object" && "from" i
 const enc = (v: unknown) => (isRef(v) ? `@${v.from}` : v === undefined || v === null ? "" : String(v));
 const dec = (s: string): unknown => (s.startsWith("@") ? { from: s.slice(1) } : s);
 
-const TYPE_STYLE: Record<string, { color: string; emoji: string; blurb: string }> = {
-  distill: { color: "from-violet-500 to-fuchsia-500", emoji: "⚗", blurb: "teacher → RF-DETR backbone" },
-  finetune: { color: "from-sky-500 to-cyan-400", emoji: "◎", blurb: "supervised detection training" },
-  eval: { color: "from-emerald-500 to-teal-400", emoji: "✓", blurb: "identical COCO eval + latency" },
-  features: { color: "from-amber-500 to-orange-400", emoji: "◈", blurb: "feature probe + PCA" },
+const TYPE_STYLE: Record<string, { color: string; icon: typeof Target; blurb: string }> = {
+  distill: { color: "from-violet-500 to-fuchsia-500", icon: FlaskConical, blurb: "teacher → RF-DETR backbone" },
+  finetune: { color: "from-sky-500 to-cyan-400", icon: Target, blurb: "supervised detection training" },
+  eval: { color: "from-emerald-500 to-teal-400", icon: BadgeCheck, blurb: "identical COCO eval + latency" },
+  features: { color: "from-amber-500 to-orange-400", icon: ScanSearch, blurb: "feature probe + PCA" },
 };
+
+/** Template card art, picked from the template's name. */
+function templateStyle(name: string, i: number) {
+  const n = name.toLowerCase();
+  if (/sweep/.test(n)) return { icon: Shuffle, color: "from-amber-400 to-pink-500" };
+  if (/distill/.test(n)) return { icon: FlaskConical, color: "from-violet-500 to-fuchsia-500" };
+  if (/probe|feature/.test(n)) return { icon: ScanSearch, color: "from-orange-400 to-amber-500" };
+  if (/fine|baseline/.test(n)) return { icon: Target, color: "from-sky-500 to-cyan-400" };
+  return [{ icon: Wand2, color: "from-indigo-500 to-violet-500" }, { icon: Layers, color: "from-teal-500 to-emerald-400" }][i % 2];
+}
 
 function blankStage(type: string, existing: Stage[]): Stage {
   let i = 1;
@@ -100,17 +111,26 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
   const sameModel = (model: string) => prods.filter((p) => p.model === model);
   const isLT = typeof st.model === "string" && st.model.startsWith("ltdetr");
 
+  const Icon = style?.icon ?? Target;
   return (
-    <div className="relative rounded-2xl border border-ink-200/80 bg-white p-4 shadow-soft dark:border-ink-800 dark:bg-ink-900">
-      <div className="mb-3 flex items-center gap-3">
-        <div className={cx("flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-lg text-white", style?.color)}>{style?.emoji}</div>
-        <input value={st.name} onChange={(e) => set("name", e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"))}
-          className="w-40 rounded-lg bg-transparent px-1 text-[15px] font-semibold text-ink-800 outline-none focus:bg-ink-50 dark:text-ink-100 dark:focus:bg-ink-800" />
-        <span className="text-xs text-ink-400">{st.type} · {style?.blurb}</span>
-        <div className="ml-auto flex items-center gap-1">
-          <Button small variant="ghost" onClick={() => onMove(-1)} disabled={idx === 0} title="move up">↑</Button>
-          <Button small variant="ghost" onClick={() => onMove(1)} disabled={idx === stages.length - 1} title="move down">↓</Button>
-          <Button small variant="ghost" onClick={onRemove} title="remove stage">✕</Button>
+    <div className="relative flex gap-4">
+      {/* pipeline rail */}
+      <div className="hidden w-9 shrink-0 flex-col items-center sm:flex">
+        <div className={cx("z-10 flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-soft ring-4 ring-canvas", style?.color)}><Icon className="h-4 w-4" /></div>
+        <div className="w-px flex-1 bg-gradient-to-b from-line to-line/40" />
+      </div>
+      <div className="mb-4 min-w-0 flex-1 rounded-2xl border border-line bg-surface p-4 shadow-soft transition focus-within:border-accent/40 focus-within:shadow-lift sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className={cx("flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br text-white sm:hidden", style?.color)}><Icon className="h-4 w-4" /></div>
+        <span className="font-mono text-2xs text-subtle">{String(idx + 1).padStart(2, "0")}</span>
+        <input value={st.name} onChange={(e) => set("name", e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"))} aria-label="stage name"
+          className="w-36 rounded-md bg-transparent px-1 text-[15px] font-semibold text-fg outline-none ring-accent/50 hover:bg-raised focus:bg-raised focus:ring-2" />
+        <span className="rounded-md bg-raised px-1.5 py-0.5 text-2xs font-medium text-muted">{st.type}</span>
+        <span className="hidden text-xs text-subtle md:inline">{style?.blurb}</span>
+        <div className="ml-auto flex items-center">
+          <IconButton title="Move up" onClick={() => onMove(-1)} disabled={idx === 0}><ArrowUp /></IconButton>
+          <IconButton title="Move down" onClick={() => onMove(1)} disabled={idx === stages.length - 1}><ArrowDown /></IconButton>
+          <IconButton title="Remove stage" onClick={onRemove} className="hover:!bg-rose-500/10 hover:!text-rose-500"><Trash2 /></IconButton>
         </div>
       </div>
 
@@ -166,7 +186,7 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
           <Field label="Split">
             <Select value={st.split ?? "test"} onChange={(v) => set("split", v === "test" ? undefined : v)}><option value="test">test</option><option value="valid">valid</option></Select>
           </Field>
-          <label className="flex items-center gap-2 self-end pb-2 text-sm text-ink-600 dark:text-ink-300">
+          <label className="flex items-center gap-2 self-end pb-2 text-[13px] text-muted">
             <input type="checkbox" checked={st.latency !== false} onChange={(e) => set("latency", e.target.checked ? undefined : false)} className="h-4 w-4 accent-violet-600" />
             measure latency (fp16, bs 1)
           </label>
@@ -174,13 +194,13 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
 
         {st.type === "features" && <>
           <Field label="Backbones to probe">
-            <div className="flex flex-wrap gap-2 rounded-xl bg-ink-50 p-2 ring-1 ring-inset ring-ink-200 dark:bg-ink-850 dark:ring-ink-700">
+            <div className="flex flex-wrap gap-1.5 rounded-[10px] bg-raised/60 p-1.5 ring-1 ring-inset ring-line">
               {[...prods.filter((p) => p.kind === "rfdetr").map((p) => ({ v: `@${p.name}`, l: `from: ${p.name}` })),
                 ...cat.students.map((s) => ({ v: s, l: `stock ${s.replace("rfdetr/", "")}` }))].map((o) => {
                 const cur: string[] = (st.models ?? []).map(enc);
                 const on = cur.includes(o.v);
                 return <button key={o.v} onClick={() => set("models", (on ? cur.filter((x) => x !== o.v) : [...cur, o.v]).map(dec))}
-                  className={cx("rounded-lg px-2 py-1 text-xs", on ? "bg-amber-500 text-white" : "bg-white text-ink-600 ring-1 ring-ink-200 dark:bg-ink-800 dark:text-ink-300 dark:ring-ink-700")}>{o.l}</button>;
+                  className={cx("rounded-md px-2 py-1 text-xs font-medium transition", on ? "bg-amber-500 text-white shadow-soft" : "bg-surface text-muted ring-1 ring-line hover:text-fg")}>{o.l}</button>;
               })}
             </div>
           </Field>
@@ -205,6 +225,7 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
             {cat.datasets.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
           </Select>
         </Field>
+      </div>
       </div>
     </div>
   );
@@ -266,147 +287,171 @@ export default function NewExperiment() {
     }
   };
 
-  if (!cat) return <div className="py-20 text-center text-ink-400">loading the lab…</div>;
+  if (!cat) return <div className="flex items-center justify-center gap-2 py-24 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />loading the lab…</div>;
   const matrixEntries = Object.entries(recipe.matrix ?? {});
+  const nRuns = preview?.runs.length ?? 0;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
-      <div className="space-y-5">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-ink-900 dark:text-white">New experiment</h1>
-            <p className="text-sm text-ink-500 dark:text-ink-400">Pick a template or stack stages. Each stage can use an earlier stage's output.</p>
-          </div>
-          <div className="flex rounded-xl bg-ink-100 p-1 text-sm dark:bg-ink-800">
-            {(["builder", "yaml"] as const).map((m) => (
-              <button key={m} onClick={() => (m === "builder" && mode === "yaml" ? loadYaml(yamlText) : setMode(m))}
-                className={cx("rounded-lg px-3 py-1", mode === m ? "bg-white font-medium shadow-sm dark:bg-ink-700" : "text-ink-500")}>{m === "builder" ? "Builder" : "YAML"}</button>
-            ))}
-          </div>
-        </div>
+    <div className="space-y-6">
+      <PageHeader eyebrow="Build" title="New experiment"
+        description="Start from a template or stack stages. Each stage can consume an earlier stage's output."
+        actions={<Segmented value={mode} onChange={(m) => (m === "builder" && mode === "yaml" ? loadYaml(yamlText) : setMode(m))}
+          options={[{ value: "builder", label: "Builder", icon: <Layers /> }, { value: "yaml", label: "YAML", icon: <Code2 /> }]} />} />
 
+      <div>
+        <div className="mb-3 text-xs font-medium text-muted">Start from a template</div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {cat.templates.map((t, i) => (
-            <button key={t.id} onClick={() => loadYaml(t.yaml)}
-              className="group rounded-2xl border border-ink-200/80 bg-white p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-violet-300 dark:border-ink-800 dark:bg-ink-900 dark:hover:border-violet-500/50">
-              <div className="mb-1 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-xs font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">{i + 1}</span>
-                <span className="text-sm font-semibold text-ink-800 dark:text-ink-100">{t.name}</span>
-              </div>
-              <p className="line-clamp-3 text-xs text-ink-500 dark:text-ink-400">{t.description}</p>
-            </button>
-          ))}
+          {cat.templates.map((t, i) => {
+            const ts = templateStyle(t.name, i);
+            return (
+              <button key={t.id} onClick={() => loadYaml(t.yaml)}
+                className="group relative overflow-hidden rounded-2xl border border-line bg-surface p-4 text-left shadow-soft transition duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-lift">
+                <div className={cx("absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br opacity-[.12] blur-xl transition group-hover:opacity-25", ts.color)} />
+                <span className={cx("flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-soft", ts.color)}><ts.icon className="h-4 w-4" /></span>
+                <div className="mt-3 text-[13.5px] font-semibold text-fg">{t.name}</div>
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{t.description}</p>
+              </button>
+            );
+          })}
         </div>
-
-        {mode === "builder" ? (
-          <>
-            <Card title="Recipe">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <Field label="Name"><input className={inputCls} value={recipe.name} onChange={(e) => setRecipe({ ...recipe, name: e.target.value })} /></Field>
-                <Field label="Dataset">
-                  <select className={inputCls} value={recipe.dataset ?? ""} onChange={(e) => setRecipe({ ...recipe, dataset: e.target.value })}>
-                    {cat.datasets.map((d) => <option key={d.name} value={d.name}>{d.name}{d.built === false ? " (not built)" : ""}</option>)}
-                  </select>
-                </Field>
-                <Field label="Seed"><NumberInput value={recipe.seed} onChange={(v) => setRecipe({ ...recipe, seed: v })} /></Field>
-                <Field label="Tags">
-                  <div className="flex flex-wrap items-center gap-1 rounded-xl bg-ink-50 px-2 py-1.5 ring-1 ring-inset ring-ink-200 dark:bg-ink-850 dark:ring-ink-700">
-                    {(recipe.tags ?? []).map((t) => <Tag key={t} onRemove={() => setRecipe({ ...recipe, tags: recipe.tags!.filter((x) => x !== t) })}>{t}</Tag>)}
-                    <input value={tagDraft} placeholder="add…" onChange={(e) => setTagDraft(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && tagDraft.trim()) { setRecipe({ ...recipe, tags: [...(recipe.tags ?? []), tagDraft.trim()] }); setTagDraft(""); } }}
-                      className="min-w-[60px] flex-1 bg-transparent text-sm outline-none" />
-                  </div>
-                </Field>
-              </div>
-              <div className="mt-4 rounded-xl bg-violet-50/60 p-3 dark:bg-violet-500/5">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">Sweep (optional) — one run per combination; use ${"{var}"} in a stage</span>
-                  <Button small variant="ghost" onClick={() => setRecipe({ ...recipe, matrix: { ...(recipe.matrix ?? {}), [vars.includes("teacher") ? `var${vars.length + 1}` : "teacher"]: ["dinov3/vits16", "dinov3/vitb16"] } })}>+ variable</Button>
-                </div>
-                {matrixEntries.map(([k, vals]) => (
-                  <div key={k} className="mb-2 grid grid-cols-[140px_1fr_auto] gap-2">
-                    <input className={inputCls} value={k} onChange={(e) => {
-                      const m: Record<string, unknown[]> = {};
-                      Object.entries(recipe.matrix!).forEach(([kk, vv]) => (m[kk === k ? e.target.value.replace(/\W/g, "") : kk] = vv));
-                      setRecipe({ ...recipe, matrix: m });
-                    }} />
-                    <input className={inputCls} value={vals.join(", ")} onChange={(e) => setRecipe({ ...recipe, matrix: { ...recipe.matrix!, [k]: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) } })} />
-                    <Button small variant="ghost" onClick={() => { const m = { ...recipe.matrix! }; delete m[k]; setRecipe({ ...recipe, matrix: Object.keys(m).length ? m : undefined }); }}>✕</Button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <div className="space-y-3">
-              {recipe.stages.map((s, i) => (
-                <StageCard key={i} st={s} idx={i} stages={recipe.stages} cat={cat} vars={vars} onChange={(n) => setStage(i, n)}
-                  onRemove={() => setRecipe({ ...recipe, stages: recipe.stages.filter((_, j) => j !== i) })}
-                  onMove={(d) => {
-                    const st = [...recipe.stages];
-                    const j = i + d;
-                    [st[i], st[j]] = [st[j], st[i]];
-                    setRecipe({ ...recipe, stages: st });
-                  }} />
-              ))}
-              <div className="flex flex-wrap gap-2 rounded-2xl border-2 border-dashed border-ink-200 p-3 dark:border-ink-800">
-                <span className="self-center px-1 text-sm text-ink-400">add stage:</span>
-                {Object.entries(TYPE_STYLE).map(([t, s]) => (
-                  <button key={t} onClick={() => setRecipe({ ...recipe, stages: [...recipe.stages, blankStage(t, recipe.stages)] })}
-                    className="flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-sm text-ink-700 shadow-soft ring-1 ring-ink-200 hover:ring-violet-300 dark:bg-ink-900 dark:text-ink-200 dark:ring-ink-700">
-                    <span className={cx("flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br text-[11px] text-white", s.color)}>{s.emoji}</span>{t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        ) : (
-          <Card title="Recipe YAML">
-            <textarea value={yamlText} onChange={(e) => setYamlText(e.target.value)} spellCheck={false}
-              className={cx(inputCls, "h-[560px] font-mono text-[12.5px] leading-relaxed")} />
-          </Card>
-        )}
       </div>
 
-      <aside className="lg:sticky lg:top-20 lg:self-start">
-        <Card title="Preview" actions={preview && (preview.ok
-          ? <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">✓ looks good</span>
-          : <span className="text-xs font-medium text-rose-600 dark:text-rose-400">needs fixes</span>)}>
-          {mode === "builder" && (
-            <pre className="scroll-thin mb-4 max-h-[340px] overflow-auto rounded-xl bg-ink-950 p-3 font-mono text-[11.5px] leading-relaxed text-emerald-200 dark:bg-black/50">{preview?.yaml ?? "…"}</pre>
-          )}
-          {preview && preview.errors.length > 0 && (
-            <ul className="mb-3 space-y-1 rounded-xl bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-              {preview.errors.map((e, i) => <li key={i}>• {e}</li>)}
-            </ul>
-          )}
-          {preview && preview.warnings.length > 0 && (
-            <ul className="mb-3 space-y-1 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-              {preview.warnings.map((e, i) => <li key={i}>• {e}</li>)}
-            </ul>
-          )}
-          {preview && preview.runs.length > 0 && (
-            <div className="mb-4 space-y-2">
-              <div className="text-xs font-medium text-ink-500">Will create {preview.runs.length} run{preview.runs.length > 1 ? "s" : ""}</div>
-              {preview.runs.map((r) => (
-                <div key={r.name} className="rounded-xl bg-ink-50 px-3 py-2 text-xs dark:bg-ink-850">
-                  <div className="font-medium text-ink-700 dark:text-ink-200">{r.name}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-1 text-ink-500">
-                    {r.stages.map((s, i) => <span key={s.name}>{i > 0 && "→ "}{s.name}</span>)}
-                  </div>
-                  {r.missing_weights.length > 0 && (
-                    <div className="mt-1 text-amber-700 dark:text-amber-300">⚠ weights not downloaded: {r.missing_weights.join(", ")} (online: <code>modellab weights fetch …</code>)</div>
-                  )}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="min-w-0 space-y-6">
+          {mode === "builder" ? (
+            <>
+              <Card title="Recipe" description="Shared by every stage unless a stage overrides it">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <Field label="Name"><input className={inputCls} value={recipe.name} onChange={(e) => setRecipe({ ...recipe, name: e.target.value })} /></Field>
+                  <Field label="Dataset">
+                    <select className={cx(inputCls, "pr-8")} value={recipe.dataset ?? ""} onChange={(e) => setRecipe({ ...recipe, dataset: e.target.value })}>
+                      {cat.datasets.map((d) => <option key={d.name} value={d.name}>{d.name}{d.built === false ? " (not built)" : ""}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Seed"><NumberInput value={recipe.seed} onChange={(v) => setRecipe({ ...recipe, seed: v })} /></Field>
+                  <Field label="Tags">
+                    <div className="flex min-h-9 flex-wrap items-center gap-1 rounded-[10px] bg-surface px-2 py-1.5 shadow-soft ring-1 ring-inset ring-line focus-within:ring-2 focus-within:ring-accent/60 dark:bg-raised/60">
+                      {(recipe.tags ?? []).map((t) => <Tag key={t} onRemove={() => setRecipe({ ...recipe, tags: recipe.tags!.filter((x) => x !== t) })}>{t}</Tag>)}
+                      <input value={tagDraft} placeholder="add + enter" onChange={(e) => setTagDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && tagDraft.trim()) { setRecipe({ ...recipe, tags: [...(recipe.tags ?? []), tagDraft.trim()] }); setTagDraft(""); } }}
+                        className="min-w-[60px] flex-1 bg-transparent text-[13px] text-fg outline-none placeholder:text-subtle" />
+                    </div>
+                  </Field>
                 </div>
-              ))}
-            </div>
+                <div className="mt-5 rounded-xl border border-dashed border-accent/30 bg-accent/[.04] p-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-[13px]">
+                      <Shuffle className="h-4 w-4 text-accent" />
+                      <span className="font-semibold text-fg">Sweep</span>
+                      <span className="text-muted">optional · one run per combination · use <code className="rounded bg-raised px-1 font-mono text-[11.5px] text-accent">${"{var}"}</code> in a stage</span>
+                    </div>
+                    <Button small variant="ghost" onClick={() => setRecipe({ ...recipe, matrix: { ...(recipe.matrix ?? {}), [vars.includes("teacher") ? `var${vars.length + 1}` : "teacher"]: ["dinov3/vits16", "dinov3/vitb16"] } })}><Plus />Variable</Button>
+                  </div>
+                  {matrixEntries.length > 0 && <div className="mt-3 space-y-2">
+                    {matrixEntries.map(([k, vals]) => (
+                      <div key={k} className="grid grid-cols-[120px_1fr_auto] gap-2 sm:grid-cols-[160px_1fr_auto]">
+                        <input className={cx(inputCls, "font-mono text-[12.5px]")} value={k} onChange={(e) => {
+                          const m: Record<string, unknown[]> = {};
+                          Object.entries(recipe.matrix!).forEach(([kk, vv]) => (m[kk === k ? e.target.value.replace(/\W/g, "") : kk] = vv));
+                          setRecipe({ ...recipe, matrix: m });
+                        }} />
+                        <input className={cx(inputCls, "font-mono text-[12.5px]")} value={vals.join(", ")} onChange={(e) => setRecipe({ ...recipe, matrix: { ...recipe.matrix!, [k]: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) } })} />
+                        <IconButton title="Remove variable" className="h-9 w-9" onClick={() => { const m = { ...recipe.matrix! }; delete m[k]; setRecipe({ ...recipe, matrix: Object.keys(m).length ? m : undefined }); }}><X /></IconButton>
+                      </div>
+                    ))}
+                  </div>}
+                </div>
+              </Card>
+
+              <div>
+                <div className="mb-3 flex items-center justify-between text-xs font-medium text-muted">
+                  <span>Pipeline · {recipe.stages.length} stage{recipe.stages.length === 1 ? "" : "s"}</span>
+                  <span className="text-subtle">runs top to bottom</span>
+                </div>
+                {recipe.stages.map((s, i) => (
+                  <StageCard key={i} st={s} idx={i} stages={recipe.stages} cat={cat} vars={vars} onChange={(n) => setStage(i, n)}
+                    onRemove={() => setRecipe({ ...recipe, stages: recipe.stages.filter((_, j) => j !== i) })}
+                    onMove={(d) => {
+                      const st = [...recipe.stages];
+                      const j = i + d;
+                      [st[i], st[j]] = [st[j], st[i]];
+                      setRecipe({ ...recipe, stages: st });
+                    }} />
+                ))}
+                <div className="flex gap-4">
+                  <div className="hidden w-9 shrink-0 justify-center sm:flex">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-dashed border-line text-subtle"><Plus className="h-4 w-4" /></div>
+                  </div>
+                  <div className="flex flex-1 flex-wrap items-center gap-2 rounded-2xl border-2 border-dashed border-line p-3">
+                    <span className="px-1 text-[13px] text-subtle">Add stage</span>
+                    {Object.entries(TYPE_STYLE).map(([t, s]) => (
+                      <button key={t} onClick={() => setRecipe({ ...recipe, stages: [...recipe.stages, blankStage(t, recipe.stages)] })}
+                        className="flex items-center gap-2 rounded-[10px] bg-surface py-1.5 pl-1.5 pr-3 text-[13px] font-medium text-fg shadow-soft ring-1 ring-inset ring-line transition hover:-translate-y-px hover:ring-accent/40">
+                        <span className={cx("flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br text-white", s.color)}><s.icon className="h-3.5 w-3.5" /></span>{t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <Card title="Recipe YAML" description="Edit freely; switch back to Builder when it fits the form">
+              <textarea value={yamlText} onChange={(e) => setYamlText(e.target.value)} spellCheck={false}
+                className="scroll-thin h-[600px] w-full resize-y rounded-xl bg-[#0c0c10] p-4 font-mono text-[12.5px] leading-[1.7] text-emerald-200 caret-violet-400 outline-none ring-1 ring-black/5 focus:ring-2 focus:ring-accent/60 dark:ring-white/[.07]" />
+            </Card>
           )}
-          <div className="flex items-center gap-2">
-            <Button variant="primary" disabled={!preview?.ok || busy} onClick={() => submit("front")} title="Put at the front of the queue">▶ Run next</Button>
-            <Button disabled={!preview?.ok || busy} onClick={() => submit("end")}>＋ Add to queue</Button>
-            <div className="ml-auto"><Mascot size={32} mood={preview?.ok ? "happy" : "sad"} /></div>
-          </div>
-        </Card>
-      </aside>
+        </div>
+
+        <aside className="lg:sticky lg:top-8 lg:self-start">
+          <Card title="Preview" description={preview ? `will create ${nRuns} run${nRuns === 1 ? "" : "s"}` : "validating…"} actions={preview && (preview.ok
+            ? <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Ready</span>
+            : <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-300"><span className="h-1.5 w-1.5 rounded-full bg-rose-500" />Needs fixes</span>)}>
+            <div className="space-y-3">
+              {mode === "builder" && <Yaml text={preview?.yaml ?? "…"} className="max-h-[320px]" />}
+              {preview && preview.errors.length > 0 && (
+                <Callout tone="error" title={`${preview.errors.length} error${preview.errors.length > 1 ? "s" : ""}`}>
+                  <ul className="space-y-0.5">{preview.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                </Callout>
+              )}
+              {preview && preview.warnings.length > 0 && (
+                <Callout tone="warn"><ul className="space-y-0.5">{preview.warnings.map((e, i) => <li key={i}>{e}</li>)}</ul></Callout>
+              )}
+              {preview && preview.runs.length > 0 && (
+                <div className="space-y-2">
+                  {preview.runs.map((r) => (
+                    <div key={r.name} className="rounded-xl border border-line bg-raised/40 px-3 py-2.5">
+                      <div className="truncate text-[13px] font-medium text-fg">{r.name}</div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1">
+                        {r.stages.map((s, i) => {
+                          const ts = TYPE_STYLE[s.type];
+                          return (
+                            <span key={s.name} className="flex items-center gap-1">
+                              {i > 0 && <span className="h-px w-2.5 bg-line" />}
+                              <span className="flex items-center gap-1.5 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-muted ring-1 ring-inset ring-line">
+                                <span className={cx("h-2 w-2 rounded-full bg-gradient-to-br", ts?.color)} />{s.name}
+                              </span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {r.missing_weights.length > 0 && (
+                        <div className="mt-2 text-xs text-amber-700 dark:text-amber-300">⚠ weights not downloaded: {r.missing_weights.join(", ")} (online: <code className="font-mono">modellab weights fetch …</code>)</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2 pt-1">
+                <Button variant="brand" className="flex-1" disabled={!preview?.ok || busy} onClick={() => submit("front")} title="Put at the front of the queue">
+                  {busy ? <Loader2 className="animate-spin" /> : <Play />}Run next
+                </Button>
+                <Button className="flex-1" disabled={!preview?.ok || busy} onClick={() => submit("end")}><ListPlus />Add to queue</Button>
+                <Mascot size={34} mood={!preview ? "happy" : preview.ok ? "happy" : "sad"} />
+              </div>
+            </div>
+          </Card>
+        </aside>
+      </div>
       <Toast msg={toast?.msg ?? null} kind={toast?.kind} onClose={() => setToast(null)} />
     </div>
   );
