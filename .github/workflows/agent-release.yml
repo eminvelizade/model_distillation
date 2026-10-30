@@ -1,0 +1,36 @@
+# Build, sign and publish an agent release to the hub. Agents install it between runs.
+#
+# Setup (once, see docs/HUB.md):
+#   repository secret   MODELLAB_RELEASE_SIGNING_KEY   private key from `python -m modellab.hub release keygen`
+#   repository secret   MODELLAB_RELEASE_UPLOAD_TOKEN  the same value as the hub's MODELLAB_RELEASE_UPLOAD_TOKEN
+#   repository variable MODELLAB_HUB_URL               https://<your-hub>.up.railway.app
+#
+# Run it from the Actions tab ("Run workflow"), or push a tag like agent-v0.2.1.
+name: agent release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["agent-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install signing dependency
+        run: pip install "cryptography==50.0.2"
+      - name: Build, sign and upload
+        env:
+          MODELLAB_RELEASE_SIGNING_KEY: ${{ secrets.MODELLAB_RELEASE_SIGNING_KEY }}
+          MODELLAB_RELEASE_UPLOAD_TOKEN: ${{ secrets.MODELLAB_RELEASE_UPLOAD_TOKEN }}
+          MODELLAB_HUB_URL: ${{ vars.MODELLAB_HUB_URL }}
+        run: |
+          test -n "$MODELLAB_HUB_URL" || { echo "set the repository variable MODELLAB_HUB_URL"; exit 1; }
+          python -m modellab.hub release publish --hub "$MODELLAB_HUB_URL"

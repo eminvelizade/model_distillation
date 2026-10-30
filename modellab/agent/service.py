@@ -11,6 +11,7 @@ Exit codes (see the unit file): 0 stopped, 1 another agent uses this folder, 75 
 
 from __future__ import annotations
 
+import json
 import platform
 import signal
 import subprocess
@@ -18,7 +19,7 @@ import time
 from collections import defaultdict
 
 from modellab import store
-from modellab.agent import AGENT_VERSION, SERVICE, log, release_info, telemetry, update
+from modellab.agent import AGENT_VERSION, SERVICE, home, log, release_info, telemetry, update
 from modellab.agent.client import HubClient, HubError, Revoked
 from modellab.agent.jobs import RUN_ID_RE, Jobs
 from modellab.agent.sync import RunSync
@@ -26,6 +27,13 @@ from modellab.worker import Worker
 
 REPORT_EVERY = 600
 EXIT_RESTART, EXIT_REVOKED = 75, 78
+
+
+def _load_json(p) -> dict | None:
+    try:
+        return json.loads(p.read_text())
+    except (OSError, ValueError):
+        return None
 
 
 class Agent:
@@ -40,7 +48,7 @@ class Agent:
         self.last_probe: dict | None = None
         self.update_target: str | None = None
         self.update_now = False
-        self.update_status: dict | None = None
+        self.update_status: dict | None = _load_json(home() / "update.json")  # survives the restart into a release
         self.update_failed: dict[str, float] = {}
         self.revoked = self.restart = self.stop = False
         self.timers: dict[str, float] = defaultdict(float)
@@ -150,19 +158,23 @@ class Agent:
         failed = self.update_failed.get(version)
         return self.update_now or failed is None or time.time() - failed > 3600
 
+    def _set_update_status(self, st: dict) -> None:
+        self.update_status = st
+        (home() / "update.json").write_text(json.dumps(st))
+
     def do_update(self, client: HubClient, version: str) -> None:
         """Jobs thread. On success the main loop exits with 75 and systemd starts the new release."""
         self.update_now = False
-        self.update_status = {"version": version, "state": "installing", "time": time.time()}
+        self._set_update_status({"version": version, "state": "installing", "time": time.time()})
         log.info(f"updating to release {version}")
         try:
             update.install(client, self.cfg, version, log=log.info)
-            self.update_status = {"version": version, "ok": True, "time": time.time()}
+            self._set_update_status({"version": version, "ok": True, "time": time.time()})
             self.restart = True
         except Exception as e:  # noqa: BLE001
             log.error(f"update to {version} failed: {e}")
             self.update_failed[version] = time.time()
-            self.update_status = {"version": version, "ok": False, "error": str(e)[-2000:], "time": time.time()}
+            self._set_update_status({"version": version, "ok": False, "error": str(e)[-2000:], "time": time.time()})
 
     # ------------------------------------------------------------ loop
 

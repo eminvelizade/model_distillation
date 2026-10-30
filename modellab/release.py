@@ -90,7 +90,7 @@ def check(manifest_text: str, signature_b64: str, tarball: bytes, public_b64: st
     if canonical(manifest) != manifest_text.encode():
         raise ReleaseError("manifest is not in canonical form")
     if not verify(manifest_text.encode(), signature_b64, public_b64):
-        raise ReleaseError("release signature does not match the public key pinned at install")
+        raise ReleaseError("release signature does not match the release public key")
     if sha256(tarball) != manifest.get("tarball_sha256") or len(tarball) != manifest.get("tarball_size"):
         raise ReleaseError("release tarball does not match its signed manifest (hash or size)")
     return manifest

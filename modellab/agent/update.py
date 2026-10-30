@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import subprocess
+import urllib.parse
 from pathlib import Path
 
 from modellab import release
@@ -164,8 +165,9 @@ def prune(keep: int = 2, log=print) -> None:
 
 def install(client, cfg: dict, version: str, log=print) -> Path:
     """Download, verify and prepare `version`; switch to it. The caller restarts the agent afterwards."""
-    meta = client.get(f"/agent/v1/releases/{version}")
-    tarball = client.get_bytes(f"/agent/v1/releases/{version}/tarball")
+    q = urllib.parse.quote(version, safe="")
+    meta = client.get(f"/agent/v1/releases/{q}")
+    tarball = client.get_bytes(f"/agent/v1/releases/{q}/tarball")
     rel, manifest = unpack(version, meta["manifest"], meta["signature"], tarball, cfg["release_pubkey"])
     base = None
     cur = current()

@@ -13,6 +13,22 @@ from importlib import metadata
 
 def main() -> int:
     out: dict = {}
+    # packages vs lock first: the rfdetr check below puts the vendored albumentations on sys.path
+    lock = sys.argv[1] if len(sys.argv) > 1 else None
+    if lock:
+        mismatch = []
+        for line in open(lock):
+            m = re.match(r"^([A-Za-z0-9_.\-\[\]]+)==([^\s;\\]+)", line)
+            if not m:
+                continue
+            name, want = re.sub(r"\[.*\]", "", m.group(1)), m.group(2)
+            try:
+                got = metadata.version(name)
+            except metadata.PackageNotFoundError:
+                got = None
+            if got != want:
+                mismatch.append({"package": name, "want": want, "got": got})
+        out["lock_mismatch"] = mismatch
     try:
         from modellab import preflight
 
@@ -39,21 +55,6 @@ def main() -> int:
             out["devices"] = devs
     except Exception as e:  # noqa: BLE001
         out["torch_error"] = f"{type(e).__name__}: {e}"[-600:]
-    lock = sys.argv[1] if len(sys.argv) > 1 else None
-    if lock:
-        mismatch = []
-        for line in open(lock):
-            m = re.match(r"^([A-Za-z0-9_.\-\[\]]+)==([^\s;\\]+)", line)
-            if not m:
-                continue
-            name, want = re.sub(r"\[.*\]", "", m.group(1)), m.group(2)
-            try:
-                got = metadata.version(name)
-            except metadata.PackageNotFoundError:
-                got = None
-            if got != want:
-                mismatch.append({"package": name, "want": want, "got": got})
-        out["lock_mismatch"] = mismatch
     print(json.dumps(out))
     return 0
 
