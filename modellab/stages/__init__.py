@@ -28,6 +28,9 @@ class Ctx:
         self.dir.mkdir(parents=True, exist_ok=True)
         import torch
 
+        from modellab import compat
+
+        self.fd_sharing = compat.fix_dataloader_fd_sharing()
         forced = os.environ.get("MODELLAB_DEVICE")
         self.device = forced or ("cuda" if torch.cuda.is_available() else "cpu")
         budget = self.st.get("budget") or {}
@@ -84,6 +87,7 @@ def main(run_id: str, stage: str) -> int:
     ctx = Ctx(run_id, stage)
     seed_everything(ctx.st["seed"])
     ctx.log(f"type={ctx.st['type']} device={ctx.device} seed={ctx.st['seed']}")
+    ctx.log(ctx.fd_sharing)
     fn = {"distill": distill.run, "finetune": finetune.run, "eval": evaluation.run, "features": features.run}[ctx.st["type"]]
     t0 = time.time()
     try:

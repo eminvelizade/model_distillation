@@ -68,6 +68,10 @@ def main() -> None:
     a = p.parse_args()
 
     import torch
+
+    from modellab import compat
+
+    print(f"[distill] {compat.fix_dataloader_fd_sharing()}")
     import lightly_train
     from rfdetr import RFDETRNano
 

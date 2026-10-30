@@ -40,3 +40,23 @@ def use_rfdetr_albumentations() -> str:
             f"({why}). Without it rfdetr silently skips ALL transforms and trains on native-size images. "
             "Fix: re-run setup_env.sh (installs vendor/albumentations14), and import modellab.compat before rfdetr.")
     return v
+
+
+def fix_dataloader_fd_sharing(min_fds: int = 65536) -> str:
+    """Avoid `RuntimeError: received 0 items of ancdata` from DataLoader workers. Call in the main process before
+    training. torch's default "file_descriptor" sharing keeps one open fd per tensor a worker hands over; batches with
+    many annotations (hundreds of boxes per image) exhaust the usual 1024 open-file soft limit mid-epoch. Raises the
+    soft limit up to the hard limit; if that is still below `min_fds`, switches to "file_system" sharing (/dev/shm
+    files, no fd per tensor). Returns a one-line description for the log."""
+    import resource
+
+    import torch.multiprocessing as mp
+
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    want = min_fds if hard == resource.RLIM_INFINITY else min(min_fds, hard)
+    if soft != resource.RLIM_INFINITY and soft < want:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (want, hard))
+        soft = want
+    if soft != resource.RLIM_INFINITY and soft < min_fds:
+        mp.set_sharing_strategy("file_system")
+    return f"open files limit {soft} (hard {hard}), tensor sharing {mp.get_sharing_strategy()}"

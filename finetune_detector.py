@@ -47,6 +47,9 @@ def main() -> None:
     print(f"[finetune] rfdetr image transforms OK with albumentations {preflight.ensure_rfdetr_transforms()}")
     import torch
     from rfdetr import RFDETRNano
+    from modellab import compat
+
+    print(f"[finetune] {compat.fix_dataloader_fd_sharing()}")
 
     if a.smoke:
         a.epochs, a.batch_size, a.grad_accum_steps, a.num_workers = 1, 2, 1, 0
