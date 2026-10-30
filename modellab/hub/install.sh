@@ -63,7 +63,7 @@ if [ "$(id -u)" = 0 ]; then warn "installing as root: a normal user account is r
 
 mkdir -p "$DIR/bin" "$DIR/logs" "$DIR/data"
 chmod 700 "$DIR"
-export UV_PYTHON_INSTALL_DIR="$DIR/python" UV_CACHE_DIR="$DIR/cache/uv"
+export UV_PYTHON_INSTALL_DIR="$DIR/python" UV_CACHE_DIR="$DIR/cache/uv" UV_PYTHON_PREFERENCE=only-managed
 
 # ---------------------------------------------------------------- 2. uv + Python
 UV="$DIR/bin/uv"

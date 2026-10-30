@@ -116,6 +116,8 @@ On the PC:
   `sudo loginctl enable-linger <user>` fixes that.
 - `--no-service` skips the service: start it yourself with `~/.modellab/bin/modellab-agent run`.
 - Re-run the install command without `--pair` to repair or update an install.
+- Behind an HTTP proxy: services don't see your shell's variables. Run `systemctl --user edit modellab-agent`, add
+  `[Service]` and `Environment=HTTPS_PROXY=http://proxy:3128`, then `systemctl --user restart modellab-agent`.
 
 **Remove** on the machine page revokes its token. The agent cancels its work and turns its service off.
 Runs, checkpoints and weights stay on the PC.

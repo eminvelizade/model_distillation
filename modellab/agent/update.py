@@ -36,7 +36,8 @@ def uv() -> str:
 
 def _run(cmd: list[str], log, **kw) -> None:
     log("$ " + " ".join(cmd))
-    env = dict(os.environ, UV_PYTHON_INSTALL_DIR=str(home() / "python"), UV_CACHE_DIR=str(home() / "cache" / "uv"))
+    env = dict(os.environ, UV_PYTHON_INSTALL_DIR=str(home() / "python"), UV_CACHE_DIR=str(home() / "cache" / "uv"),
+               UV_PYTHON_PREFERENCE="only-managed")  # the same uv-built Python on every PC, never a system one
     env.pop("ALLOW_NETWORK", None)
     p = subprocess.run(cmd, env=env, capture_output=True, text=True, **kw)
     if p.returncode:
