@@ -58,7 +58,7 @@ export function CountUp({ value, decimals = 0 }: { value: number; decimals?: num
 export function sparkleBurst(el: Element | null | undefined, n = 12) {
   if (!el || reducedMotion()) return;
   const r = el.getBoundingClientRect();
-  const colors = ["#6ee2f0", "#95eedd", "#aaeff8", "#ffffff", "#38cde3"];
+  const colors = ["#8fd3f8", "#cdeeff", "#bfe6fc", "#ffffff", "#57bbf1"];
   for (let i = 0; i < n; i++) {
     const s = document.createElement("span");
     const a = (Math.PI * 2 * i) / n + Math.random() * 0.5, d = 26 + Math.random() * 30;
@@ -206,7 +206,7 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
 }) {
   const v = {
     primary: "bg-fg text-canvas shadow-soft hover:bg-fg/85",
-    brand: "bg-gradient-to-b from-ice-500 to-ice-700 text-white shadow-[0_1px_0_rgb(255_255_255/.3)_inset,0_6px_18px_-6px_rgb(20_178_203/.6)] ring-1 ring-inset ring-ice-800/25 hover:from-ice-400 hover:to-ice-600",
+    brand: "bg-gradient-to-b from-ice-500 to-ice-700 text-white shadow-[0_1px_0_rgb(255_255_255/.3)_inset,0_6px_18px_-6px_rgb(47_162_227/.6)] ring-1 ring-inset ring-ice-800/25 hover:from-ice-400 hover:to-ice-600",
     secondary: "bg-surface text-fg ring-1 ring-inset ring-line shadow-soft hover:bg-raised",
     danger: "bg-surface text-rose-600 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/10 dark:text-rose-300",
     ghost: "text-muted hover:bg-raised hover:text-fg",
@@ -288,7 +288,7 @@ export function ProgressBar({ value, className, active }: { value: number; class
   const shown = useFillIn(value);
   return (
     <div className={cx("h-1.5 w-full overflow-hidden rounded-full bg-raised", className)}>
-      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-ice-500 via-ice-300 to-ice-glint transition-all duration-1000 ease-[cubic-bezier(.2,.7,.2,1)]"
+      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-ice-600 via-ice-400 to-ice-300 transition-all duration-1000 ease-[cubic-bezier(.2,.7,.2,1)]"
         style={{ width: `${shown ? Math.max(2, Math.min(100, shown * 100)) : 0}%` }}>
         {active && <div className="shimmer absolute inset-0 animate-shimmer" />}
       </div>
@@ -297,7 +297,7 @@ export function ProgressBar({ value, className, active }: { value: number; class
 }
 
 /** Circular progress / gauge. */
-export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#14b2cb", "#95eedd"], track = "stroke-raised" }: {
+export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#2191d6", "#8fd3f8"], track = "stroke-raised" }: {
   value: number; size?: number; stroke?: number; children?: ReactNode; gradient?: [string, string]; track?: string;
 }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r;
@@ -396,7 +396,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputCls =
-  "w-full h-9 rounded-[10px] border-0 bg-surface px-3 text-[13.5px] text-fg shadow-soft ring-1 ring-inset ring-line placeholder:text-subtle transition duration-200 hover:ring-subtle/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:shadow-[0_0_0_4px_rgb(56_205_227/.12)] dark:bg-raised/60";
+  "w-full h-9 rounded-[10px] border-0 bg-surface px-3 text-[13.5px] text-fg shadow-soft ring-1 ring-inset ring-line placeholder:text-subtle transition duration-200 hover:ring-subtle/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:shadow-[0_0_0_4px_rgb(87_187_241/.12)] dark:bg-raised/60";
 
 export function SearchInput({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
   return (
@@ -472,7 +472,7 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
 export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "happy" | "busy" | "sleepy" | "sad" }) {
   const id = useRef(`m${Math.random().toString(36).slice(2, 8)}`).current;
   const delay = useRef(`${-Math.random() * 5}s`).current; // several Labbys never blink in sync
-  const ink = "#07323b";
+  const ink = "#0e3149";
   const eyes = mood === "sleepy"
     ? <><path d="M24 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /><path d="M34 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /></>
     : <g className="blink" style={{ animationDelay: delay }}><circle cx="27" cy="39" r="2.6" fill={ink} /><circle cx="37" cy="39" r="2.6" fill={ink} /><circle cx="27.8" cy="38.2" r=".8" fill="#fff" /><circle cx="37.8" cy="38.2" r=".8" fill="#fff" /></g>;
@@ -482,14 +482,14 @@ export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "h
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={cx("relative shrink-0", mood === "busy" && "animate-bob")} aria-hidden>
       <defs>
-        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#aaeff8" /><stop offset="1" stopColor="#38cde3" /></linearGradient>
+        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#bfe6fc" /><stop offset="1" stopColor="#57bbf1" /></linearGradient>
       </defs>
-      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#ecfcfe" stroke="#0b93ab" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#f0f9ff" stroke="#2191d6" strokeWidth="2.5" strokeLinejoin="round" />
       <path d="M18.6 40h26.8l3.2 5a4.5 4.5 0 0 1-3.8 7H19.2a4.5 4.5 0 0 1-3.8-7z" fill={`url(#${id}l)`} opacity=".95" />
       {eyes}
       {mouth}
       <circle cx="22" cy="44" r="1.8" fill="#fda4af" opacity=".8" /><circle cx="42" cy="44" r="1.8" fill="#fda4af" opacity=".8" />
-      <circle cx="44" cy="20" r="2.2" fill="#6ee2f0" className="animate-float" /><circle cx="48" cy="13" r="1.4" fill="#95eedd" className="animate-float" style={{ animationDelay: "-1.4s" }} />
+      <circle cx="44" cy="20" r="2.2" fill="#8fd3f8" className="animate-float" /><circle cx="48" cy="13" r="1.4" fill="#cdeeff" className="animate-float" style={{ animationDelay: "-1.4s" }} />
     </svg>
   );
 }

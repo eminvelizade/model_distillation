@@ -34,20 +34,20 @@ variants are needed for neutrals.**
 | `fg` | primary text | `#0f171c` | `#ecf3f6` |
 | `muted` | secondary text, labels | `#54626c` | `#9baab3` |
 | `subtle` | tertiary text, axis ticks, hints | `#86949e` | `#65747d` |
-| `accent` | brand: links, eyebrows, active nav, tags, focus | deep glacier `#0a8296` | glacier ice `#6ee2f0` |
+| `accent` | brand: links, eyebrows, active nav, tags, focus | deep ice `#1a7bb8` | Frozen ice `#8fd3f8` |
 | `code` | terminal / YAML / dark glass surfaces | `#0d181e` | `#080d11` |
 
 All neutrals carry a faint icy-blue tint. Don't introduce `gray-*`, `zinc-*`, `slate-*` or raw hex for chrome.
 Shadows are theme-aware too: use `shadow-soft` (resting) and `shadow-lift` (hovered, floating, popovers).
 
-### The brand: glacier ice
+### The brand: Frozen ice blue
 
-- The brand colour is **glacier ice**: an ice blue (hue ~188) that leans towards emerald, never teal. It lives in the
-  `ice` scale in `tailwind.config.js` (`ice-50` … `ice-950`, 300 = `#6ee2f0`) plus `ice-glint` (`#95eedd`), the
-  minty highlight gradients drift into. Use `ice-*`, not `teal-*` / `cyan-*`.
-- Gradients run **ice blue → glint**: `from-ice-500 via-ice-300 to-ice-glint` (progress, Ring default
-  `#14b2cb → #95eedd`); the brand button is `from-ice-500 to-ice-700`.
-- The aurora glow behind each page (`.aurora`) and the champion card (`#06161a`, ice + glint radial glows) carry
+- The brand colour is **Frozen ice blue**: a luminous, cool ice blue (hue ~201) with no green in it. It lives in
+  the `ice` scale in `tailwind.config.js` (`ice-50` … `ice-950`, 300 = `#8fd3f8`) plus `ice-frost` (`#cdeeff`), a
+  pale highlight for glows and sparkles. Use `ice-*`, not `teal-*` / `cyan-*` / `sky-*`, for brand.
+- Gradients run **deep ice → light ice**: `from-ice-600 via-ice-400 to-ice-300` (progress, Ring default
+  `#2191d6 → #8fd3f8`); the brand button is `from-ice-500 to-ice-700`. Keep `ice-frost` off light tracks (it vanishes).
+- The aurora glow behind each page (`.aurora`) and the champion card (`#06161a`, ice + frost radial glows) carry
   the mood. Don't add more glows elsewhere.
 - **No purple, violet, fuchsia, pink or indigo.** Not in the UI, gradients, charts or illustrations.
 
@@ -65,11 +65,11 @@ Brand ice is **not** a status colour. Don't use it to mean "good". Green (emeral
 
 ### Data colours
 
-- **Compared / selected items:** `SERIES` from `components/Radar.tsx`: ice `#14b2cb`, blue `#3b82f6`,
+- **Compared / selected items:** `SERIES` from `components/Radar.tsx`: ice `#2fa2e3`, teal `#14b8a6`,
   amber `#f59e0b`, rose `#f43f5e`, in that order. One item keeps the same colour everywhere it appears on screen
   (row stripe, chart ring, radar shape, chips).
 - **Detector families:** `FAMILY` from `components/Scatter.tsx`: RF-DETR blue, LT-DETR amber.
-- **Stage types** (`TYPE_STYLE` in `pages/NewExperiment.tsx`): distill glint→ice, finetune sky→blue,
+- **Stage types** (`TYPE_STYLE` in `pages/NewExperiment.tsx`): distill light ice → ice, finetune teal,
   eval orange→rose, features amber.
 - Add new data colours to these maps. Don't scatter hex values through pages.
 
@@ -117,7 +117,7 @@ Keep sections as direct children of the page root so the entrance stagger works.
 | page title block | `PageHeader` |
 | container | `Card` (`title`, `description`, `actions`, `icon`, `flush` for edge-to-edge tables/lists) |
 | headline number | `Stat` + `CountUp` |
-| buttons | `Button`: `brand` = **the one main action per view** (ice gradient + glint); `primary` = solid confirm in dialogs; `secondary` default; `ghost` for quiet actions; `danger` for destructive. `IconButton` for icon-only (always has `title`) |
+| buttons | `Button`: `brand` = **the one main action per view** (ice gradient + glint sweep); `primary` = solid confirm in dialogs; `secondary` default; `ghost` for quiet actions; `danger` for destructive. `IconButton` for icon-only (always has `title`) |
 | switches | `Segmented` (2–4 options, sliding thumb), `Switch` (boolean) |
 | picking from a list | `Dropdown` (button like the search box, popover list, keyboard, opens upwards near the bottom; `footer` for an action). Native `<select>` only inside dense forms |
 | beta label | `Beta` (under the wordmark in the sidebar and on sign-in) |
@@ -185,7 +185,7 @@ on errors, on polling updates, or as decoration in tables and forms. Ambient twi
   when it holds text** (labels would scale with the window).
 - Ticks `font-mono text-[10.5px] fill-subtle`; axis titles `text-[11px] fill-muted`; gridlines `stroke-line`
   dashed `2 4`, with a solid baseline. Use `niceTicks` and make sure the domain covers every point.
-- Colours from `SERIES` / `FAMILY` only. A highlighted "best" line or front uses the brand ice → glint gradient.
+- Colours from `SERIES` / `FAMILY` only. A highlighted "best" line or front uses the brand deep ice → light ice gradient.
 - Tooltips: `bg-surface/95 border border-line shadow-lift backdrop-blur rounded-xl`, keyed values in mono.
 - Labels avoid each other (see the placement in `Scatter`) and never cover points.
 - Every chart has a legend or a one-line description that says how to read it ("up and to the left is better").
@@ -194,7 +194,7 @@ on errors, on polling updates, or as decoration in tables and forms. Ambient twi
 
 - Icon-only buttons have `title`/`aria-label` (`IconButton` requires it).
 - Never encode meaning by colour alone: pair it with a label, icon or position.
-- Accent text is the deeper glacier (`ice-700`) in light mode for contrast. Don't use the light ice (`ice-300`) for text on white.
+- Accent text is the deeper ice (`ice-700`) in light mode for contrast. Don't use the light ice (`ice-300`) for text on white.
 - Decorative sparkles and bubbles get `aria-hidden`.
 
 ## Don't

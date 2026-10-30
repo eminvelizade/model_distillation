@@ -7,7 +7,7 @@ import { useSession } from "../session";
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub?: string; hero?: boolean }) {
   return (
-    <div className={cx("min-w-0 rounded-xl px-3 py-2.5", hero ? "bg-gradient-to-br from-ice-400/15 to-ice-glint/10 ring-1 ring-inset ring-accent/25" : "bg-raised/60")}>
+    <div className={cx("min-w-0 rounded-xl px-3 py-2.5", hero ? "bg-gradient-to-br from-ice-400/15 to-ice-frost/10 ring-1 ring-inset ring-accent/25" : "bg-raised/60")}>
       <div className="truncate text-2xs font-medium text-muted">{label}</div>
       <div className={cx("mt-0.5 truncate font-mono font-medium tabular-nums text-fg", hero ? "text-xl" : "text-[15px]")}>{value}</div>
       {sub && <div className="truncate font-mono text-2xs text-subtle">{sub}</div>}
