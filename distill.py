@@ -1,11 +1,14 @@
-"""Distill DINOv3 ViT-L/16 into the RF-DETR Nano backbone with LightlyTrain (method="distillation" = v3).
+"""Distill a DINOv3 ViT teacher into the RF-DETR Nano backbone with LightlyTrain (method="distillation" = v3).
 
 Reads ONLY <data>/train (from make_splits.py) and refuses to run if any train image also
 appears in valid/test (by path or md5).
 
     python distill.py --data data/ds --out runs/distill --smoke          # 1 epoch, 16 images (one batch)
     python distill.py --data data/ds --out runs/distill --epochs 100 --batch-size 64
+    python distill.py ... --teacher-model dinov3/vith16plus   # or dinov3/vit7b16 (default dinov3/vitl16)
     python distill.py ... --teacher hf    # teacher from weights/dinov3-vitl16 (run convert_hf_dinov3.py first)
+
+The teacher is held in bf16 (see teacher.py); the student trains with --precision (bf16-mixed on GPU).
 
 Output: <out>/exported_models/exported_last.pt  ({"model": LWDETR state_dict}, loadable via
 RFDETRNano(pretrain_weights=...)) and a copy at <out>/rf-detr-nano-distilled.pth.
@@ -48,8 +51,10 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--data", type=Path, required=True, help="output dir of make_splits.py")
     p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--teacher-model", choices=list(offline_guard.TEACHERS), default=offline_guard.TEACHER_NAME,
+                   help="DINOv3 teacher (fetch it first: download_weights.sh --teacher-model ...)")
     p.add_argument("--teacher", choices=["name", "hf"], default="name",
-                   help="name: dinov3/vitl16 from LightlyTrain cache; hf: converted local HF folder")
+                   help="name: --teacher-model from LightlyTrain cache; hf: converted local HF folder (vitl16 only)")
     p.add_argument("--epochs", type=int, default=100)
     p.add_argument("--batch-size", type=int, default=64)
     p.add_argument("--num-workers", default="auto")
@@ -63,8 +68,14 @@ def main() -> None:
     a = p.parse_args()
 
     import torch
+
+    from modellab import compat
+
+    print(f"[distill] {compat.fix_dataloader_fd_sharing()}")
     import lightly_train
     from rfdetr import RFDETRNano
+
+    import teacher
 
     images = train_images(a.data)
     if a.smoke:  # on GPU use e.g. --smoke-images 256 --batch-size 64 to test real memory use
@@ -83,12 +94,17 @@ def main() -> None:
     if size % (patch * windows):
         raise SystemExit(f"image size {size} must be divisible by patch*num_windows={patch * windows}")
 
-    method_args = {"teacher": offline_guard.TEACHER_NAME}
+    method_args = {"teacher": a.teacher_model}
     if a.teacher == "name":
-        offline_guard.require_file(offline_guard.TEACHER_CACHE_FILE)
+        offline_guard.require_file(offline_guard.teacher_cache_file(a.teacher_model))
     else:
+        if a.teacher_model != "dinov3/vitl16":
+            raise SystemExit("--teacher hf is only available for dinov3/vitl16 (convert_hf_dinov3.py is ViT-L/16 only)")
         # load_weights=False path: architecture from name, weights from the converted HF checkpoint.
         method_args["teacher_weights"] = str(offline_guard.require_file(offline_guard.HF_TEACHER_CONVERTED))
+
+    # LightlyTrain builds the teacher in fp32; hold it in bf16 and hand fp32 features to the loss.
+    teacher.patch_lightly_get_teacher(lambda msg: print(f"[distill] {msg} ({a.teacher})"))
 
     lightly_train.pretrain(
         out=str(a.out),

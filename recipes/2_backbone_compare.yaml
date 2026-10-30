@@ -1,0 +1,28 @@
+name: backbone-compare
+description: |
+  DINOv2-based RF-DETR Nano vs DINOv3-based LT-DETR (ViT-S/16), both COCO-pretrained, fine-tuned on the same split
+  with the same epoch budget, batch size and 384 px input, then evaluated identically.
+  (LT-DETR counts steps; ModelLab converts epochs to steps = epochs * ceil(n_train / batch).)
+dataset: coco-vehicles
+seed: 42
+tags: [backbone, dinov2-vs-dinov3]
+stages:
+  - name: rfdetr
+    type: finetune
+    model: rfdetr/nano
+    batch_size: 16
+    budget: {epochs: 20, minutes: 90}
+  - name: ltdetr
+    type: finetune
+    model: ltdetr/dinov3-vits16-coco
+    image_size: 384
+    batch_size: 16
+    budget: {epochs: 20, minutes: 90}
+  - name: eval_rfdetr
+    type: eval
+    model: {from: rfdetr}
+    label: RF-DETR Nano (DINOv2-S)
+  - name: eval_ltdetr
+    type: eval
+    model: {from: ltdetr}
+    label: LT-DETR ViT-S/16 (DINOv3)

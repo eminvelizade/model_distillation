@@ -14,6 +14,12 @@ else
   "$CONDA" env create -n "$ENV_NAME" -f environment.yml
 fi
 
+# rfdetr's training pipeline needs albumentations 1.4.x, LightlyTrain needs 1.3.1 (pip's resolution; 1.4.* crashes it).
+# The env keeps 1.3.1; 1.4.24 goes into vendor/albumentations14, used only by processes that train with rfdetr
+# (modellab.compat). Without it rfdetr silently skips ALL image transforms. See modellab/preflight.py.
+"$CONDA" run -n "$ENV_NAME" pip install --no-deps --upgrade --target vendor/albumentations14 \
+  albumentations==1.4.24 albucore==0.0.23 simsimd==6.5.16 stringzilla==5.3.2
+
 # Note: `conda run` does not forward stdin, so no heredoc here.
 "$CONDA" run -n "$ENV_NAME" python -c '
 import sys, torch, torchvision, transformers, lightly_train
@@ -23,4 +29,5 @@ print("python", sys.version.split()[0], "| torch", torch.__version__, "(CUDA run
       "| lightly-train", lightly_train.__version__, "| rfdetr", version("rfdetr"))
 assert sys.version_info[:2] == (3, 11), "Python must be 3.11"
 '
+"$CONDA" run -n "$ENV_NAME" python -c "import offline_guard; from modellab import preflight; print('rfdetr image transforms OK with albumentations', preflight.check_in_subprocess())"
 echo "[setup_env] OK. Next: conda activate $ENV_NAME && bash download_weights.sh"

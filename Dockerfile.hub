@@ -1,0 +1,21 @@
+# ModelLab Hub: the web app users log into (Railway builds this via railway.json). No GPU, no PyTorch: training runs
+# in the agent on each user's own PC. See docs/HUB.md.
+FROM python:3.11.14-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /app
+
+COPY requirements-hub.lock ./
+RUN pip install --require-hashes --no-deps -r requirements-hub.lock
+
+# Engine modules the hub uses (recipes, catalog, evaluation version), the hub itself, the prebuilt UI and templates.
+COPY offline_guard.py ./
+COPY modellab ./modellab
+COPY recipes ./recipes
+
+RUN useradd --create-home --uid 10001 hub && chown -R hub /app
+USER hub
+
+# Railway sets PORT; the app binds 0.0.0.0:$PORT (default 8080).
+EXPOSE 8080
+CMD ["python", "-m", "modellab.hub", "serve"]

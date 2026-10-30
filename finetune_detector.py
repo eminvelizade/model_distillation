@@ -41,8 +41,15 @@ def main() -> None:
     p.add_argument("--smoke", action="store_true")
     a = p.parse_args()
 
+    from modellab import preflight
+
+    # rfdetr silently drops resize/augmentation with albumentations 1.3.1: select 1.4.x BEFORE importing rfdetr
+    print(f"[finetune] rfdetr image transforms OK with albumentations {preflight.ensure_rfdetr_transforms()}")
     import torch
     from rfdetr import RFDETRNano
+    from modellab import compat
+
+    print(f"[finetune] {compat.fix_dataloader_fd_sharing()}")
 
     if a.smoke:
         a.epochs, a.batch_size, a.grad_accum_steps, a.num_workers = 1, 2, 1, 0

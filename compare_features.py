@@ -8,10 +8,12 @@ Reported (results.json + printed table):
   * kNN (cosine, temperature-weighted vote) and linear probe (logistic regression) on object class,
     StratifiedGroupKFold by image so objects of one image are never in both train and test folds.
   * linear CKA stock<->distilled on object features and on patch tokens; mean token cosine.
-  * --teacher: same probes for DINOv3 ViT-L/16 plus CKA(stock, teacher) vs CKA(distilled, teacher).
+  * --teacher: same probes for the DINOv3 teacher (--teacher-model, default dinov3/vitl16; run in bf16)
+    plus CKA(stock, teacher) vs CKA(distilled, teacher).
   * --pca-plot: PCA(3)->RGB of patch tokens for a few images.
 
     python compare_features.py --data data/ds --split valid --distilled runs/distill/rf-detr-nano-distilled.pth --teacher --pca-plot
+    python compare_features.py ... --teacher --teacher-model dinov3/vith16plus   # same teacher as distill.py
 """
 
 import offline_guard  # noqa: F401  (must be first)
@@ -52,20 +54,15 @@ class Extractor:
     """Wraps a backbone so that __call__(x) returns a (B, C, H/16, W/16) feature map."""
 
     def __init__(self, kind: str, weights: Path, device: str, stage: int = -1):
-        import torch
-
         self.kind, self.device, self.stage = kind, device, stage
         if kind == "nano":
             from load_backbone import load_nano
 
             self.net = load_nano(weights, device).model.model.backbone[0].encoder
-        else:
-            from lightly_train._models.dinov3.dinov3_package import DINOV3_PACKAGE
+        else:  # kind = teacher name, e.g. "dinov3/vitl16"; bf16 weights
+            import teacher
 
-            load = weights == offline_guard.TEACHER_CACHE_FILE
-            self.net = DINOV3_PACKAGE.get_model("vitl16", load_weights=load)
-            if not load:
-                self.net.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True), strict=True)
+            self.net = teacher.build(kind, weights)
         self.net = self.net.to(device).eval()
 
     def __call__(self, x):
@@ -185,9 +182,10 @@ def main() -> None:
     p.add_argument("--split", default="valid", choices=["valid", "test"], help="held-out split (never distilled)")
     p.add_argument("--distilled", type=Path, required=True)
     p.add_argument("--stock", type=Path, default=offline_guard.NANO_WEIGHTS)
-    p.add_argument("--teacher", action="store_true", help="also extract DINOv3 ViT-L/16 features")
-    p.add_argument("--teacher-weights", type=Path, default=offline_guard.TEACHER_CACHE_FILE,
-                   help="cache .pth (default) or converted HF .pt")
+    p.add_argument("--teacher", action="store_true", help="also extract DINOv3 teacher features")
+    p.add_argument("--teacher-model", choices=list(offline_guard.TEACHERS), default=offline_guard.TEACHER_NAME)
+    p.add_argument("--teacher-weights", type=Path, default=None,
+                   help="default: --teacher-model's cache .pth; or a converted HF .pt (vitl16)")
     p.add_argument("--stage", type=int, default=-1, help="encoder stage index (-1 = last, the distilled one)")
     p.add_argument("--size", type=int, default=384)
     p.add_argument("--batch-size", type=int, default=16)
@@ -208,7 +206,8 @@ def main() -> None:
 
     models = {"stock": ("nano", offline_guard.require_file(a.stock)), "distilled": ("nano", offline_guard.require_file(a.distilled))}
     if a.teacher:
-        models["teacher"] = ("dinov3", offline_guard.require_file(a.teacher_weights))
+        tw = a.teacher_weights or offline_guard.teacher_cache_file(a.teacher_model)
+        models["teacher"] = (a.teacher_model, offline_guard.require_file(tw))
     feats = {}
     for name, (kind, w) in models.items():
         ext = Extractor(kind, w, device, a.stage)
@@ -220,7 +219,8 @@ def main() -> None:
     print(f"[compare] split={a.split} images={len(items)} objects={len(labels)} "
           f"classes={ {names[c]: int((labels == c).sum()) for c in np.unique(labels)} }")
 
-    res = {"split": a.split, "images": len(items), "objects": int(len(labels)), "stage": a.stage, "probes": {}, "similarity": {}}
+    res = {"split": a.split, "images": len(items), "objects": int(len(labels)), "stage": a.stage,
+           "teacher_model": a.teacher_model if a.teacher else None, "probes": {}, "similarity": {}}
     for name, (obj, *_rest) in feats.items():
         res["probes"][name] = probes(obj, labels, groups, a.k, a.seed)
     s_obj, s_tok = feats["stock"][0], feats["stock"][3]

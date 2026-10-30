@@ -153,7 +153,7 @@ def write_split(out: Path, split: str, recs: list[dict], names: list[str], copy:
             os.symlink(r["path"], dst)
         coco["images"].append({"id": i, "file_name": fname, "width": r["width"], "height": r["height"]})
         for name, x, y, w, h in r["boxes"]:
-            coco["annotations"].append({"id": len(coco["annotations"]), "image_id": i, "category_id": cat_id[name],
+            coco["annotations"].append({"id": len(coco["annotations"]) + 1, "image_id": i, "category_id": cat_id[name],
                                         "bbox": [x, y, w, h], "area": w * h, "iscrowd": 0})
     (d / "_annotations.coco.json").write_text(json.dumps(coco))
 

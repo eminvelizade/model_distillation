@@ -1,0 +1,15 @@
+.git
+**/__pycache__
+modellab/web/node_modules
+modellab/web/src
+runs
+cache
+weights
+data
+vendor
+bundle
+tests
+docs
+*.sqlite
+*.sqlite-*
+datasets.json

@@ -1,0 +1,10 @@
+# CPU test: matrix expansion; DINOv3 vs DINOv2 (patch 14 -> 448 px) random-init teachers; distill + eval.
+name: tiny-sweep
+dataset: tiny
+seed: 7
+tags: [test, sweep]
+matrix:
+  teacher: [dinov3/vitt16-notpretrained, dinov2/vits14-notpretrained]
+stages:
+  - {name: distill, type: distill, student: rfdetr/nano, teacher: "${teacher}", batch_size: 4, budget: {epochs: 1}}
+  - {name: eval, type: eval, model: {from: distill}, latency: false, label: "nano <- ${teacher}"}

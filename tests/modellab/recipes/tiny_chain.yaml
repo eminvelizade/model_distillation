@@ -1,0 +1,14 @@
+# CPU test: every stage type + every `from:` kind on the tiny dataset (tests/modellab/make_tiny_dataset.py).
+name: tiny-chain
+description: finetune tiny LT-DETR -> its backbone as teacher -> distill Nano -> finetune -> eval; stock eval; features
+dataset: tiny
+seed: 7
+tags: [test]
+stages:
+  - {name: teacher_ft, type: finetune, model: ltdetr/dinov3-vitt16-test, image_size: 384, batch_size: 2, budget: {epochs: 1}}
+  - {name: distill, type: distill, student: rfdetr/nano, teacher: {from: teacher_ft}, batch_size: 4, budget: {epochs: 1}}
+  - {name: finetune, type: finetune, model: rfdetr/nano, init: {from: distill}, batch_size: 2, budget: {epochs: 1}}
+  - {name: eval, type: eval, model: {from: finetune}, latency: false}
+  - {name: eval_teacher, type: eval, model: {from: teacher_ft}, latency: true}
+  - {name: eval_stock, type: eval, model: rfdetr/nano, latency: true, label: nano stock}
+  - {name: features, type: features, models: [rfdetr/nano, {from: distill}], teacher: dinov3/vitt16-notpretrained}

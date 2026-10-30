@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# ModelLab CLI wrapper: bin/modellab <command> ...  (see modellab/cli.py)
+DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+export PYTHONPATH="$DIR${PYTHONPATH:+:$PYTHONPATH}"
+exec python -m modellab "$@"
