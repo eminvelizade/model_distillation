@@ -1,4 +1,4 @@
-import { Children, isValidElement, useEffect, useMemo, useState } from "react";
+import { Children, isValidElement, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, BadgeCheck, Code2, FlaskConical, Layers, ListPlus, Loader2, Play, Plus, ScanSearch, Shuffle, Target, Trash2, Wand2, X } from "lucide-react";
 import { api, Catalog, Preview } from "../api";
@@ -28,7 +28,7 @@ function templateStyle(name: string, i: number) {
   if (/distill/.test(n)) return { icon: FlaskConical, color: "from-ice-200 to-ice-500" };
   if (/probe|feature/.test(n)) return { icon: ScanSearch, color: "from-amber-300 to-amber-500" };
   if (/fine|baseline/.test(n)) return { icon: Target, color: "from-teal-300 to-teal-600" };
-  return [{ icon: Wand2, color: "from-ice-300 to-ice-600" }, { icon: Layers, color: "from-ice-300 to-blue-500" }][i % 2];
+  return [{ icon: Wand2, color: "from-ice-300 to-ice-600" }, { icon: Layers, color: "from-ice-300 to-ice-600" }][i % 2];
 }
 
 function blankStage(type: string, existing: Stage[]): Stage {
@@ -43,12 +43,20 @@ function blankStage(type: string, existing: Stage[]): Stage {
 }
 
 const BLANK: Recipe = {
-  name: "my-experiment", dataset: "coco-vehicles", seed: 42, tags: [],
+  name: "my-experiment", seed: 42, tags: [],
   stages: [
     { name: "finetune", type: "finetune", model: "rfdetr/nano", batch_size: 16, budget: { epochs: 20 } },
     { name: "eval", type: "eval", model: { from: "finetune" } },
   ],
 };
+
+/** The recipe on a dataset this machine has: its own if present there, else the machine's first usable one (none
+ *  if it has none, so the form asks for one instead of naming another machine's dataset). */
+function onMachineDataset(r: Recipe, cat: Catalog): Recipe {
+  const usable = cat.datasets.filter((d) => d.built !== false && !d.error).map((d) => d.name);
+  if (r.dataset && usable.includes(r.dataset)) return r;
+  return { ...r, dataset: usable[0] };
+}
 
 /** Which earlier stages produce what (mirrors modellab/recipe.py). */
 function producers(stages: Stage[], upto: number, cat: Catalog) {
@@ -224,7 +232,7 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
         <Field label="Dataset">
           <Select value={st.dataset ?? ""} onChange={(v) => set("dataset", v || undefined)}>
             <option value="">recipe default</option>
-            {cat.datasets.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+            {cat.datasets.map((d) => <option key={d.name} value={d.name} disabled={d.built === false || !!d.error}>{d.name}</option>)}
           </Select>
         </Field>
       </div>
@@ -246,13 +254,22 @@ export default function NewExperiment() {
   const nav = useNavigate();
   const { hub, machine, machineId, machines } = useSession();
 
+  // A cloned or hand-written (YAML) recipe keeps its dataset (it shows as missing on a machine without it); a new or
+  // template recipe moves to a dataset the picked machine has.
+  const keepDataset = useRef(false);
   // on the hub the datasets (and missing weights) are those of the machine picked in the sidebar
-  useEffect(() => { api.catalog().then(setCat).catch((e) => setToast({ msg: String(e), kind: "error" })); }, [machineId]);
+  useEffect(() => {
+    api.catalog().then((c) => {
+      setCat(c);
+      if (!keepDataset.current) setRecipe((r) => onMachineDataset(r, c));
+    }).catch((e) => setToast({ msg: String(e), kind: "error" }));
+  }, [machineId]);
 
-  const loadYaml = async (text: string) => {
+  const loadYaml = async (text: string, keep = false) => {
     try {
       const { recipe: r } = await api.parse(text);
-      setRecipe(r);
+      keepDataset.current = keep;
+      setRecipe(cat && !keep ? onMachineDataset(r, cat) : r);
       setMode("builder");
     } catch {
       setYamlText(text); // not representable in the builder -> stay in YAML mode
@@ -262,7 +279,7 @@ export default function NewExperiment() {
 
   useEffect(() => {
     const clone = params.get("clone");
-    if (clone) api.run(clone).then((r) => { loadYaml(r.recipe_yaml); setToast({ msg: `Cloned recipe of ${r.name} — edit and run`, kind: "info" }); });
+    if (clone) api.run(clone).then((r) => { loadYaml(r.recipe_yaml, true); setToast({ msg: `Cloned recipe of ${r.name} — edit and run`, kind: "info" }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
@@ -300,7 +317,7 @@ export default function NewExperiment() {
     <div className="space-y-6">
       <PageHeader eyebrow="Build" title="New experiment"
         description="Start from a template or stack stages. Each stage can consume an earlier stage's output."
-        actions={<Segmented value={mode} onChange={(m) => (m === "builder" && mode === "yaml" ? loadYaml(yamlText) : setMode(m))}
+        actions={<Segmented value={mode} onChange={(m) => (m === "builder" && mode === "yaml" ? loadYaml(yamlText, true) : setMode(m))}
           options={[{ value: "builder", label: "Builder", icon: <Layers /> }, { value: "yaml", label: "YAML", icon: <Code2 /> }]} />} />
 
       <div>
@@ -328,10 +345,13 @@ export default function NewExperiment() {
               <Card title="Recipe" description="Shared by every stage unless a stage overrides it">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <Field label="Name"><input className={inputCls} value={recipe.name} onChange={(e) => setRecipe({ ...recipe, name: e.target.value })} /></Field>
-                  <Field label="Dataset">
-                    <select className={cx(inputCls, "pr-8")} value={recipe.dataset ?? ""} onChange={(e) => setRecipe({ ...recipe, dataset: e.target.value })}>
-                      {recipe.dataset && !cat.datasets.some((d) => d.name === recipe.dataset) && <option value={recipe.dataset}>{recipe.dataset} (not on this machine)</option>}
-                      {cat.datasets.map((d) => <option key={d.name} value={d.name}>{d.name}{d.built === false ? " (not built)" : d.error ? " (broken)" : ""}</option>)}
+                  <Field label="Dataset" hint={!cat.datasets.some((d) => d.built !== false && !d.error) ? (hub && machine
+                    ? <Link to={`/machines/${machine.id}`} className="text-accent hover:underline">Add one on {machine.name} →</Link>
+                    : hub ? undefined : <>add one with <code className="font-mono">modellab dataset add</code></>) : undefined}>
+                    <select className={cx(inputCls, "pr-8")} value={recipe.dataset ?? ""} onChange={(e) => setRecipe({ ...recipe, dataset: e.target.value || undefined })}>
+                      {!recipe.dataset && <option value="">{cat.datasets.length ? "pick a dataset" : hub && !machine ? "pick a machine first" : "no datasets yet"}</option>}
+                      {recipe.dataset && !cat.datasets.some((d) => d.name === recipe.dataset) && <option value={recipe.dataset}>{recipe.dataset} (not on {hub && machine ? machine.name : "this machine"})</option>}
+                      {cat.datasets.map((d) => <option key={d.name} value={d.name} disabled={d.built === false || !!d.error}>{d.name}{d.built === false ? " (folder missing)" : d.error ? " (broken)" : ""}</option>)}
                     </select>
                   </Field>
                   <Field label="Seed"><NumberInput value={recipe.seed} onChange={(v) => setRecipe({ ...recipe, seed: v })} /></Field>

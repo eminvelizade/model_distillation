@@ -14,7 +14,7 @@ export function paretoFront(pts: Pt[]): Set<string> {
 }
 
 export const FAMILY: Record<string, { color: string; label: string }> = {
-  rfdetr: { color: "#3b82f6", label: "RF-DETR · DINOv2" },
+  rfdetr: { color: "#14b8a6", label: "RF-DETR · DINOv2" },
   ltdetr: { color: "#f59e0b", label: "LT-DETR · DINOv3" },
 };
 const famColor = (f: string) => FAMILY[f]?.color ?? "#64748b";
@@ -75,8 +75,8 @@ export default function Scatter({ points, onPick, selected, ringColor }: { point
       {W > 0 && (
         <svg width={W} height={H} className="block select-none overflow-visible">
           <defs>
-            <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#57bbf1" stopOpacity=".14" /><stop offset="1" stopColor="#cdeeff" stopOpacity="0" /></linearGradient>
-            <linearGradient id="pf-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#2191d6" /><stop offset="1" stopColor="#8fd3f8" /></linearGradient>
+            <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7eb0ee" stopOpacity=".14" /><stop offset="1" stopColor="#e9f2fc" stopOpacity="0" /></linearGradient>
+            <linearGradient id="pf-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#2569c4" /><stop offset="1" stopColor="#a6c9f2" /></linearGradient>
           </defs>
           {yt.map((t) => (
             <g key={`y${t}`}>

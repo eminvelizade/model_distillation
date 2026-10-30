@@ -20,6 +20,7 @@ from collections import defaultdict
 
 from modellab import store
 from modellab.agent import AGENT_VERSION, SERVICE, home, log, release_info, telemetry, update
+from modellab.agent.browse import Browser
 from modellab.agent.client import HubClient, HubError, Revoked
 from modellab.agent.jobs import RUN_ID_RE, Jobs
 from modellab.agent.sync import RunSync
@@ -224,6 +225,7 @@ class Agent:
                  f"machine {self.cfg.get('name')} ({self.cfg.get('machine_id')})")
         self.discover()
         self.jobs.start()
+        Browser(self).start()
         self.jobs.submit("report")
         self.timers["report"] = time.time()
         while not (self.stop or self.revoked or self.restart):

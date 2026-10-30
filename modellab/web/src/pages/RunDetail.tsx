@@ -107,7 +107,8 @@ export default function RunDetail() {
   const nav = useNavigate();
   const { hub } = useSession();
   if (!r) return <div className="flex items-center justify-center gap-2 py-24 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />loading…</div>;
-  const act = (p: Promise<{ result: string }>, then?: () => void) => p.then((x) => { setToast(x.result); refresh(); then?.(); }).catch((e) => setToast(String(e.message)));
+  // `then` replaces the refresh (after a delete there is nothing left to fetch)
+  const act = (p: Promise<{ result: string }>, then?: () => void) => p.then((x) => { setToast(x.result); if (then) then(); else refresh(); }).catch((e) => setToast(String(e.message)));
   const stageForLogs = logStage ?? r.current_stage ?? r.stages.find((s: any) => s.status === "failed")?.name ?? "runner";
   const finished = ["done", "failed", "cancelled", "interrupted"].includes(r.status);
   const copyId = () => { navigator.clipboard?.writeText(r.id).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1200); }).catch(() => undefined); };
@@ -209,7 +210,7 @@ export default function RunDetail() {
             </div>
             {r.results.length > 0 && (
               <Link to={`/compare?items=${r.results.map((x: any) => `${x.run_id}:${x.stage}`).slice(0, 4).join(",")}`}
-                className="mt-4 flex items-center justify-center gap-1.5 rounded-[10px] bg-raised py-2 text-[13px] font-medium text-fg transition hover:bg-accent/10 hover:text-accent">
+                className="mt-4 flex items-center justify-center gap-1.5 rounded-[10px] bg-raised py-2 text-[13px] font-medium text-fg transition hover:bg-accent-soft hover:text-accent">
                 <GitCompareArrows className="h-4 w-4" />Compare this run's results
               </Link>
             )}

@@ -104,7 +104,7 @@ function AddMachine({ onClose }: { onClose: () => void }) {
     <Modal onClose={onClose} className="max-w-xl">
       <div className="space-y-4 p-5">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 text-accent"><Server className="h-4 w-4" /></span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent"><Server className="h-4 w-4" /></span>
           <div>
             <h2 className="text-[15px] font-semibold text-fg">Add a machine</h2>
             <p className="text-xs text-muted">A Linux PC with an NVIDIA GPU (driver 570 or newer). It runs your experiments on its own hardware.</p>

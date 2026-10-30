@@ -45,7 +45,7 @@ function ChampionCard({ best, second, ds }: { best: ResultRow; second?: ResultRo
   const v = useCountUp((best.map ?? 0) * 100, 900);
   const delta = second?.map != null && best.map != null ? (best.map - second.map) * 100 : null;
   return (
-    <div className="group relative isolate min-w-0 overflow-hidden rounded-2xl bg-[#061420] p-6 text-white shadow-lift ring-1 ring-white/10"
+    <div className="group relative isolate min-w-0 overflow-hidden rounded-2xl bg-[#071426] p-6 text-white shadow-lift ring-1 ring-white/10"
       onMouseMove={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
         e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
@@ -54,7 +54,7 @@ function ChampionCard({ best, second, ds }: { best: ResultRow; second?: ResultRo
       {/* soft frost light that follows the cursor */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         style={{ background: "radial-gradient(16rem circle at var(--mx, 50%) var(--my, 50%), rgb(165 243 252 / .14), transparent 65%)" }} />
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(87_187_241/.3),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(143_211_248/.16),transparent_60%)]" />
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(116_169_236/.3),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(166_201_242/.16),transparent_60%)]" />
       <div className="grid-bg absolute inset-0 -z-10" />
       {/* a little frost: twinkling sparkles */}
       {[["8%", "46%", 0], ["20%", "64%", 1.1], ["40%", "56%", 2.2], ["52%", "66%", 0.6], ["12%", "34%", 1.7], ["30%", "60%", 2.7]].map(([top, left, d]) => (
@@ -245,7 +245,7 @@ export default function Leaderboard() {
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <Link to={`/runs/${r.run_id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-fg hover:text-accent">{r.label}</Link>
-                          {front.has(k) && <span className="rounded-md bg-accent/10 px-1.5 py-px text-[10.5px] font-semibold text-accent">pareto</span>}
+                          {front.has(k) && <span className="rounded-md bg-accent-soft px-1.5 py-px text-[10.5px] font-semibold text-accent">pareto</span>}
                           {why && <span title={why} className="rounded-md bg-amber-500/10 px-1.5 py-px text-[10.5px] font-semibold text-amber-700 dark:text-amber-300">not comparable</span>}
                           {r.warning && <span title={r.warning} className="text-amber-500">⚠</span>}
                         </div>

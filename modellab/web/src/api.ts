@@ -70,7 +70,13 @@ export interface MachineReport {
   checks?: Check[]; datasets?: DatasetInfo[];
   weights?: Record<string, { present: boolean; verified: boolean | null; size: number | null; expected_size: number | null }>;
 }
-export interface MachineDetail extends Machine { report: MachineReport; commands: Command[]; current_release: string | null }
+export interface MachineDetail extends Machine { report: MachineReport; commands: Command[]; current_release: string | null; browse?: boolean }
+export interface FolderEntry { name: string; type: "dir" | "file"; layout?: "roboflow" | "yolo" | null; size?: number }
+/** A folder on a machine, listed by its agent for the dataset picker (names only). */
+export interface Listing {
+  path: string; parent: string | null; entries: FolderEntry[]; images: number; truncated: boolean; layout: string | null;
+  places: { label: string; path: string }[];
+}
 export interface TeamUser extends User { disabled: boolean; created: number; last_login: number | null; machines: number }
 
 const UNAUTHORIZED = "modellab:unauthorized";
@@ -140,6 +146,7 @@ export const api = {
   renameMachine: (id: string, name: string) => send("PATCH", `/api/machines/${id}`, { name }).then(j<Machine>),
   removeMachine: (id: string) => send("DELETE", `/api/machines/${id}`).then(j<{ result: string }>),
   command: (id: string, type: string, args: Record<string, unknown> = {}) => post(`/api/machines/${id}/commands`, { type, args }).then(j<Command>),
+  browse: (id: string, path: string | null, want: "dir" | "json" = "dir") => post(`/api/machines/${id}/browse`, { path, want }).then(j<Listing>),
 };
 
 export const fmt = {

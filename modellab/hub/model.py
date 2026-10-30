@@ -218,8 +218,8 @@ def _str(args: dict, key: str, required: bool = True, maxlen: int = 1024) -> str
 
 def _abs_path(args: dict, key: str, required: bool = True) -> str | None:
     v = _str(args, key, required)
-    if v is not None and not v.startswith("/"):
-        raise HTTPException(422, f"{key} must be an absolute path on the machine (starts with /)")
+    if v is not None and not v.startswith(("/", "~")):
+        raise HTTPException(422, f"{key} must be an absolute path on the machine (starts with / or ~)")
     return v
 
 
@@ -366,7 +366,7 @@ def _dataset_problems(m: dict) -> tuple[set[str], dict[str, str]]:
         if d.get("error"):
             problems[d["name"]] = d["error"]
         elif not d.get("built", True):
-            problems[d["name"]] = "registered but not built yet"
+            problems[d["name"]] = f"its folder is missing ({d.get('path')})"
     return names, problems
 
 

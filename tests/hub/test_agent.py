@@ -6,6 +6,7 @@ import json
 import os
 import tarfile
 import time
+from pathlib import Path
 
 import pytest
 
@@ -219,3 +220,31 @@ def test_agent_config_is_private(home):
 
     save_config({"hub_url": "https://hub", "token": "mlm_secret"})
     assert oct(os.stat(home / "agent.json").st_mode & 0o777) == "0o600" and load_config()["token"] == "mlm_secret"
+
+
+def test_folder_listing_sends_only_names_and_marks_datasets(home, tmp_path):
+    from modellab.agent.browse import answer, listing
+
+    d = tmp_path / "data"
+    for s in ("train", "valid", "test"):
+        (d / "traffic" / s).mkdir(parents=True)
+        (d / "traffic" / s / "_annotations.coco.json").write_text("{}")
+    (d / "yolo" / "images").mkdir(parents=True)
+    (d / "yolo" / "labels").mkdir()
+    (d / ".cache").mkdir()
+    (d / "Zeta").mkdir()
+    for f in ("a.jpg", "b.PNG", "notes.txt", "annotations.json", ".secret.json"):
+        (d / f).write_text("x")
+    got = listing(str(d))
+    assert got["path"] == str(d) and got["parent"] == str(tmp_path) and got["images"] == 2 and got["layout"] is None
+    assert [(e["name"], e["type"], e.get("layout")) for e in got["entries"]] == [
+        ("traffic", "dir", "roboflow"), ("yolo", "dir", "yolo"), ("Zeta", "dir", None)]  # no hidden, no files, by name
+    got = listing(str(d / "traffic" / ".." / "."), want="json")
+    assert got["path"] == str(d) and [e["name"] for e in got["entries"] if e["type"] == "file"] == ["annotations.json"]
+    assert listing(str(d / "annotations.json"), want="json")["path"] == str(d)  # a file -> its folder
+    assert listing(str(d / "traffic"))["layout"] == "roboflow"
+    assert listing("/")["parent"] is None and listing(None)["path"] == str(Path.home())
+    assert {p["label"] for p in got["places"]} >= {"Home", "/"}
+    assert "not a folder" in answer({"id": "1", "path": str(d / "missing"), "want": "dir"})["error"]
+    assert answer({"id": "2", "path": str(d), "want": "exe"})["error"] == "bad folder request"
+    assert answer({"id": "3", "path": str(d), "want": "dir"})["result"]["images"] == 2

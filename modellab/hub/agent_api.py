@@ -6,6 +6,8 @@ A revoked token gets 401 {"detail": "revoked"}: the agent then cancels its local
 
 from __future__ import annotations
 
+import asyncio
+
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -100,6 +102,28 @@ async def upload_file(rid: str, path: str, request: Request, m: dict = Depends(c
         model.save_file(c, m, rid, path, data, request.headers.get("content-type") or "application/octet-stream",
                         float(mtime) if mtime else None)
     return {"result": "stored", "size": len(data)}
+
+
+class FsPollIn(BaseModel):
+    answers: list[dict] = []
+
+
+@router.post("/fs/poll")
+async def fs_poll(body: FsPollIn, request: Request, m: dict = Depends(current_machine)):
+    """Long-poll for folder listings the web app wants (dataset picker); answers ride on the next poll."""
+    gone = asyncio.Event()
+
+    async def watch() -> None:
+        # request.is_disconnected() never sees a hang-up behind the http middleware; waiting on receive() does
+        while (await request.receive())["type"] != "http.disconnect":
+            pass
+        gone.set()
+
+    watcher = asyncio.create_task(watch())
+    try:
+        return {"requests": await request.app.state.browse.poll(m["id"], body.answers[:16], gone=gone)}
+    finally:
+        watcher.cancel()
 
 
 @router.post("/commands/{cid}")

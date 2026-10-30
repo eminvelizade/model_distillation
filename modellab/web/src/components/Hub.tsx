@@ -87,7 +87,7 @@ export function ChangePassword({ onClose, forced }: { onClose: () => void; force
     <Modal onClose={forced ? () => undefined : onClose}>
       <form onSubmit={submit} className="space-y-4 p-5">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 text-accent"><KeyRound className="h-4 w-4" /></span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent"><KeyRound className="h-4 w-4" /></span>
           <div>
             <h2 className="text-[15px] font-semibold text-fg">{forced ? "Choose your own password" : "Change password"}</h2>
             <p className="text-xs text-muted">{forced ? "You signed in with a temporary password from your admin." : "At least 8 characters."}</p>

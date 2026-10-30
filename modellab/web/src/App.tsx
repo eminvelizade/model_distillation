@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { Command, KeyRound, Loader2, LogOut, Moon, Search, Sun, Trophy } from "lucide-react";
 import { api } from "./api";
-import { Beta, cx, Kbd, LiveDot, Mascot, TubeLogo, usePoll, useTheme } from "./ui";
+import { Beta, Card, cx, Empty, Kbd, LiveDot, Mascot, TubeLogo, usePoll, useTheme } from "./ui";
 import { SessionProvider, useSession } from "./session";
 import { NAV, useNav } from "./nav";
 import CommandPalette from "./components/CommandPalette";
@@ -41,9 +41,12 @@ function WorkerWidget({ q }: { q: QueueData | null }) {
   const waiting = q?.runs.filter((r) => r.status === "queued").length ?? 0;
   const alive = q?.worker.alive;
   const g = gpu.data?.available ? gpu.data.gpus[0] : null;
-  const title = hub ? (!machines.length ? "No machine yet" : !machine ? "…" : !machine.online ? "Machine offline" : running ? "Training" : machineState(machine) === "idle" ? "Idle" : machineState(machine))
+  // the queue decides "Training" (the machine list refreshes less often and may still say so for a few seconds)
+  const busy = machine?.online ? ({ updating: "Updating", busy: "Busy" } as Record<string, string>)[machineState(machine)] : undefined;
+  const title = hub ? (!machines.length ? "No machine yet" : !machine ? "…" : !machine.online ? "Machine offline" : running ? "Training" : busy ?? "Idle")
     : !q ? "Connecting…" : !alive ? "Worker offline" : running ? "Training" : "Idle";
-  const sub = hub ? (!machines.length ? "add one under Machines" : running ? running.name : waiting ? `${waiting} waiting` : machine?.online ? "ready for work" : "is the PC on?")
+  const sub = hub ? (!machines.length ? "add one under Machines" : running ? running.name : waiting ? `${waiting} waiting`
+    : !machine?.online ? "is the PC on?" : busy === "Updating" ? "installing an update" : busy ? "running a command" : "ready for work")
     : running ? running.name : waiting ? `${waiting} waiting` : alive ? "ready for work" : "start it from Queue";
   const online = hub ? !!machine?.online : !!alive;
   return (
@@ -78,7 +81,7 @@ function NavItem({ to, label, icon: Icon, badge }: { to: string; label: string; 
   return (
     <NavLink to={to} end={to === "/"}
       className={({ isActive }) => cx("group relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition",
-        isActive ? "bg-accent/[.09] text-fg" : "text-muted hover:bg-raised/70 hover:text-fg")}>
+        isActive ? "bg-accent-soft text-accent" : "text-muted hover:bg-raised/70 hover:text-fg")}>
       {({ isActive }) => <>
         {isActive && <span className="absolute -left-3 top-1.5 h-5 w-[3px] animate-growy rounded-r-full bg-accent" />}
         <Icon className={cx("h-4 w-4 transition-transform duration-300 group-hover:scale-110", isActive ? "text-accent" : "text-subtle group-hover:text-muted")} />
@@ -96,7 +99,7 @@ function Logo() {
         <TubeLogo size={32} className="transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:-rotate-12" />
         {/* tiny bubbles drifting up out of the tube */}
         <span aria-hidden className="absolute right-0.5 top-0 h-[5px] w-[5px] animate-rise rounded-full bg-ice-300/90" />
-        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-ice-frost/90" style={{ animationDelay: "1.7s" }} />
+        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-ice-200" style={{ animationDelay: "1.7s" }} />
       </span>
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-fg">ModelLab</div>
@@ -114,7 +117,7 @@ function Account({ onPassword }: { onPassword: () => void }) {
   const u = me.user;
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[11px] font-semibold uppercase text-accent">{u.display_name.slice(0, 1)}</span>
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] font-semibold uppercase text-accent">{u.display_name.slice(0, 1)}</span>
       <span className="min-w-0 truncate text-xs font-medium text-muted" title={u.username}>{u.display_name}</span>
       <button onClick={onPassword} className="rounded p-1 text-subtle hover:text-fg" title="Change password" aria-label="Change password"><KeyRound className="h-3.5 w-3.5" /></button>
       <button onClick={logout} className="rounded p-1 text-subtle hover:text-fg" title="Sign out" aria-label="Sign out"><LogOut className="h-3.5 w-3.5" /></button>
@@ -197,7 +200,7 @@ function Shell() {
           {nav.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === "/"}
               className={({ isActive }) => cx("flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium",
-                isActive ? "bg-accent/[.09] text-fg" : "text-muted")}>
+                isActive ? "bg-accent-soft text-accent" : "text-muted")}>
               <Icon className="h-3.5 w-3.5" />{label}{badge(to)}
             </NavLink>
           ))}
@@ -216,6 +219,8 @@ function Shell() {
             {hub && <Route path="/machines" element={<Machines />} />}
             {hub && <Route path="/machines/:id" element={<MachineDetail />} />}
             {hub && me?.user?.is_admin && <Route path="/team" element={<Team />} />}
+            <Route path="*" element={<Card><Empty title="Nothing here" mood="sleepy">This page doesn't exist{hub && !me?.user?.is_admin ? " or needs an admin" : ""}.
+              {" "}<Link to="/" className="font-medium text-accent hover:underline">Start a new experiment</Link></Empty></Card>} />
           </Routes>
         </div>
       </main>

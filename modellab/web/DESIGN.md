@@ -27,27 +27,30 @@ variants are needed for neutrals.**
 
 | token | use | light | dark |
 |---|---|---|---|
-| `canvas` | page background | frost white `#f6f9fa` | frozen night `#070b0e` |
-| `surface` | cards, inputs, popovers | `#ffffff` | `#0d1216` |
-| `raised` | hover fills, tracks, chips, segmented background | `#eff4f6` | `#151c21` |
-| `line` | borders, dividers, gridlines | `#e2e9ed` | `#1f282e` |
-| `fg` | primary text | `#0f171c` | `#ecf3f6` |
-| `muted` | secondary text, labels | `#54626c` | `#9baab3` |
-| `subtle` | tertiary text, axis ticks, hints | `#86949e` | `#65747d` |
-| `accent` | brand: links, eyebrows, active nav, tags, focus | deep ice `#1a7bb8` | Frozen ice `#8fd3f8` |
-| `code` | terminal / YAML / dark glass surfaces | `#0d181e` | `#080d11` |
+| `canvas` | page background | frost white `#f5f8fc` | frozen night `#070a10` |
+| `surface` | cards, inputs, popovers | `#ffffff` | `#0d1119` |
+| `raised` | hover fills, tracks, chips, segmented background | `#eef3f9` | `#151b25` |
+| `line` | borders, dividers, gridlines | `#e1e8f1` | `#1f2734` |
+| `fg` | primary text | `#0e1622` | `#ebf1f9` |
+| `muted` | secondary text, labels | `#526074` | `#9aa7ba` |
+| `subtle` | tertiary text, axis ticks, hints | `#8592a3` | `#647185` |
+| `accent` | brand: links, eyebrows, active nav, tags, focus | cobalt `#1a58ac` | frost blue `#7eb0ee` |
+| `accent-soft` | duo background for chips, tags, active nav | frost `#e9f2fc` | deep navy `#17263e` |
+| `code` | terminal / YAML / dark glass surfaces | `#0c1421` | `#080c13` |
 
-All neutrals carry a faint icy-blue tint. Don't introduce `gray-*`, `zinc-*`, `slate-*` or raw hex for chrome.
+All neutrals carry a faint cool-blue tint that matches the cobalt. Don't introduce `gray-*`, `zinc-*`, `slate-*` or raw hex for chrome.
 Shadows are theme-aware too: use `shadow-soft` (resting) and `shadow-lift` (hovered, floating, popovers).
 
-### The brand: Frozen ice blue
+### The brand: frosted cobalt
 
-- The brand colour is **Frozen ice blue**: a luminous, cool ice blue (hue ~201) with no green in it. It lives in
-  the `ice` scale in `tailwind.config.js` (`ice-50` … `ice-950`, 300 = `#8fd3f8`) plus `ice-frost` (`#cdeeff`), a
-  pale highlight for glows and sparkles. Use `ice-*`, not `teal-*` / `cyan-*` / `sky-*`, for brand.
-- Gradients run **deep ice → light ice**: `from-ice-600 via-ice-400 to-ice-300` (progress, Ring default
-  `#2191d6 → #8fd3f8`); the brand button is `from-ice-500 to-ice-700`. Keep `ice-frost` off light tracks (it vanishes).
-- The aurora glow behind each page (`.aurora`) and the champion card (`#06161a`, ice + frost radial glows) carry
+- The brand colour is **frosted cobalt**: an azure-cobalt blue (hue ~213) with a pale frost. It lives in the
+  `ice` scale in `tailwind.config.js` (`ice-50` … `ice-950`; `ice-100` = `ice-frost` = `#e9f2fc`, `ice-700` =
+  `#1a58ac`). Use `ice-*`, not `teal-*` / `cyan-*` / `sky-*`, for brand.
+- **The duo**: `bg-accent-soft text-accent` (frost `#e9f2fc` + cobalt `#1a58ac` in light; deep navy + `#7eb0ee` in
+  dark). Use it for chips, tags, the Beta label, the active nav item and small icon tiles.
+- Gradients run **cobalt → light frost blue**: `from-ice-600 via-ice-400 to-ice-300` (progress, Ring default
+  `#2569c4 → #a6c9f2`); the brand button is `from-ice-500 to-ice-700`.
+- The aurora glow behind each page (`.aurora`) and the champion card (`#071426`, cobalt + frost radial glows) carry
   the mood. Don't add more glows elsewhere.
 - **No purple, violet, fuchsia, pink or indigo.** Not in the UI, gradients, charts or illustrations.
 
@@ -65,11 +68,11 @@ Brand ice is **not** a status colour. Don't use it to mean "good". Green (emeral
 
 ### Data colours
 
-- **Compared / selected items:** `SERIES` from `components/Radar.tsx`: ice `#2fa2e3`, teal `#14b8a6`,
+- **Compared / selected items:** `SERIES` from `components/Radar.tsx`: cobalt `#3d82dc`, teal `#14b8a6`,
   amber `#f59e0b`, rose `#f43f5e`, in that order. One item keeps the same colour everywhere it appears on screen
   (row stripe, chart ring, radar shape, chips).
-- **Detector families:** `FAMILY` from `components/Scatter.tsx`: RF-DETR blue, LT-DETR amber.
-- **Stage types** (`TYPE_STYLE` in `pages/NewExperiment.tsx`): distill light ice → ice, finetune teal,
+- **Detector families:** `FAMILY` from `components/Scatter.tsx`: RF-DETR teal, LT-DETR amber.
+- **Stage types** (`TYPE_STYLE` in `pages/NewExperiment.tsx`): distill frost blue → cobalt, finetune teal,
   eval orange→rose, features amber.
 - Add new data colours to these maps. Don't scatter hex values through pages.
 
@@ -129,6 +132,7 @@ Keep sections as direct children of the page root so the entrance stagger works.
 | charts | `Scatter`, `Radar` (`components/`); `useWidth` for pixel-sized SVG |
 | mascot | `Mascot` (moods: happy / busy / sleepy / sad). Labby appears in empty states, the worker widget, the Queue system card, the preview footer and the hub's sign-in page only |
 | hub pieces | `components/Hub.tsx`: `MachinePicker`, `MachineDot`, `CheckIcon` (ok / warn / fail), `CopyBox` (commands, one-time secrets), `ChangePassword` |
+| a path on a machine | `PathField` (`components/FolderPicker.tsx`): typed path + **Browse**, an inline explorer listing that machine's folders through its agent (`want="json"` picks a file, `expect` marks dataset folders) |
 
 If a component is almost right, extend it with a prop rather than copying it.
 
@@ -185,7 +189,7 @@ on errors, on polling updates, or as decoration in tables and forms. Ambient twi
   when it holds text** (labels would scale with the window).
 - Ticks `font-mono text-[10.5px] fill-subtle`; axis titles `text-[11px] fill-muted`; gridlines `stroke-line`
   dashed `2 4`, with a solid baseline. Use `niceTicks` and make sure the domain covers every point.
-- Colours from `SERIES` / `FAMILY` only. A highlighted "best" line or front uses the brand deep ice → light ice gradient.
+- Colours from `SERIES` / `FAMILY` only. A highlighted "best" line or front uses the brand cobalt → frost blue gradient.
 - Tooltips: `bg-surface/95 border border-line shadow-lift backdrop-blur rounded-xl`, keyed values in mono.
 - Labels avoid each other (see the placement in `Scatter`) and never cover points.
 - Every chart has a legend or a one-line description that says how to read it ("up and to the left is better").
@@ -194,7 +198,7 @@ on errors, on polling updates, or as decoration in tables and forms. Ambient twi
 
 - Icon-only buttons have `title`/`aria-label` (`IconButton` requires it).
 - Never encode meaning by colour alone: pair it with a label, icon or position.
-- Accent text is the deeper ice (`ice-700`) in light mode for contrast. Don't use the light ice (`ice-300`) for text on white.
+- Accent text is cobalt (`ice-700`, 7:1 on white) in light mode. Don't use the light frost blues (`ice-300` and lighter) for text on white.
 - Decorative sparkles and bubbles get `aria-hidden`.
 
 ## Don't
@@ -202,7 +206,7 @@ on errors, on polling updates, or as decoration in tables and forms. Ambient twi
 - Purple, pink or indigo anywhere; neon glows; heavy drop shadows; thick borders.
 - New one-off greys or hex colours for chrome (use the tokens).
 - More than one `brand` button per view.
-- Emoji as UI icons (use `lucide-react`). The logo is `TubeLogo` (an SVG in the brand ice), not the 🧪 emoji, which most systems draw green.
+- Emoji as UI icons (use `lucide-react`). The logo is `TubeLogo` (an SVG in the brand blues), not the 🧪 emoji, which most systems draw green.
 - Remote assets: fonts, images, CDNs.
 - Motion that loops for attention, delays content, bounces large surfaces, or runs longer than ~1.4s.
 
