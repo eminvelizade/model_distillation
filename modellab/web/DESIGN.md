@@ -173,7 +173,7 @@ The ✦ is precious. Current placements are the whole budget:
 - champion card: six slow twinkles in empty space, plus a frost light that follows the cursor
 - "Leader" badge on Compare: one twinkle
 - empty states: three twinkles around Labby
-- logo: two bubbles rising from the 🧪
+- logo: two bubbles rising from the test tube (`TubeLogo`)
 - `sparkleBurst(el)`: **only after a user action succeeds** (run queued, notes or tags saved)
 
 A new feature may add a sparkle burst to its own success moment, and nothing more. Never sparkle on page load,
@@ -202,7 +202,7 @@ on errors, on polling updates, or as decoration in tables and forms. Ambient twi
 - Purple, pink or indigo anywhere; neon glows; heavy drop shadows; thick borders.
 - New one-off greys or hex colours for chrome (use the tokens).
 - More than one `brand` button per view.
-- Emoji as UI icons (use `lucide-react`). The 🧪 logo is the one exception.
+- Emoji as UI icons (use `lucide-react`). The logo is `TubeLogo` (an SVG in the brand ice), not the 🧪 emoji, which most systems draw green.
 - Remote assets: fonts, images, CDNs.
 - Motion that loops for attention, delays content, bounces large surfaces, or runs longer than ~1.4s.
 

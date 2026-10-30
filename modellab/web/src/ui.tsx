@@ -468,6 +468,27 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
   );
 }
 
+/** The ModelLab logo: a tilted test tube with Frozen-ice liquid (the 🧪 emoji draws it green on most systems). */
+export function TubeLogo({ size = 30, className }: { size?: number; className?: string }) {
+  const id = useRef(`t${Math.random().toString(36).slice(2, 8)}`).current;
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
+      <defs>
+        <linearGradient id={`${id}l`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8fd3f8" /><stop offset="1" stopColor="#2191d6" /></linearGradient>
+        <linearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#dff2fe" /></linearGradient>
+      </defs>
+      <g transform="rotate(35 16 16)">
+        <path d="M12 5h8v17a4 4 0 0 1-8 0z" fill={`url(#${id}g)`} stroke="#2191d6" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M13 14h6v8a3 3 0 0 1-6 0z" fill={`url(#${id}l)`} />
+        <path d="M13 14h6" stroke="#cdeeff" strokeWidth="1" strokeLinecap="round" />
+        <rect x="10.4" y="2.6" width="11.2" height="3.2" rx="1.6" fill="#dff2fe" stroke="#2191d6" strokeWidth="1.6" />
+        <path d="M14.2 8.5v11" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" opacity=".9" />
+        <circle cx="16.8" cy="19" r=".9" fill="#ffffff" opacity=".85" />
+      </g>
+    </svg>
+  );
+}
+
 /** "Labby": a little flask with eyes. Moods change the face. */
 export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "happy" | "busy" | "sleepy" | "sad" }) {
   const id = useRef(`m${Math.random().toString(36).slice(2, 8)}`).current;

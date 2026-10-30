@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="54">🧪</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd3f8"/><stop offset="1" stop-color="#2191d6"/></linearGradient>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dff2fe"/></linearGradient>
+  </defs>
+  <g transform="rotate(35 16 16)">
+    <path d="M12 5h8v17a4 4 0 0 1-8 0z" fill="url(#g)" stroke="#2191d6" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M13 14h6v8a3 3 0 0 1-6 0z" fill="url(#l)"/>
+    <path d="M13 14h6" stroke="#cdeeff" stroke-width="1" stroke-linecap="round"/>
+    <rect x="10.4" y="2.6" width="11.2" height="3.2" rx="1.6" fill="#dff2fe" stroke="#2191d6" stroke-width="1.6"/>
+    <path d="M14.2 8.5v11" stroke="#ffffff" stroke-width="1.1" stroke-linecap="round" opacity=".9"/>
+    <circle cx="16.8" cy="19" r=".9" fill="#ffffff" opacity=".85"/>
+  </g>
+</svg>

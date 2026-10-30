@@ -1,4 +1,4 @@
-# 🧪 ModelLab
+# <img src="modellab/web/public/tube.svg" width="32" alt="" /> ModelLab
 
 A platform for building, training and comparing vision models on your own GPUs.
 
