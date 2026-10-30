@@ -138,8 +138,8 @@ export function Stat({ label, value, sub, icon, className }: { label: ReactNode;
 // ---------- status ----------
 
 const STATUS: Record<string, { cls: string; label: string; dot: string }> = {
-  queued: { cls: "bg-sky-500/10 text-sky-700 dark:text-sky-300", label: "waiting", dot: "bg-sky-500" },
-  running: { cls: "bg-accent/10 text-accent", label: "running", dot: "bg-accent" },
+  queued: { cls: "bg-raised text-muted", label: "waiting", dot: "bg-subtle" },
+  running: { cls: "bg-sky-500/10 text-sky-700 dark:text-sky-300", label: "running", dot: "bg-sky-500" },
   done: { cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", label: "done", dot: "bg-emerald-500" },
   failed: { cls: "bg-rose-500/10 text-rose-700 dark:text-rose-300", label: "failed", dot: "bg-rose-500" },
   cancelled: { cls: "bg-raised text-muted", label: "cancelled", dot: "bg-subtle" },
@@ -147,7 +147,7 @@ const STATUS: Record<string, { cls: string; label: string; dot: string }> = {
   pending: { cls: "bg-raised text-subtle", label: "pending", dot: "bg-subtle/60" },
 };
 
-export function LiveDot({ className, color = "bg-accent" }: { className?: string; color?: string }) {
+export function LiveDot({ className, color = "bg-sky-500" }: { className?: string; color?: string }) {
   return (
     <span className={cx("relative inline-flex h-2 w-2", className)}>
       <span className={cx("absolute inset-0 rounded-full animate-ping2", color)} />
@@ -174,7 +174,7 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
 }) {
   const v = {
     primary: "bg-fg text-canvas shadow-soft hover:bg-fg/85",
-    brand: "bg-gradient-to-b from-violet-500 to-violet-600 text-white shadow-[0_1px_0_rgb(255_255_255/.2)_inset,0_6px_16px_-6px_rgb(124_92_255/.7)] ring-1 ring-inset ring-violet-700/40 hover:from-violet-400 hover:to-violet-600",
+    brand: "bg-gradient-to-b from-green-500 to-green-600 text-white shadow-[0_1px_0_rgb(255_255_255/.25)_inset,0_6px_16px_-6px_rgb(34_197_94/.6)] ring-1 ring-inset ring-green-700/30 hover:from-green-400 hover:to-green-600",
     secondary: "bg-surface text-fg ring-1 ring-inset ring-line shadow-soft hover:bg-raised",
     danger: "bg-surface text-rose-600 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/10 dark:text-rose-300",
     ghost: "text-muted hover:bg-raised hover:text-fg",
@@ -229,7 +229,7 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 export function ProgressBar({ value, className, active }: { value: number; className?: string; active?: boolean }) {
   return (
     <div className={cx("h-1.5 w-full overflow-hidden rounded-full bg-raised", className)}>
-      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-400 transition-all duration-700"
+      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-700"
         style={{ width: `${Math.max(2, Math.min(100, value * 100))}%` }}>
         {active && <div className="shimmer absolute inset-0 animate-shimmer" />}
       </div>
@@ -238,7 +238,7 @@ export function ProgressBar({ value, className, active }: { value: number; class
 }
 
 /** Circular progress / gauge. */
-export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#8b5cf6", "#ec4899"], track = "stroke-raised" }: {
+export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#86efac", "#22c55e"], track = "stroke-raised" }: {
   value: number; size?: number; stroke?: number; children?: ReactNode; gradient?: [string, string]; track?: string;
 }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r;
@@ -332,7 +332,7 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
 /** "Labby": a little flask with eyes. Moods change the face. */
 export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "happy" | "busy" | "sleepy" | "sad" }) {
   const id = useRef(`m${Math.random().toString(36).slice(2, 8)}`).current;
-  const ink = "#2e1f5e";
+  const ink = "#14532d";
   const eyes = mood === "sleepy"
     ? <><path d="M24 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /><path d="M34 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /></>
     : <><circle cx="27" cy="39" r="2.6" fill={ink} /><circle cx="37" cy="39" r="2.6" fill={ink} /><circle cx="27.8" cy="38.2" r=".8" fill="#fff" /><circle cx="37.8" cy="38.2" r=".8" fill="#fff" /></>;
@@ -342,14 +342,14 @@ export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "h
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={cx("relative shrink-0", mood === "busy" && "animate-bob")} aria-hidden>
       <defs>
-        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#c4b5fd" /><stop offset="1" stopColor="#f0abfc" /></linearGradient>
+        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#bbf7d0" /><stop offset="1" stopColor="#4ade80" /></linearGradient>
       </defs>
-      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#f5f3ff" stroke="#7c3aed" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#f0fdf4" stroke="#16a34a" strokeWidth="2.5" strokeLinejoin="round" />
       <path d="M18.6 40h26.8l3.2 5a4.5 4.5 0 0 1-3.8 7H19.2a4.5 4.5 0 0 1-3.8-7z" fill={`url(#${id}l)`} opacity=".95" />
       {eyes}
       {mouth}
-      <circle cx="22" cy="44" r="1.8" fill="#f9a8d4" opacity=".9" /><circle cx="42" cy="44" r="1.8" fill="#f9a8d4" opacity=".9" />
-      <circle cx="44" cy="20" r="2.2" fill="#6ee7b7" /><circle cx="48" cy="13" r="1.4" fill="#a78bfa" />
+      <circle cx="22" cy="44" r="1.8" fill="#fda4af" opacity=".8" /><circle cx="42" cy="44" r="1.8" fill="#fda4af" opacity=".8" />
+      <circle cx="44" cy="20" r="2.2" fill="#86efac" /><circle cx="48" cy="13" r="1.4" fill="#7dd3fc" />
     </svg>
   );
 }
@@ -423,14 +423,14 @@ export function LogView({ runId, stage, height = "h-80", tabs, live }: { runId: 
           {lines.length ? lines.map((l, i) => (
             <div key={i} className={cx("flex gap-4 px-3 hover:bg-white/[.03]",
               /\b(error|traceback|exception|failed)\b/i.test(l) && "bg-rose-500/[.07] text-rose-300",
-              /\[modellab|\[runner/.test(l) && "text-violet-300",
+              /\[modellab|\[runner/.test(l) && "text-sky-300",
               /Average Precision|mAP/.test(l) && "text-emerald-300")}>
               <span className="w-7 shrink-0 select-none text-right text-zinc-600">{i + 1}</span>
               <span className="whitespace-pre">{l}</span>
             </div>
           )) : <div className="flex items-center gap-2 px-4 text-zinc-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> waiting for log lines…</div>}
         </pre>
-        {!follow && <button onClick={() => setFollow(true)} className="absolute bottom-3 right-4 rounded-full bg-violet-600 px-2.5 py-1 text-xs font-medium text-white shadow-lg">follow ↓</button>}
+        {!follow && <button onClick={() => setFollow(true)} className="absolute bottom-3 right-4 rounded-full bg-green-600 px-2.5 py-1 text-xs font-medium text-white shadow-lg">follow ↓</button>}
       </div>
     </div>
   );
@@ -450,7 +450,7 @@ export function Yaml({ text, className }: { text: string; className?: string }) 
     if (/^\s*#/.test(s)) return <span className="text-zinc-500">{s}</span>;
     if (/^\s*-?\s*\d+(\.\d+)?(e-?\d+)?\s*$/.test(s)) return <span className="text-amber-300">{s}</span>;
     if (/^\s*(true|false|null)\s*$/.test(s)) return <span className="text-sky-300">{s}</span>;
-    if (/^\s*[[{]/.test(s)) return <span className="text-zinc-300">{s.split(/(\b\d+\b|from)/).map((p, i) => <span key={i} className={/^\d+$/.test(p) ? "text-amber-300" : p === "from" ? "text-pink-300" : undefined}>{p}</span>)}</span>;
+    if (/^\s*[[{]/.test(s)) return <span className="text-zinc-300">{s.split(/(\b\d+\b|from)/).map((p, i) => <span key={i} className={/^\d+$/.test(p) ? "text-amber-300" : p === "from" ? "text-orange-300" : undefined}>{p}</span>)}</span>;
     return <span className="text-emerald-300">{s}</span>;
   };
   return (
@@ -461,7 +461,7 @@ export function Yaml({ text, className }: { text: string; className?: string }) 
           <div key={i} className="flex gap-4 px-3">
             <span className="w-5 shrink-0 select-none text-right text-zinc-600">{i + 1}</span>
             <span className="whitespace-pre">
-              {m ? <>{m[1]}{m[2] && <span className="text-zinc-500">{m[2]}</span>}<span className="text-violet-300">{m[3]}</span><span className="text-zinc-500">{m[4]}</span>{m[5] && val(m[5])}</>
+              {m ? <>{m[1]}{m[2] && <span className="text-zinc-500">{m[2]}</span>}<span className="text-sky-300">{m[3]}</span><span className="text-zinc-500">{m[4]}</span>{m[5] && val(m[5])}</>
                 : /^\s*-\s/.test(l) ? <><span className="text-zinc-500">{l.match(/^\s*-\s/)![0]}</span>{val(l.replace(/^\s*-\s/, ""))}</> : val(l)}
             </span>
           </div>

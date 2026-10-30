@@ -44,8 +44,8 @@ function ChampionCard({ best, second, ds }: { best: ResultRow; second?: ResultRo
   const v = useCountUp((best.map ?? 0) * 100, 900);
   const delta = second?.map != null && best.map != null ? (best.map - second.map) * 100 : null;
   return (
-    <div className="relative isolate min-w-0 overflow-hidden rounded-2xl bg-[#0d0b1a] p-6 text-white shadow-lift ring-1 ring-white/10">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(139_92_246/.45),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(236_72_153/.22),transparent_60%)]" />
+    <div className="relative isolate min-w-0 overflow-hidden rounded-2xl bg-[#0a110d] p-6 text-white shadow-lift ring-1 ring-white/10">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(74_222_128/.28),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(56_189_248/.12),transparent_60%)]" />
       <div className="grid-bg absolute inset-0 -z-10" />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2.5 py-1 text-xs font-semibold text-amber-300 ring-1 ring-inset ring-amber-300/25">
@@ -204,13 +204,13 @@ export default function Leaderboard() {
                       className={cx("group cursor-pointer border-b border-line/70 transition last:border-0", on ? "bg-accent/[.06]" : "hover:bg-raised/50")}>
                       <td className="relative pl-4">
                         {on && <span className="absolute inset-y-0 left-0 w-[3px] bg-accent" />}
-                        <input type="checkbox" className="h-4 w-4 cursor-pointer rounded accent-violet-600" checked={on} onChange={() => toggle(k)} onClick={(e) => e.stopPropagation()} />
+                        <input type="checkbox" className="h-4 w-4 cursor-pointer rounded accent-green-600" checked={on} onChange={() => toggle(k)} onClick={(e) => e.stopPropagation()} />
                       </td>
                       <td className="px-1 text-center"><Medal rank={rank.get(k) ?? null} /></td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <Link to={`/runs/${r.run_id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-fg hover:text-accent">{r.label}</Link>
-                          {front.has(k) && <span className="rounded-md bg-pink-500/10 px-1.5 py-px text-[10.5px] font-semibold text-pink-600 dark:text-pink-300">pareto</span>}
+                          {front.has(k) && <span className="rounded-md bg-accent/10 px-1.5 py-px text-[10.5px] font-semibold text-accent">pareto</span>}
                           {why && <span title={why} className="rounded-md bg-amber-500/10 px-1.5 py-px text-[10.5px] font-semibold text-amber-700 dark:text-amber-300">not comparable</span>}
                           {r.warning && <span title={r.warning} className="text-amber-500">⚠</span>}
                         </div>
@@ -226,7 +226,7 @@ export default function Leaderboard() {
                       <td className="px-3">
                         <div className="flex items-center justify-end gap-2.5">
                           <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-raised sm:block">
-                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400" style={{ width: `${Math.max(4, ((r.map ?? 0) / maxMap) * 100)}%`, opacity: why ? 0.4 : 1 }} />
+                            <div className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500" style={{ width: `${Math.max(4, ((r.map ?? 0) / maxMap) * 100)}%`, opacity: why ? 0.4 : 1 }} />
                           </div>
                           <span className="w-10 text-right font-mono font-semibold tabular-nums text-fg">{fmt.pct(r.map)}</span>
                         </div>

@@ -4,7 +4,7 @@ import { ArrowUpRight, Ban, Check, CheckCircle2, Clock, Cpu, Hourglass, Loader2,
 import { api, fmt, RunSummary } from "../api";
 import { Button, Card, cx, Empty, IconButton, LogView, Mascot, PageHeader, ProgressBar, Ring, StatusPill, TermTab, Toast, relTime, useCountUp, usePoll } from "../ui";
 
-const STAGE_DOT: Record<string, string> = { distill: "bg-violet-500", finetune: "bg-sky-500", eval: "bg-emerald-500", features: "bg-amber-500" };
+const STAGE_DOT: Record<string, string> = { distill: "bg-green-500", finetune: "bg-sky-500", eval: "bg-orange-400", features: "bg-amber-400" };
 
 /** Horizontal stepper: one node per stage with its status and duration. */
 export function StageStepper({ run }: { run: RunSummary }) {
@@ -14,10 +14,10 @@ export function StageStepper({ run }: { run: RunSummary }) {
         const done = s.status === "done", live = s.status === "running", bad = s.status === "failed", stop = ["cancelled", "interrupted"].includes(s.status);
         return (
           <li key={s.name} className="flex items-center">
-            {i > 0 && <span className={cx("mx-2 h-px w-6 sm:w-10", done || live ? "bg-gradient-to-r from-emerald-500/60 to-accent/60" : "bg-line")} />}
+            {i > 0 && <span className={cx("mx-2 h-px w-6 sm:w-10", done || live ? "bg-gradient-to-r from-emerald-500/60 to-sky-500/60" : "bg-line")} />}
             <span className="flex items-center gap-2">
               <span className={cx("flex h-6 w-6 items-center justify-center rounded-full ring-1 ring-inset [&_svg]:h-3.5 [&_svg]:w-3.5",
-                done ? "bg-emerald-500 text-white ring-emerald-500" : live ? "bg-accent/10 text-accent ring-accent/40" : bad ? "bg-rose-500 text-white ring-rose-500"
+                done ? "bg-emerald-500 text-white ring-emerald-500" : live ? "bg-sky-500/10 text-sky-600 ring-sky-500/40 dark:text-sky-400" : bad ? "bg-rose-500 text-white ring-rose-500"
                   : stop ? "bg-amber-500/15 text-amber-600 ring-amber-500/40" : "bg-raised text-subtle ring-line")}>
                 {done ? <Check strokeWidth={3} /> : live ? <Loader2 className="animate-spin" /> : bad ? <X strokeWidth={3} /> : stop ? <Square /> : <span className="text-[10px] font-semibold">{i + 1}</span>}
               </span>
@@ -53,7 +53,7 @@ function NowRunning({ run, onCancel }: { run: RunSummary; onCancel: () => void }
   const nav = useNavigate();
   return (
     <div className="relative isolate overflow-hidden rounded-2xl border border-line bg-surface shadow-soft">
-      <div className="absolute inset-x-0 top-0 -z-10 h-40 bg-[radial-gradient(32rem_10rem_at_10%_0%,rgb(139_92_246/.12),transparent_70%)]" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-40 bg-[radial-gradient(32rem_10rem_at_10%_0%,rgb(74_222_128/.12),transparent_70%)]" />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
       <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-center sm:p-6">
         <Ring value={run.progress} size={124} stroke={10}>
@@ -148,8 +148,8 @@ export default function Queue() {
                   {g.power_w ? <span className="font-mono tabular-nums text-subtle">{g.power_w.toFixed(0)} W</span> : null}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <Gauge label="Utilization" value={g.util} max={100} text={<>{Math.round(g.util)}<span className="text-[10px] text-subtle">%</span></>} colors={["#8b5cf6", "#ec4899"]} />
-                  <Gauge label="VRAM" value={g.mem_used_mb} max={g.mem_total_mb} warn={0.92} text={<>{(g.mem_used_mb / 1024).toFixed(1)}<span className="text-[10px] text-subtle">G</span></>} colors={["#14b8a6", "#22c55e"]} />
+                  <Gauge label="Utilization" value={g.util} max={100} text={<>{Math.round(g.util)}<span className="text-[10px] text-subtle">%</span></>} colors={["#86efac", "#22c55e"]} />
+                  <Gauge label="VRAM" value={g.mem_used_mb} max={g.mem_total_mb} warn={0.92} text={<>{(g.mem_used_mb / 1024).toFixed(1)}<span className="text-[10px] text-subtle">G</span></>} colors={["#7dd3fc", "#0ea5e9"]} />
                   <Gauge label="Temp" value={g.temp_c} max={95} warn={0.85} text={<>{Math.round(g.temp_c)}<span className="text-[10px] text-subtle">°</span></>} colors={["#f59e0b", "#f97316"]} />
                 </div>
               </div>

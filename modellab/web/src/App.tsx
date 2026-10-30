@@ -50,11 +50,11 @@ function WorkerWidget({ q }: { q: QueueData | null }) {
           </div>
           <div className="truncate text-2xs text-subtle">{running ? running.name : waiting ? `${waiting} waiting` : alive ? "ready for work" : "start it from Queue"}</div>
         </div>
-        {running && <span className="font-mono text-xs font-medium tabular-nums text-accent">{Math.round(running.progress * 100)}%</span>}
+        {running && <span className="font-mono text-xs font-medium tabular-nums text-muted">{Math.round(running.progress * 100)}%</span>}
       </div>
       {running && (
         <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-raised">
-          <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-pink-400 transition-all duration-700" style={{ width: `${running.progress * 100}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-700" style={{ width: `${running.progress * 100}%` }} />
         </div>
       )}
       {g && (
@@ -85,9 +85,7 @@ function NavItem({ to, label, icon: Icon, badge }: { to: string; label: string; 
 function Logo() {
   return (
     <NavLink to="/" className="flex items-center gap-2.5">
-      <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400 shadow-glow">
-        <FlaskConical className="h-4 w-4 text-white" strokeWidth={2.4} />
-      </span>
+      <span className="flex h-8 w-8 items-center justify-center text-[26px] leading-none" role="img" aria-label="test tube">🧪</span>
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-fg">ModelLab</div>
         <div className="text-2xs text-subtle">fine-tune · distill · benchmark</div>

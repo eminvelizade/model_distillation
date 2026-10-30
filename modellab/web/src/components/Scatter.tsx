@@ -14,8 +14,8 @@ export function paretoFront(pts: Pt[]): Set<string> {
 }
 
 export const FAMILY: Record<string, { color: string; label: string }> = {
-  rfdetr: { color: "#8b5cf6", label: "RF-DETR · DINOv2" },
-  ltdetr: { color: "#14b8a6", label: "LT-DETR · DINOv3" },
+  rfdetr: { color: "#3b82f6", label: "RF-DETR · DINOv2" },
+  ltdetr: { color: "#f59e0b", label: "LT-DETR · DINOv3" },
 };
 const famColor = (f: string) => FAMILY[f]?.color ?? "#64748b";
 
@@ -74,8 +74,8 @@ export default function Scatter({ points, onPick, selected }: { points: Pt[]; on
       {W > 0 && (
         <svg width={W} height={H} className="block select-none overflow-visible">
           <defs>
-            <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ec4899" stopOpacity=".16" /><stop offset="1" stopColor="#ec4899" stopOpacity="0" /></linearGradient>
-            <linearGradient id="pf-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#ec4899" /><stop offset="1" stopColor="#a855f7" /></linearGradient>
+            <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#22c55e" stopOpacity=".11" /><stop offset="1" stopColor="#22c55e" stopOpacity="0" /></linearGradient>
+            <linearGradient id="pf-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#4ade80" /><stop offset="1" stopColor="#16a34a" /></linearGradient>
           </defs>
           {yt.map((t) => (
             <g key={`y${t}`}>
@@ -139,7 +139,7 @@ export function ScatterLegend() {
       {Object.entries(FAMILY).map(([k, f]) => (
         <span key={k} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full ring-2 ring-surface" style={{ background: f.color }} />{f.label}</span>
       ))}
-      <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full bg-gradient-to-r from-pink-500 to-purple-500" />Pareto front</span>
+      <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full bg-gradient-to-r from-green-400 to-green-600" />Pareto front</span>
       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-dashed border-subtle" />not comparable</span>
     </div>
   );

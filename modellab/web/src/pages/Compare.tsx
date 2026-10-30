@@ -4,7 +4,7 @@ import { ArrowLeft, Crown, Loader2 } from "lucide-react";
 import { api, fmt, ResultRow } from "../api";
 import { Button, Callout, Card, cx, Empty, PageHeader, useWidth } from "../ui";
 
-const PALETTE = ["#8b5cf6", "#14b8a6", "#f59e0b", "#ec4899"];
+const PALETTE = ["#22c55e", "#3b82f6", "#f59e0b", "#f43f5e"];
 type Metric = { key: keyof ResultRow; label: string; better: "high" | "low"; f: (v: any) => string };
 const METRICS: Metric[] = [
   { key: "map", label: "mAP50:95", better: "high", f: (v) => fmt.pct(v) },

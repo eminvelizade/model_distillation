@@ -6,7 +6,7 @@ import { Button, Callout, Card, cx, LogView, PageHeader, ProgressBar, Segmented,
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub?: string; hero?: boolean }) {
   return (
-    <div className={cx("min-w-0 rounded-xl px-3 py-2.5", hero ? "bg-gradient-to-br from-violet-500/15 to-fuchsia-500/10 ring-1 ring-inset ring-accent/25" : "bg-raised/60")}>
+    <div className={cx("min-w-0 rounded-xl px-3 py-2.5", hero ? "bg-gradient-to-br from-green-500/15 to-emerald-500/5 ring-1 ring-inset ring-accent/25" : "bg-raised/60")}>
       <div className="truncate text-2xs font-medium text-muted">{label}</div>
       <div className={cx("mt-0.5 truncate font-mono font-medium tabular-nums text-fg", hero ? "text-xl" : "text-[15px]")}>{value}</div>
       {sub && <div className="truncate font-mono text-2xs text-subtle">{sub}</div>}
@@ -77,7 +77,7 @@ function FeaturesResult({ m, runId, outputs }: { m: any; runId: string; outputs:
 function StageNode({ status }: { status: string }) {
   return (
     <span className={cx("absolute -left-[35px] top-0 flex h-[22px] w-[22px] items-center justify-center rounded-full ring-4 ring-surface [&_svg]:h-3 [&_svg]:w-3",
-      status === "done" ? "bg-emerald-500 text-white" : status === "running" ? "bg-accent text-white" : status === "failed" ? "bg-rose-500 text-white"
+      status === "done" ? "bg-emerald-500 text-white" : status === "running" ? "bg-sky-500 text-white" : status === "failed" ? "bg-rose-500 text-white"
         : ["cancelled", "interrupted"].includes(status) ? "bg-amber-400 text-amber-950" : "bg-raised text-subtle ring-4 ring-surface")}>
       {status === "done" ? <Check strokeWidth={3} /> : status === "running" ? <Loader2 className="animate-spin" /> : status === "failed" ? <X strokeWidth={3} /> : status !== "pending" ? <Square /> : <span className="h-1.5 w-1.5 rounded-full bg-subtle" />}
     </span>
@@ -147,7 +147,7 @@ export default function RunDetail() {
                     <span className="rounded-md bg-raised px-1.5 py-0.5 text-2xs font-medium text-muted">{s.type}</span>
                     {s.status !== "done" && <StatusPill status={s.status} />}
                     {s.started && <span className="font-mono text-xs text-subtle">{fmt.dur(s.started, s.finished)}</span>}
-                    {s.status === "running" && s.progress && <span className="text-xs text-accent">{Math.round(s.progress.fraction * 100)}% · {s.progress.message}</span>}
+                    {s.status === "running" && s.progress && <span className="text-xs text-sky-600 dark:text-sky-400">{Math.round(s.progress.fraction * 100)}% · {s.progress.message}</span>}
                     <button onClick={() => setLogStage(s.name)} className="ml-auto inline-flex items-center gap-1 text-xs text-subtle hover:text-accent"><FileText className="h-3 w-3" />logs</button>
                   </div>
                   {s.status === "running" && s.progress && <ProgressBar className="mt-2" value={s.progress.fraction} active />}

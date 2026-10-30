@@ -26,7 +26,7 @@ export default {
       boxShadow: {
         soft: "0 1px 2px rgb(16 16 24 / .04), 0 2px 8px -2px rgb(16 16 24 / .06)",
         lift: "0 1px 2px rgb(16 16 24 / .05), 0 12px 32px -8px rgb(16 16 24 / .14)",
-        glow: "0 0 0 1px rgb(124 92 255 / .25), 0 8px 28px -6px rgb(124 92 255 / .45)",
+        glow: "0 0 0 1px rgb(34 197 94 / .25), 0 8px 28px -6px rgb(34 197 94 / .45)",
         inset: "inset 0 1px 0 rgb(255 255 255 / .12)",
       },
       keyframes: {
