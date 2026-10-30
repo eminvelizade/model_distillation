@@ -130,15 +130,16 @@ worth knowing about if you use these tools elsewhere:
 ## UI
 
 FastAPI serves the prebuilt React/Vite/Tailwind bundle from `modellab/web/dist`, which is committed, so no Node is
-needed at runtime. It uses system fonts only and makes no external requests (checked in the screenshot run).
-Light/dark mode follows the system and can be toggled.
+needed at runtime. Fonts (Geist, Geist Mono) and icons are bundled, so it makes no external requests. Light/dark
+mode follows the system and can be toggled; ⌘K / Ctrl+K jumps to any page or run. Look and feel, components and
+motion rules for new UI work: [modellab/web/DESIGN.md](../modellab/web/DESIGN.md).
 
 | page | |
 |---|---|
 | New experiment | templates; stage builder with dropdowns (model, teacher, init/from, dataset, budget, batch); sweep editor; live YAML preview with validation, missing-weights warnings and the runs it will create; **Run next** / **Add to queue**; YAML mode |
 | Queue | worker status, GPU util/VRAM/temp/power (NVML), running job with stage timeline, progress and **live logs (SSE)**, cancel; waiting list; recently finished with error tails and re-queue |
-| Leaderboard | sortable/filterable table (dataset, family, search, only-comparable), Pareto-front scatter (mAP vs latency), "not comparable" and "pareto" badges, tags and notes per run, pick 2–4 to compare |
-| Compare | metrics side by side (best ★), per-class AP bars, PCA images, config diff (stages, seed, packages, git, GPU), comparability banner |
+| Leaderboard | current champion and headline numbers, Pareto-front scatter (mAP vs latency), "Model shape" radar (champion, or up to 4 selected rows), sortable/filterable ranked table (dataset, family, search, only-comparable), "not comparable" and "pareto" badges, tags and notes per run, pick 2–4 to compare |
+| Compare | contender cards, metrics side by side (best highlighted), radar, per-class AP bars, PCA images, config diff (stages, seed, packages, git, GPU), comparability banner |
 | Run detail | stages timeline with metrics and artifacts, logs per stage, recipe/env/data hashes, notes, **Clone & edit**, re-queue, cancel, delete |
 
 Screenshots: [docs/screenshots/](screenshots/) (`1_new_experiment`, `1b_clone_and_edit`, `2_queue`, `3_leaderboard`, `4_compare`, `5_run_detail`, plus `_dark` variants). They were taken from CPU test runs on the tiny synthetic dataset,
