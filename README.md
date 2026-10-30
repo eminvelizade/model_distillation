@@ -6,6 +6,8 @@ You describe an experiment in the web app: fine-tune a detector, distill a large
 them on your data. It runs on one of your GPU machines, and the results come back to one place where you can rank
 and compare them.
 
+Current version: **v0.1** (beta).
+
 ![Machine page](docs/screenshots/hub_3_machine_detail.png)
 
 ## How it works
@@ -46,6 +48,8 @@ and compare them.
   environment and keeps itself updated.
 - **Hardware page** per machine: GPU, driver, memory, disk and live usage. Anything that would break a run shows in
   red, with the fix.
+- **Datasets** per machine: browse the PC's folders from the web app to add one (Roboflow, COCO or YOLO), and remove
+  it again any time. Files never move.
 - Live progress and logs; cancel and re-queue. Runs survive a closed browser, and keep training if the hub goes
   down.
 

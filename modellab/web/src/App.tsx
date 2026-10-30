@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { Command, KeyRound, Loader2, LogOut, Moon, Search, Sun, Trophy } from "lucide-react";
 import { api } from "./api";
-import { Beta, cx, Kbd, LiveDot, Mascot, TubeLogo, usePoll, useTheme } from "./ui";
+import { Beta, Card, cx, Empty, Kbd, LiveDot, Mascot, TubeLogo, usePoll, useTheme } from "./ui";
 import { SessionProvider, useSession } from "./session";
 import { NAV, useNav } from "./nav";
 import CommandPalette from "./components/CommandPalette";
@@ -41,9 +41,12 @@ function WorkerWidget({ q }: { q: QueueData | null }) {
   const waiting = q?.runs.filter((r) => r.status === "queued").length ?? 0;
   const alive = q?.worker.alive;
   const g = gpu.data?.available ? gpu.data.gpus[0] : null;
-  const title = hub ? (!machines.length ? "No machine yet" : !machine ? "…" : !machine.online ? "Machine offline" : running ? "Training" : machineState(machine) === "idle" ? "Idle" : machineState(machine))
+  // the queue decides "Training" (the machine list refreshes less often and may still say so for a few seconds)
+  const busy = machine?.online ? ({ updating: "Updating", busy: "Busy" } as Record<string, string>)[machineState(machine)] : undefined;
+  const title = hub ? (!machines.length ? "No machine yet" : !machine ? "…" : !machine.online ? "Machine offline" : running ? "Training" : busy ?? "Idle")
     : !q ? "Connecting…" : !alive ? "Worker offline" : running ? "Training" : "Idle";
-  const sub = hub ? (!machines.length ? "add one under Machines" : running ? running.name : waiting ? `${waiting} waiting` : machine?.online ? "ready for work" : "is the PC on?")
+  const sub = hub ? (!machines.length ? "add one under Machines" : running ? running.name : waiting ? `${waiting} waiting`
+    : !machine?.online ? "is the PC on?" : busy === "Updating" ? "installing an update" : busy ? "running a command" : "ready for work")
     : running ? running.name : waiting ? `${waiting} waiting` : alive ? "ready for work" : "start it from Queue";
   const online = hub ? !!machine?.online : !!alive;
   return (
@@ -216,6 +219,8 @@ function Shell() {
             {hub && <Route path="/machines" element={<Machines />} />}
             {hub && <Route path="/machines/:id" element={<MachineDetail />} />}
             {hub && me?.user?.is_admin && <Route path="/team" element={<Team />} />}
+            <Route path="*" element={<Card><Empty title="Nothing here" mood="sleepy">This page doesn't exist{hub && !me?.user?.is_admin ? " or needs an admin" : ""}.
+              {" "}<Link to="/" className="font-medium text-accent hover:underline">Start a new experiment</Link></Empty></Card>} />
           </Routes>
         </div>
       </main>

@@ -66,7 +66,7 @@ export function sparkleBurst(el: Element | null | undefined, n = 12) {
     s.textContent = i % 3 ? "✦" : "•";
     Object.assign(s.style, {
       left: `${r.left + r.width / 2 + (Math.random() - 0.5) * r.width * 0.5}px`, top: `${r.top + r.height / 2}px`,
-      color: colors[i % colors.length], fontSize: `${8 + Math.random() * 7}px`, textShadow: "0 0 6px rgb(94 234 212 / .6)",
+      color: colors[i % colors.length], fontSize: `${8 + Math.random() * 7}px`, textShadow: "0 0 6px rgb(126 176 238 / .6)",
       animationDelay: `${Math.random() * 80}ms`,
     });
     s.style.setProperty("--dx", `${Math.cos(a) * d}px`);
@@ -213,7 +213,7 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
   }[variant];
   return (
     <button type={type} title={title} disabled={disabled} onClick={onClick}
-      className={cx("group/btn relative inline-flex select-none items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-[10px] font-medium transition duration-200 active:scale-[.97] disabled:pointer-events-none disabled:opacity-45 [&_svg]:h-[15px] [&_svg]:w-[15px]",
+      className={cx("group/btn relative inline-flex select-none items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-[10px] font-medium transition duration-200 active:scale-[.97] disabled:pointer-events-none disabled:opacity-45 [&_svg]:h-[15px] [&_svg]:w-[15px] [&_svg]:shrink-0",
         small ? "h-7 px-2.5 text-xs [&_svg]:!h-3.5 [&_svg]:!w-3.5" : "h-9 px-3.5 text-[13.5px]", v, className)}>
       {variant === "brand" && <span aria-hidden className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/35 to-transparent opacity-0 transition-all duration-700 ease-out group-hover/btn:left-[120%] group-hover/btn:opacity-100" />}
       {children}
@@ -460,7 +460,7 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink-950/25 p-4 pt-[12vh] backdrop-blur-[6px] animate-fade dark:bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-950/25 p-4 pt-[12vh] backdrop-blur-[6px] animate-fade dark:bg-black/50" onClick={onClose}>
       <div className={cx("w-full max-w-md overflow-hidden rounded-2xl border border-line bg-surface shadow-lift animate-pop", className)} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>

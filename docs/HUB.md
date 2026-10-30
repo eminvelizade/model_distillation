@@ -129,9 +129,16 @@ On the machine page, **Add dataset** offers three ways in:
 - A COCO json plus an images folder.
 - A YOLO folder.
 
+**Browse** picks the folder (or the `.json`) on that PC: the agent lists its folders for you, marks the ones that
+already look like a Roboflow or YOLO dataset, and a picked folder names the dataset. You can still type or paste a
+path (`~/…` works). Browsing needs the machine online, with an agent from v0.1 or later.
+
 The last two are split by `make_splits.py` into `~/.modellab/data/datasets/<name>`. Paths are on that PC, and images
 are not copied. The agent hashes every image and annotation. If a dataset has the same name and the same hash on two
 machines, it holds identical data, and results from those machines are comparable. **Re-hash** after you change files.
+
+The trash icon removes a dataset from that machine's list (its files stay). Each machine lists only its own datasets:
+one whose folder was moved or deleted shows as missing until you remove it or add it again.
 
 ## 6. Experiments
 
@@ -169,6 +176,9 @@ machine page, and is retried within the hour.
   runs and commands. Pairing codes work once, for 10 minutes. Machine tokens are stored hashed and are revocable.
 - **What the hub can make a PC do.** Run recipes, which the agent re-validates with its own code, and a fixed list of
   commands with re-checked arguments. Never shell or code.
+- **Folder browsing.** For the dataset picker the agent sends folder names, `.json` file names and an image count;
+  never file contents, and no hidden entries unless you type such a path. Each listing is logged in
+  `~/.modellab/logs/agent.log`. The agent keeps one long-poll open to the hub for this (no port opens on the PC).
 - **Updates.** Releases are signed in CI with a key that is not on Railway. Agents refuse anything else, so even
   someone who took over the hub could not push code to an installed PC. A *new* install trusts the hub at install
   time, as any `curl | bash` does.
@@ -211,6 +221,9 @@ Tested in a Linux sandbox without GPU:
 - A self-update to a new signed release.
 - Refusal of a release signed with another key, placed on the hub as if it had been compromised.
 - The UI in light, dark and 390 px, and the local app's UI unchanged.
+- v0.1: the dataset picker against a real agent (browse, pick, add a Roboflow folder, import COCO and YOLO, remove a
+  dataset whose folder is gone), the old `coco-vehicles` placeholder staying hidden, two users kept apart, and the
+  agent's folder browser reconnecting after a hub restart.
 
 Not tested here; check these on the real machines:
 - **Building the CUDA environment on a GPU PC.** The full lock resolved with `uv pip install --dry-run` (134

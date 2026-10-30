@@ -132,6 +132,7 @@ Keep sections as direct children of the page root so the entrance stagger works.
 | charts | `Scatter`, `Radar` (`components/`); `useWidth` for pixel-sized SVG |
 | mascot | `Mascot` (moods: happy / busy / sleepy / sad). Labby appears in empty states, the worker widget, the Queue system card, the preview footer and the hub's sign-in page only |
 | hub pieces | `components/Hub.tsx`: `MachinePicker`, `MachineDot`, `CheckIcon` (ok / warn / fail), `CopyBox` (commands, one-time secrets), `ChangePassword` |
+| a path on a machine | `PathField` (`components/FolderPicker.tsx`): typed path + **Browse**, an inline explorer listing that machine's folders through its agent (`want="json"` picks a file, `expect` marks dataset folders) |
 
 If a component is almost right, extend it with a prop rather than copying it.
 

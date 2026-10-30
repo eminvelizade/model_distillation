@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Activity, Cpu, Database, Download, HardDrive, ListOrdered, Loader2, Package, Pencil, Plus, RefreshCw, Server, Stethoscope, Trash2 } from "lucide-react";
 import { api, Command, DatasetInfo, MachineDetail as MD } from "../api";
 import { CheckIcon, CopyBox, MachineDot, machineState } from "../components/Hub";
+import { PathField } from "../components/FolderPicker";
 import { useSession } from "../session";
 import { Button, Callout, Card, cx, Empty, Field, IconButton, inputCls, Modal, PageHeader, ProgressBar, relTime, Segmented, StatusPill, Switch, Toast, usePoll } from "../ui";
 import { Gauge } from "./Queue";
@@ -27,14 +28,25 @@ function pendingOf(m: MD, type: string, match?: (c: Command) => boolean) {
   return m.commands.find((c) => c.type === type && ["pending", "sent", "running"].includes(c.status) && (!match || match(c)));
 }
 
-function DatasetModal({ onClose, onSend }: { onClose: () => void; onSend: (type: string, args: Record<string, unknown>) => Promise<void> }) {
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9_.-]+/g, "-").replace(/^[^a-z0-9]+/, "").replace(/-+$/, "").slice(0, 64);
+const folderName = (path: string, file = false) => {
+  const parts = path.replace(/\/+$/, "").split("/").filter(Boolean);
+  return parts[parts.length - (file ? 2 : 1)] ?? "";
+};
+
+function DatasetModal({ m, onClose, onSend }: { m: MD; onClose: () => void; onSend: (type: string, args: Record<string, unknown>) => Promise<void> }) {
   const [mode, setMode] = useState<"folder" | "coco" | "yolo">("folder");
   const [f, setF] = useState({ name: "", path: "", description: "", coco_json: "", images_dir: "", yolo_dir: "", keep_splits: false });
   const [error, setError] = useState<string | null>(null);
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
+  // a picked folder names the dataset unless you already typed a name
+  const named = (path: string, file = false) => setF((x) => (x.name ? x : { ...x, name: slug(folderName(path, file)) }));
+  const browse = { machineId: m.id, canBrowse: !!m.browse };
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setBusy(true);
     try {
       if (mode === "folder") await onSend("dataset_add", { name: f.name, path: f.path, description: f.description });
       else if (mode === "coco") await onSend("dataset_import", { name: f.name, format: "coco", coco_json: f.coco_json, images_dir: f.images_dir || null, description: f.description });
@@ -42,63 +54,73 @@ function DatasetModal({ onClose, onSend }: { onClose: () => void; onSend: (type:
       onClose();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
   return (
-    <Modal onClose={onClose} className="max-w-lg">
+    <Modal onClose={onClose} className="max-w-xl">
       <form onSubmit={submit} className="space-y-4 p-5">
-        <div>
-          <h2 className="text-[15px] font-semibold text-fg">Add a dataset on this machine</h2>
-          <p className="mt-0.5 text-xs text-muted">Paths are on the machine. Images stay where they are; the agent hashes them so you can tell when two machines hold the same data.</p>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent"><Database className="h-4 w-4" /></span>
+          <div>
+            <h2 className="text-[15px] font-semibold text-fg">Add a dataset on {m.name}</h2>
+            <p className="text-xs text-muted">Pick it from the machine's folders. Images stay where they are; the agent hashes them so you can tell when two machines hold the same data.</p>
+          </div>
         </div>
         <Segmented small value={mode} onChange={setMode} options={[{ value: "folder", label: "Roboflow folder" }, { value: "coco", label: "Import COCO" }, { value: "yolo", label: "Import YOLO" }]} />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Name" hint="lowercase, e.g. traffic-v2"><input className={cx(inputCls, "font-mono text-[12.5px]")} value={f.name} onChange={set("name")} pattern="[a-z0-9][a-z0-9_.\-]{0,63}" required autoFocus /></Field>
-          <Field label="Description (optional)"><input className={inputCls} value={f.description} onChange={set("description")} /></Field>
-        </div>
-        {mode === "folder" && <Field label="Folder" hint="has train/ valid/ test/, each with _annotations.coco.json"><input className={cx(inputCls, "font-mono text-[12.5px]")} value={f.path} onChange={set("path")} placeholder="/data/traffic" required /></Field>}
+        {!m.browse && <Callout tone="info">{m.online ? `${m.name} runs an older agent without the folder browser (it updates itself when idle).` : `${m.name} is offline.`} Type the paths meanwhile.</Callout>}
+        {mode === "folder" && <PathField {...browse} label="Folder" expect="roboflow" value={f.path} onChange={set("path")} onPick={(p) => named(p)} placeholder="/data/traffic" required
+          hint="has train/ valid/ test/, each with _annotations.coco.json" />}
         {mode === "coco" && <>
-          <Field label="COCO annotations (.json)"><input className={cx(inputCls, "font-mono text-[12.5px]")} value={f.coco_json} onChange={set("coco_json")} placeholder="/data/raw/annotations.json" required /></Field>
-          <Field label="Images folder (optional)" hint="split 70 / 15 / 15 into ~/.modellab/data/datasets/<name>"><input className={cx(inputCls, "font-mono text-[12.5px]")} value={f.images_dir} onChange={set("images_dir")} placeholder="/data/raw/images" /></Field>
+          <PathField {...browse} label="COCO annotations (.json)" want="json" value={f.coco_json} onChange={set("coco_json")} onPick={(p) => named(p, true)} placeholder="/data/raw/annotations.json" required />
+          <PathField {...browse} label="Images folder (optional)" value={f.images_dir} onChange={set("images_dir")} placeholder="/data/raw/images"
+            hint="split 70 / 15 / 15 into ~/.modellab/data/datasets/<name>" />
         </>}
         {mode === "yolo" && <>
-          <Field label="YOLO folder" hint="images/ + labels/ + data.yaml"><input className={cx(inputCls, "font-mono text-[12.5px]")} value={f.yolo_dir} onChange={set("yolo_dir")} placeholder="/data/yolo" required /></Field>
-          <Switch checked={f.keep_splits} onChange={(v) => setF({ ...f, keep_splits: v })} label="Keep its train / val / test split" />
+          <PathField {...browse} label="YOLO folder" expect="yolo" value={f.yolo_dir} onChange={set("yolo_dir")} onPick={(p) => named(p)} placeholder="/data/yolo" required hint="images/ + labels/ + data.yaml" />
+          <Switch checked={f.keep_splits} onChange={(v) => setF((x) => ({ ...x, keep_splits: v }))} label="Keep its train / val / test split" />
         </>}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Name" hint="lowercase, e.g. traffic-v2"><input className={cx(inputCls, "font-mono text-[12.5px]")} value={f.name} onChange={(e) => set("name")(e.target.value)} pattern="[a-z0-9][a-z0-9_.\-]{0,63}" required /></Field>
+          <Field label="Description (optional)"><input className={inputCls} value={f.description} onChange={(e) => set("description")(e.target.value)} /></Field>
+        </div>
         {error && <Callout tone="error">{error}</Callout>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="primary"><Plus />Add dataset</Button>
+          <Button type="submit" variant="primary" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Plus />}Add dataset</Button>
         </div>
       </form>
     </Modal>
   );
 }
 
-function DatasetRow({ d, busy, onVerify, onRemove }: { d: DatasetInfo; busy: boolean; onVerify: () => void; onRemove: () => void }) {
+function DatasetRow({ d, verifying, removing, onVerify, onRemove }: { d: DatasetInfo; verifying: boolean; removing: boolean; onVerify: () => void; onRemove: () => void }) {
   const n = (s?: { images: number }) => (s ? s.images.toLocaleString() : "–");
+  const missing = d.built === false && !d.error;
   return (
-    <li className="group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-3 py-2.5 hover:bg-raised/50">
-      <div className="min-w-0 flex-1">
+    <li className={cx("group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-3 py-2.5 transition hover:bg-raised/50", removing && "opacity-50")}>
+      {/* basis: on a phone the counts and buttons wrap below instead of squeezing the name */}
+      <div className="min-w-0 flex-1 basis-56">
         <div className="flex items-center gap-2">
-          {d.error ? <CheckIcon status="fail" /> : d.built === false ? <span className="h-4 w-4 shrink-0 rounded-full border border-dashed border-subtle" /> : <CheckIcon status="ok" />}
-          <span className="font-mono text-[13px] font-medium text-fg">{d.name}</span>
-          {d.classes && <span className="text-2xs text-subtle">{d.classes.length} classes</span>}
+          {d.error ? <CheckIcon status="fail" /> : missing ? <CheckIcon status="warn" /> : <CheckIcon status="ok" />}
+          <span className="truncate font-mono text-[13px] font-medium text-fg">{d.name}</span>
+          {d.classes && <span className="shrink-0 whitespace-nowrap text-2xs text-subtle">{d.classes.length} classes</span>}
         </div>
         <div className="mt-0.5 truncate pl-6 font-mono text-[11px] text-subtle" title={d.path}>{d.path}</div>
         {d.error && <div className="mt-1 pl-6 text-xs text-rose-600 dark:text-rose-300">{d.error}</div>}
-        {d.built === false && !d.error && <div className="mt-0.5 pl-6 text-xs text-subtle">not built on this machine</div>}
+        {missing && <div className="mt-0.5 pl-6 text-xs text-amber-700 dark:text-amber-300">folder not found on this machine: moved or deleted? Remove it or add it again.</div>}
       </div>
-      {!d.error && d.built !== false && (
+      {!d.error && !missing && (
         <div className="flex items-center gap-4 pl-6 font-mono text-[11.5px] tabular-nums text-muted sm:pl-0">
           <span title="train / valid / test images">{n(d.train)} · {n(d.valid)} · {n(d.test)}</span>
           {d.hash?.all ? <span className="rounded-md bg-raised px-1.5 py-px text-[10.5px] text-subtle" title={`content hash ${d.hash.all}, checked ${relTime(d.hash_time)}`}>#{d.hash.all.slice(0, 8)}</span>
             : <span className="text-[10.5px] text-subtle">not hashed</span>}
         </div>
       )}
-      <div className="flex items-center gap-1">
-        {d.built !== false && !d.error && <IconButton title="Re-hash every image (detects changed files)" onClick={onVerify} disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}</IconButton>}
-        {d.name !== "coco-vehicles" && <IconButton title="Remove from this machine's list (files stay)" onClick={onRemove}><Trash2 /></IconButton>}
+      <div className="ml-auto flex items-center gap-1">
+        {!d.error && !missing && <IconButton title="Re-hash every image (detects changed files)" onClick={onVerify} disabled={verifying || removing}>{verifying ? <Loader2 className="animate-spin" /> : <RefreshCw />}</IconButton>}
+        <IconButton title="Remove from this machine (files stay)" onClick={onRemove} disabled={removing} className="hover:!bg-rose-500/10 hover:!text-rose-600">{removing ? <Loader2 className="animate-spin" /> : <Trash2 />}</IconButton>
       </div>
     </li>
   );
@@ -133,16 +155,27 @@ export default function MachineDetail() {
   useEffect(() => { if (machines.some((x) => x.id === id)) setMachineId(id); }, [id, machines, setMachineId]);
   const [toast, setToast] = useState<{ msg: string; kind?: "info" | "error" } | null>(null);
   const [addDs, setAddDs] = useState(false);
+  const [forget, setForget] = useState<DatasetInfo | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [rename, setRename] = useState<string | null>(null);
+  const [watch, setWatch] = useState<string[]>([]); // commands sent from this page: say how they ended
   const nav = useNavigate();
+  useEffect(() => {
+    const ended = (m.data?.commands ?? []).filter((c) => watch.includes(c.id) && (c.status === "done" || c.status === "failed"));
+    if (!ended.length) return;
+    setWatch((w) => w.filter((x) => !ended.some((c) => c.id === x)));
+    const c = ended[ended.length - 1];
+    const what = `${CMD_LABEL[c.type] ?? c.type}${c.type.startsWith("dataset") ? ` ${String(c.args.name ?? "")}` : ""}`;
+    setToast(c.status === "failed" ? { msg: `${what} failed: ${(c.error ?? "").trim().split("\n").slice(-1)[0]}`, kind: "error" } : { msg: `${what}: done` });
+  }, [m.data, watch]);
 
   if (m.error && !m.data) return <Card><Empty title="Machine not found" mood="sad">{m.error} · <Link className="text-accent" to="/machines">all machines</Link></Empty></Card>;
   const d = m.data;
   if (!d) return <div className="flex items-center justify-center gap-2 py-24 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />loading…</div>;
 
   const send = async (type: string, args: Record<string, unknown> = {}) => {
-    await api.command(d.id, type, args);
+    const c = await api.command(d.id, type, args);
+    setWatch((w) => [...w, c.id]);
     setToast({ msg: d.online ? `Sent to ${d.name}` : `Queued: ${d.name} is offline and picks it up when it's back` });
     m.refresh();
   };
@@ -151,6 +184,12 @@ export default function MachineDetail() {
   const hw = rep.hardware;
   const checks = [...(rep.checks ?? [])].sort((a, b) => ["fail", "warn", "ok"].indexOf(a.status) - ["fail", "warn", "ok"].indexOf(b.status));
   const weights = Object.entries(rep.weights ?? {});
+  // a removal shows until the machine's next report no longer lists the dataset
+  const removing = (name: string) => d.commands.some((c) => c.type === "dataset_remove" && c.args.name === name
+    && (["pending", "sent", "running"].includes(c.status) || (c.status === "done" && (c.finished ?? 0) > (d.report_time ?? 0))));
+  const datasets = rep.datasets ?? [];
+  const adding = d.commands.filter((c) => (c.type === "dataset_add" || c.type === "dataset_import") && ["pending", "sent", "running"].includes(c.status)
+    && !datasets.some((x) => x.name === c.args.name));
   const selfcheck = pendingOf(d, "selfcheck");
   const updatePending = d.current_release && d.release && d.current_release !== d.release;
 
@@ -223,12 +262,18 @@ export default function MachineDetail() {
 
           <Card title="Datasets" icon={<Database className="h-3.5 w-3.5" />} description="registered on this machine" flush
             actions={<Button small onClick={() => setAddDs(true)}><Plus />Add dataset</Button>}>
-            {!(rep.datasets ?? []).length ? <div className="px-5 pb-5 text-[13px] text-subtle">None yet.</div> : (
+            {!datasets.length && !adding.length ? <div className="px-5 pb-5 text-[13px] text-subtle">None yet: add the folders this machine trains on.</div> : (
               <ul className="px-2 pb-2">
-                {(rep.datasets ?? []).map((ds) => (
-                  <DatasetRow key={ds.name} d={ds} busy={!!pendingOf(d, "dataset_verify", (c) => c.args.name === ds.name)}
-                    onVerify={() => sendSafe("dataset_verify", { name: ds.name })}
-                    onRemove={() => { if (window.confirm(`Forget ${ds.name} on ${d.name}? Its files stay on the machine.`)) sendSafe("dataset_remove", { name: ds.name }); }} />
+                {datasets.map((ds) => (
+                  <DatasetRow key={ds.name} d={ds} verifying={!!pendingOf(d, "dataset_verify", (c) => c.args.name === ds.name)} removing={removing(ds.name)}
+                    onVerify={() => sendSafe("dataset_verify", { name: ds.name })} onRemove={() => setForget(ds)} />
+                ))}
+                {adding.map((c) => (
+                  <li key={c.id} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] animate-fade">
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent" />
+                    <span className="font-mono font-medium text-fg">{String(c.args.name)}</span>
+                    <span className="truncate text-xs text-subtle">{c.status === "running" ? (c.type === "dataset_import" ? "converting and hashing images…" : "checking and hashing images…") : `waiting for ${d.name}…`}</span>
+                  </li>
                 ))}
               </ul>
             )}
@@ -296,7 +341,23 @@ export default function MachineDetail() {
         </div>
       </div>
 
-      {addDs && <DatasetModal onClose={() => setAddDs(false)} onSend={send} />}
+      {addDs && <DatasetModal m={d} onClose={() => setAddDs(false)} onSend={send} />}
+      {forget && (
+        <Modal onClose={() => setForget(null)}>
+          <div className="space-y-4 p-5">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600"><Database className="h-4 w-4" /></span>
+              <h2 className="text-[15px] font-semibold text-fg">Remove <span className="font-mono">{forget.name}</span> from {d.name}?</h2>
+            </div>
+            <p className="text-[13px] leading-relaxed text-muted">Runs on this machine can no longer use it. Its files stay where they are{forget.path ? <> (<code className="break-all rounded bg-raised px-1 font-mono text-[11.5px]">{forget.path}</code>)</> : ""}; add it again any time.
+              Results already recorded on it are kept.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setForget(null)}>Cancel</Button>
+              <Button variant="danger" onClick={() => { sendSafe("dataset_remove", { name: forget.name }); setForget(null); }}><Trash2 />Remove</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {rename !== null && (
         <Modal onClose={() => setRename(null)}>
           <form className="space-y-4 p-5" onSubmit={(e) => { e.preventDefault(); api.renameMachine(d.id, rename).then(() => { setRename(null); m.refresh(); refreshMachines(); }).catch((err) => setToast({ msg: err.message, kind: "error" })); }}>
