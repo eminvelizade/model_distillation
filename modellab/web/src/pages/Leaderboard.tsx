@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowRight, ArrowUp, Cpu, Database, Gauge, GitCompareArrows, Layers, MessageSquareText, Pencil, Sparkles, Trophy, X, Zap } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Cpu, Database, MousePointerClick, Gauge, GitCompareArrows, Layers, MessageSquareText, Pencil, Sparkles, Trophy, X, Zap } from "lucide-react";
 import { api, fmt, ResultRow } from "../api";
 import { comparability } from "../comparability";
 import Scatter, { FAMILY, paretoFront, Pt, ScatterLegend } from "../components/Scatter";
+import Radar, { SERIES } from "../components/Radar";
 import { Button, Card, cx, Empty, inputCls, Medal, Modal, PageHeader, SearchInput, Segmented, Stat, Switch, Tag, Toast, relTime, useCountUp, usePoll } from "../ui";
 
 type SortKey = "label" | "map" | "map50" | "ap_small" | "ap_medium" | "ap_large" | "latency_ms" | "params_m" | "peak_vram_mb" | "created";
@@ -44,9 +45,13 @@ function ChampionCard({ best, second, ds }: { best: ResultRow; second?: ResultRo
   const v = useCountUp((best.map ?? 0) * 100, 900);
   const delta = second?.map != null && best.map != null ? (best.map - second.map) * 100 : null;
   return (
-    <div className="relative isolate min-w-0 overflow-hidden rounded-2xl bg-[#0a110d] p-6 text-white shadow-lift ring-1 ring-white/10">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(74_222_128/.28),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(56_189_248/.12),transparent_60%)]" />
+    <div className="relative isolate min-w-0 overflow-hidden rounded-2xl bg-[#06161a] p-6 text-white shadow-lift ring-1 ring-white/10">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(45_212_191/.32),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(56_189_248/.2),transparent_60%)]" />
       <div className="grid-bg absolute inset-0 -z-10" />
+      {/* a little frost: twinkling sparkles */}
+      {[["8%", "46%", 0], ["20%", "64%", 1.1], ["40%", "56%", 2.2], ["52%", "66%", 0.6], ["12%", "34%", 1.7], ["30%", "60%", 2.7]].map(([top, left, d]) => (
+        <span key={`${top}${left}`} aria-hidden className="pointer-events-none absolute -z-10 animate-twinkle text-[10px] text-cyan-100" style={{ top: top as string, left: left as string, animationDelay: `${d}s` }}>✦</span>
+      ))}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2.5 py-1 text-xs font-semibold text-amber-300 ring-1 ring-inset ring-amber-300/25">
           <Trophy className="h-3.5 w-3.5" /> Current champion
@@ -144,6 +149,9 @@ export default function Leaderboard() {
   const fastest = [...ranked].filter((r) => r.latency_ms != null).sort((a, b) => a.latency_ms! - b.latency_ms!)[0];
   const bestM50 = [...ranked].filter((r) => r.map50 != null).sort((a, b) => b.map50! - a.map50!)[0];
   const selRows = [...sel].map((k) => rows.find((r) => rk(r) === k)).filter(Boolean) as ResultRow[];
+  const seriesOf = (k: string) => { const i = [...sel].indexOf(k); return i < 0 ? undefined : SERIES[i % SERIES.length]; };
+  // Radar: the selection, or the champion when nothing is selected; axes scored against the comparable leaderboard.
+  const shapeRows = selRows.length ? selRows : ranked.slice(0, 1);
 
   return (
     <div className="space-y-6 pb-20">
@@ -173,9 +181,27 @@ export default function Leaderboard() {
           </div>
         </div>
 
-        <Card title="Accuracy vs latency" description={`${points.length} results · up and to the left is better · click a point to select it`} actions={<ScatterLegend />}>
-          <Scatter points={points} selected={sel} onPick={(p) => toggle(p.key)} />
-        </Card>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <Card title="Accuracy vs latency" description={`${points.length} results · up and to the left is better · click a point to select it`} actions={<ScatterLegend />}>
+            <Scatter points={points} selected={sel} ringColor={seriesOf} onPick={(p) => toggle(p.key)} />
+          </Card>
+          <Card title="Model shape" description={selRows.length ? "Outer ring = best on this leaderboard" : "Showing the champion · select rows to overlay"}>
+            {shapeRows.length ? <>
+              <Radar rows={shapeRows} colors={selRows.length ? SERIES : [SERIES[0]]} reference={ranked.length ? ranked : dsRows} />
+              <ul className="mt-3 space-y-1">
+                {shapeRows.map((r, i) => (
+                  <li key={rk(r)} className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-raised/60">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: SERIES[i] }} />
+                    <span className="min-w-0 flex-1 truncate font-medium text-fg">{r.label}</span>
+                    <span className="font-mono tabular-nums text-muted">{fmt.pct(r.map)}</span>
+                    {selRows.length > 0 && <button onClick={() => toggle(rk(r))} className="rounded p-0.5 text-subtle opacity-0 hover:text-fg group-hover:opacity-100" aria-label={`Deselect ${r.label}`}><X className="h-3 w-3" /></button>}
+                  </li>
+                ))}
+              </ul>
+              {!selRows.length && <div className="mt-2 flex items-center justify-center gap-1.5 text-2xs text-subtle"><MousePointerClick className="h-3 w-3" />click rows or points to compare up to 4</div>}
+            </> : <div className="py-16 text-center text-sm text-subtle">No comparable results yet.</div>}
+          </Card>
+        </div>
 
         <Card flush>
           <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
@@ -201,10 +227,10 @@ export default function Leaderboard() {
                   const why = comp.reason(r), k = rk(r), on = sel.has(k);
                   return (
                     <tr key={k} onClick={() => toggle(k)}
-                      className={cx("group cursor-pointer border-b border-line/70 transition last:border-0", on ? "bg-accent/[.06]" : "hover:bg-raised/50")}>
+                      className={cx("group cursor-pointer border-b border-line/70 transition last:border-0", on ? "bg-accent/[.05]" : "hover:bg-raised/50")}>
                       <td className="relative pl-4">
-                        {on && <span className="absolute inset-y-0 left-0 w-[3px] bg-accent" />}
-                        <input type="checkbox" className="h-4 w-4 cursor-pointer rounded accent-green-600" checked={on} onChange={() => toggle(k)} onClick={(e) => e.stopPropagation()} />
+                        {on && <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: seriesOf(k) }} />}
+                        <input type="checkbox" className="h-4 w-4 cursor-pointer rounded accent-teal-600" checked={on} onChange={() => toggle(k)} onClick={(e) => e.stopPropagation()} />
                       </td>
                       <td className="px-1 text-center"><Medal rank={rank.get(k) ?? null} /></td>
                       <td className="px-3 py-3">
@@ -226,7 +252,7 @@ export default function Leaderboard() {
                       <td className="px-3">
                         <div className="flex items-center justify-end gap-2.5">
                           <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-raised sm:block">
-                            <div className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500" style={{ width: `${Math.max(4, ((r.map ?? 0) / maxMap) * 100)}%`, opacity: why ? 0.4 : 1 }} />
+                            <div className="h-full rounded-full bg-gradient-to-r from-teal-300 to-cyan-500" style={{ width: `${Math.max(4, ((r.map ?? 0) / maxMap) * 100)}%`, opacity: why ? 0.4 : 1 }} />
                           </div>
                           <span className="w-10 text-right font-mono font-semibold tabular-nums text-fg">{fmt.pct(r.map)}</span>
                         </div>
@@ -252,7 +278,7 @@ export default function Leaderboard() {
             <div className="hidden min-w-0 items-center gap-1.5 overflow-hidden md:flex">
               {selRows.map((r) => (
                 <span key={rk(r)} className="flex max-w-[160px] items-center gap-1.5 rounded-lg bg-white/10 px-2 py-1 text-xs">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: FAMILY[r.family]?.color }} /><span className="truncate">{r.label}</span>
+                  <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: seriesOf(rk(r)) }} /><span className="truncate">{r.label}</span>
                 </span>
               ))}
             </div>

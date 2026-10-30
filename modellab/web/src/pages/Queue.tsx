@@ -4,7 +4,7 @@ import { ArrowUpRight, Ban, Check, CheckCircle2, Clock, Cpu, Hourglass, Loader2,
 import { api, fmt, RunSummary } from "../api";
 import { Button, Card, cx, Empty, IconButton, LogView, Mascot, PageHeader, ProgressBar, Ring, StatusPill, TermTab, Toast, relTime, useCountUp, usePoll } from "../ui";
 
-const STAGE_DOT: Record<string, string> = { distill: "bg-green-500", finetune: "bg-sky-500", eval: "bg-orange-400", features: "bg-amber-400" };
+const STAGE_DOT: Record<string, string> = { distill: "bg-teal-400", finetune: "bg-sky-500", eval: "bg-orange-400", features: "bg-amber-400" };
 
 /** Horizontal stepper: one node per stage with its status and duration. */
 export function StageStepper({ run }: { run: RunSummary }) {
@@ -53,7 +53,7 @@ function NowRunning({ run, onCancel }: { run: RunSummary; onCancel: () => void }
   const nav = useNavigate();
   return (
     <div className="relative isolate overflow-hidden rounded-2xl border border-line bg-surface shadow-soft">
-      <div className="absolute inset-x-0 top-0 -z-10 h-40 bg-[radial-gradient(32rem_10rem_at_10%_0%,rgb(74_222_128/.12),transparent_70%)]" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-40 bg-[radial-gradient(32rem_10rem_at_10%_0%,rgb(45_212_191/.14),transparent_70%)]" />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
       <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-center sm:p-6">
         <Ring value={run.progress} size={124} stroke={10}>
@@ -148,7 +148,7 @@ export default function Queue() {
                   {g.power_w ? <span className="font-mono tabular-nums text-subtle">{g.power_w.toFixed(0)} W</span> : null}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <Gauge label="Utilization" value={g.util} max={100} text={<>{Math.round(g.util)}<span className="text-[10px] text-subtle">%</span></>} colors={["#86efac", "#22c55e"]} />
+                  <Gauge label="Utilization" value={g.util} max={100} text={<>{Math.round(g.util)}<span className="text-[10px] text-subtle">%</span></>} colors={["#5eead4", "#14b8a6"]} />
                   <Gauge label="VRAM" value={g.mem_used_mb} max={g.mem_total_mb} warn={0.92} text={<>{(g.mem_used_mb / 1024).toFixed(1)}<span className="text-[10px] text-subtle">G</span></>} colors={["#7dd3fc", "#0ea5e9"]} />
                   <Gauge label="Temp" value={g.temp_c} max={95} warn={0.85} text={<>{Math.round(g.temp_c)}<span className="text-[10px] text-subtle">°</span></>} colors={["#f59e0b", "#f97316"]} />
                 </div>

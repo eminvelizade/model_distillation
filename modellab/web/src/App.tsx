@@ -54,7 +54,7 @@ function WorkerWidget({ q }: { q: QueueData | null }) {
       </div>
       {running && (
         <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-raised">
-          <div className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-700" style={{ width: `${running.progress * 100}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-teal-300 via-cyan-400 to-sky-400 transition-all duration-700" style={{ width: `${running.progress * 100}%` }} />
         </div>
       )}
       {g && (
@@ -116,6 +116,11 @@ export default function App() {
     </span>
   ) : undefined;
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+
+  useEffect(() => {
+    const page = loc.pathname.startsWith("/runs/") ? "Run" : NAV.find((n) => n.to === loc.pathname)?.label;
+    document.title = page ? `${page} · ModelLab` : "ModelLab";
+  }, [loc.pathname]);
 
   return (
     <div className="min-h-screen lg:pl-[248px]">

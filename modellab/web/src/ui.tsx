@@ -174,7 +174,7 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
 }) {
   const v = {
     primary: "bg-fg text-canvas shadow-soft hover:bg-fg/85",
-    brand: "bg-gradient-to-b from-green-500 to-green-600 text-white shadow-[0_1px_0_rgb(255_255_255/.25)_inset,0_6px_16px_-6px_rgb(34_197_94/.6)] ring-1 ring-inset ring-green-700/30 hover:from-green-400 hover:to-green-600",
+    brand: "bg-gradient-to-b from-teal-400 to-cyan-600 text-white shadow-[0_1px_0_rgb(255_255_255/.3)_inset,0_6px_18px_-6px_rgb(20_184_166/.65)] ring-1 ring-inset ring-cyan-700/25 hover:from-teal-300 hover:to-cyan-500",
     secondary: "bg-surface text-fg ring-1 ring-inset ring-line shadow-soft hover:bg-raised",
     danger: "bg-surface text-rose-600 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/10 dark:text-rose-300",
     ghost: "text-muted hover:bg-raised hover:text-fg",
@@ -229,7 +229,7 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 export function ProgressBar({ value, className, active }: { value: number; className?: string; active?: boolean }) {
   return (
     <div className={cx("h-1.5 w-full overflow-hidden rounded-full bg-raised", className)}>
-      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-700"
+      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-teal-300 via-cyan-400 to-sky-400 transition-all duration-700"
         style={{ width: `${Math.max(2, Math.min(100, value * 100))}%` }}>
         {active && <div className="shimmer absolute inset-0 animate-shimmer" />}
       </div>
@@ -238,7 +238,7 @@ export function ProgressBar({ value, className, active }: { value: number; class
 }
 
 /** Circular progress / gauge. */
-export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#86efac", "#22c55e"], track = "stroke-raised" }: {
+export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#5eead4", "#38bdf8"], track = "stroke-raised" }: {
   value: number; size?: number; stroke?: number; children?: ReactNode; gradient?: [string, string]; track?: string;
 }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r;
@@ -332,7 +332,7 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
 /** "Labby": a little flask with eyes. Moods change the face. */
 export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "happy" | "busy" | "sleepy" | "sad" }) {
   const id = useRef(`m${Math.random().toString(36).slice(2, 8)}`).current;
-  const ink = "#14532d";
+  const ink = "#134e4a";
   const eyes = mood === "sleepy"
     ? <><path d="M24 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /><path d="M34 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /></>
     : <><circle cx="27" cy="39" r="2.6" fill={ink} /><circle cx="37" cy="39" r="2.6" fill={ink} /><circle cx="27.8" cy="38.2" r=".8" fill="#fff" /><circle cx="37.8" cy="38.2" r=".8" fill="#fff" /></>;
@@ -342,14 +342,14 @@ export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "h
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={cx("relative shrink-0", mood === "busy" && "animate-bob")} aria-hidden>
       <defs>
-        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#bbf7d0" /><stop offset="1" stopColor="#4ade80" /></linearGradient>
+        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#a5f3fc" /><stop offset="1" stopColor="#2dd4bf" /></linearGradient>
       </defs>
-      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#f0fdf4" stroke="#16a34a" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#f0fdfa" stroke="#0d9488" strokeWidth="2.5" strokeLinejoin="round" />
       <path d="M18.6 40h26.8l3.2 5a4.5 4.5 0 0 1-3.8 7H19.2a4.5 4.5 0 0 1-3.8-7z" fill={`url(#${id}l)`} opacity=".95" />
       {eyes}
       {mouth}
       <circle cx="22" cy="44" r="1.8" fill="#fda4af" opacity=".8" /><circle cx="42" cy="44" r="1.8" fill="#fda4af" opacity=".8" />
-      <circle cx="44" cy="20" r="2.2" fill="#86efac" /><circle cx="48" cy="13" r="1.4" fill="#7dd3fc" />
+      <circle cx="44" cy="20" r="2.2" fill="#5eead4" /><circle cx="48" cy="13" r="1.4" fill="#7dd3fc" />
     </svg>
   );
 }
@@ -430,7 +430,7 @@ export function LogView({ runId, stage, height = "h-80", tabs, live }: { runId: 
             </div>
           )) : <div className="flex items-center gap-2 px-4 text-zinc-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> waiting for log lines…</div>}
         </pre>
-        {!follow && <button onClick={() => setFollow(true)} className="absolute bottom-3 right-4 rounded-full bg-green-600 px-2.5 py-1 text-xs font-medium text-white shadow-lg">follow ↓</button>}
+        {!follow && <button onClick={() => setFollow(true)} className="absolute bottom-3 right-4 rounded-full bg-teal-600 px-2.5 py-1 text-xs font-medium text-white shadow-lg">follow ↓</button>}
       </div>
     </div>
   );

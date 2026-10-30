@@ -3,8 +3,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Crown, Loader2 } from "lucide-react";
 import { api, fmt, ResultRow } from "../api";
 import { Button, Callout, Card, cx, Empty, PageHeader, useWidth } from "../ui";
+import Radar, { score, SERIES as PALETTE } from "../components/Radar";
 
-const PALETTE = ["#22c55e", "#3b82f6", "#f59e0b", "#f43f5e"];
 type Metric = { key: keyof ResultRow; label: string; better: "high" | "low"; f: (v: any) => string };
 const METRICS: Metric[] = [
   { key: "map", label: "mAP50:95", better: "high", f: (v) => fmt.pct(v) },
@@ -17,64 +17,6 @@ const METRICS: Metric[] = [
   { key: "params_m", label: "Params", better: "low", f: (v) => (v == null ? "–" : `${v.toFixed(1)} M`) },
   { key: "peak_vram_mb", label: "Peak VRAM", better: "low", f: (v) => fmt.mb(v) },
 ];
-
-/** Score in (0, 1] relative to the best of the compared rows (1 = best). */
-function score(rows: ResultRow[], key: keyof ResultRow, better: "high" | "low") {
-  const vals = rows.map((r) => r[key] as number | null);
-  const valid = vals.filter((v): v is number => v != null && v > 0);
-  if (!valid.length) return vals.map(() => null);
-  const best = better === "high" ? Math.max(...valid) : Math.min(...valid);
-  return vals.map((v) => (v == null || v <= 0 ? null : better === "high" ? v / best : best / v));
-}
-
-const RADAR: { key: keyof ResultRow; label: string; better: "high" | "low" }[] = [
-  { key: "map", label: "mAP", better: "high" },
-  { key: "map50", label: "mAP50", better: "high" },
-  { key: "ap_small", label: "AP S", better: "high" },
-  { key: "ap_medium", label: "AP M", better: "high" },
-  { key: "ap_large", label: "AP L", better: "high" },
-  { key: "latency_ms", label: "Speed", better: "low" },
-  { key: "params_m", label: "Compact", better: "low" },
-];
-
-function Radar({ rows }: { rows: ResultRow[] }) {
-  const S = 340, c = S / 2, R = 108;
-  const axes = RADAR.map((a) => ({ ...a, s: score(rows, a.key, a.better) }));
-  // stretch the scale so near-identical contenders stay distinguishable: worst score -> 25% radius, best -> 100%
-  const all = axes.flatMap((a) => a.s).filter((v): v is number => v != null);
-  const lo = Math.min(0.85, Math.min(...all) - 0.05);
-  const radius = (v: number | null) => (v == null ? 0 : 0.25 + 0.75 * Math.max(0, (v - lo) / (1 - lo)));
-  const n = axes.length;
-  const pt = (i: number, f: number) => {
-    const a = -Math.PI / 2 + (2 * Math.PI * i) / n;
-    return [c + Math.cos(a) * R * f, c + Math.sin(a) * R * f] as const;
-  };
-  return (
-    <svg viewBox={`0 0 ${S} ${S}`} className="mx-auto block w-full max-w-[340px]">
-      {[0.25, 0.5, 0.75, 1].map((f) => (
-        <polygon key={f} points={axes.map((_, i) => pt(i, f).join(",")).join(" ")} fill="none" className="stroke-line" strokeDasharray={f < 1 ? "2 3" : undefined} />
-      ))}
-      {axes.map((a, i) => {
-        const [x, y] = pt(i, 1), [lx, ly] = pt(i, 1.2);
-        return (
-          <g key={String(a.key)}>
-            <line x1={c} y1={c} x2={x} y2={y} className="stroke-line" />
-            <text x={lx} y={ly + 4} textAnchor={Math.abs(lx - c) < 4 ? "middle" : lx > c ? "start" : "end"} className="fill-muted text-[11px] font-medium">{a.label}</text>
-          </g>
-        );
-      })}
-      {rows.map((_, ri) => {
-        const pts = axes.map((a, i) => pt(i, radius(a.s[ri])));
-        return (
-          <g key={ri}>
-            <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={PALETTE[ri]} fillOpacity={0.12} stroke={PALETTE[ri]} strokeWidth={2} strokeLinejoin="round" />
-            {pts.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r={3} fill={PALETTE[ri]} className="stroke-surface" strokeWidth={1.5} />)}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
 function ClassBars({ rows }: { rows: ResultRow[] }) {
   const [ref, W] = useWidth<HTMLDivElement>();

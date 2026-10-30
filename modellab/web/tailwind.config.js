@@ -26,7 +26,7 @@ export default {
       boxShadow: {
         soft: "0 1px 2px rgb(16 16 24 / .04), 0 2px 8px -2px rgb(16 16 24 / .06)",
         lift: "0 1px 2px rgb(16 16 24 / .05), 0 12px 32px -8px rgb(16 16 24 / .14)",
-        glow: "0 0 0 1px rgb(34 197 94 / .25), 0 8px 28px -6px rgb(34 197 94 / .45)",
+        glow: "0 0 0 1px rgb(20 184 166 / .25), 0 8px 28px -6px rgb(20 184 166 / .45)",
         inset: "inset 0 1px 0 rgb(255 255 255 / .12)",
       },
       keyframes: {
@@ -37,6 +37,7 @@ export default {
         shimmer: { from: { backgroundPosition: "200% 0" }, to: { backgroundPosition: "-200% 0" } },
         ping2: { "0%": { transform: "scale(1)", opacity: ".6" }, "80%,100%": { transform: "scale(2.4)", opacity: "0" } },
         spin: { to: { transform: "rotate(360deg)" } },
+        twinkle: { "0%,100%": { opacity: ".15", transform: "scale(.7)" }, "50%": { opacity: ".95", transform: "scale(1)" } },
       },
       animation: {
         bob: "bob 2.4s ease-in-out infinite",
@@ -47,6 +48,7 @@ export default {
         shimmer: "shimmer 2.2s linear infinite",
         ping2: "ping2 1.8s cubic-bezier(0,0,.2,1) infinite",
         "spin-slow": "spin 1.6s linear infinite",
+        twinkle: "twinkle 3.2s ease-in-out infinite",
       },
     },
   },

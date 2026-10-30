@@ -29,7 +29,7 @@ export function niceTicks(a: number, b: number, n = 5): number[] {
   return out;
 }
 
-export default function Scatter({ points, onPick, selected }: { points: Pt[]; onPick?: (p: Pt) => void; selected: Set<string> }) {
+export default function Scatter({ points, onPick, selected, ringColor }: { points: Pt[]; onPick?: (p: Pt) => void; selected: Set<string>; ringColor?: (key: string) => string | undefined }) {
   const [hover, setHover] = useState<Pt | null>(null);
   const [ref, W] = useWidth<HTMLDivElement>();
   const H = W < 560 ? 280 : 360, P = { l: 40, r: 20, t: 30, b: 46 };
@@ -74,8 +74,8 @@ export default function Scatter({ points, onPick, selected }: { points: Pt[]; on
       {W > 0 && (
         <svg width={W} height={H} className="block select-none overflow-visible">
           <defs>
-            <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#22c55e" stopOpacity=".11" /><stop offset="1" stopColor="#22c55e" stopOpacity="0" /></linearGradient>
-            <linearGradient id="pf-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#4ade80" /><stop offset="1" stopColor="#16a34a" /></linearGradient>
+            <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2dd4bf" stopOpacity=".14" /><stop offset="1" stopColor="#38bdf8" stopOpacity="0" /></linearGradient>
+            <linearGradient id="pf-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#2dd4bf" /><stop offset="1" stopColor="#0ea5e9" /></linearGradient>
           </defs>
           {yt.map((t) => (
             <g key={`y${t}`}>
@@ -105,7 +105,7 @@ export default function Scatter({ points, onPick, selected }: { points: Pt[]; on
               <g key={p.key} onMouseEnter={() => setHover(p)} onMouseLeave={() => setHover(null)} onClick={() => onPick?.(p)} className="cursor-pointer">
                 <circle cx={cx} cy={cy} r={16} fill="transparent" />
                 {onFront && <circle cx={cx} cy={cy} r={12} fill={c} opacity={0.14} />}
-                {sel && <circle cx={cx} cy={cy} r={10.5} fill="none" className="stroke-accent" strokeWidth={2} />}
+                {sel && <circle cx={cx} cy={cy} r={10.5} fill="none" className={ringColor?.(p.key) ? undefined : "stroke-accent"} stroke={ringColor?.(p.key)} strokeWidth={2.5} />}
                 <circle cx={cx} cy={cy} r={hov ? 7.5 : 6} fill={p.comparable ? c : "transparent"} stroke={p.comparable ? undefined : c}
                   className={p.comparable ? "stroke-surface" : undefined} strokeWidth={p.comparable ? 2 : 1.75} strokeDasharray={p.comparable ? undefined : "2.5 2"}
                   style={{ transition: "r .15s ease" }} />
@@ -139,7 +139,7 @@ export function ScatterLegend() {
       {Object.entries(FAMILY).map(([k, f]) => (
         <span key={k} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full ring-2 ring-surface" style={{ background: f.color }} />{f.label}</span>
       ))}
-      <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full bg-gradient-to-r from-green-400 to-green-600" />Pareto front</span>
+      <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full bg-gradient-to-r from-teal-400 to-sky-500" />Pareto front</span>
       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-dashed border-subtle" />not comparable</span>
     </div>
   );

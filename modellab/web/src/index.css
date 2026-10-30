@@ -12,7 +12,7 @@
   --fg: 17 17 22;
   --muted: 92 92 106;
   --subtle: 140 140 154;
-  --accent: 22 163 74;
+  --accent: 13 148 146;
 }
 html.dark {
   color-scheme: dark;
@@ -23,7 +23,7 @@ html.dark {
   --fg: 244 244 247;
   --muted: 166 166 178;
   --subtle: 108 108 122;
-  --accent: 74 222 128;
+  --accent: 94 234 222;
 }
 
 body {
@@ -31,7 +31,7 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
 }
-::selection { background: rgb(74 222 128 / 0.3); }
+::selection { background: rgb(45 212 191 / 0.3); }
 
 .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(120 120 140 / .35) transparent; }
 .scroll-thin::-webkit-scrollbar { height: 8px; width: 8px; }
@@ -42,13 +42,13 @@ body {
 /* Soft aurora behind the top of every page. */
 .aurora {
   background:
-    radial-gradient(60rem 22rem at 18% -6rem, rgb(74 222 128 / .12), transparent 70%),
-    radial-gradient(40rem 18rem at 85% -8rem, rgb(56 189 248 / .06), transparent 70%);
+    radial-gradient(60rem 22rem at 18% -6rem, rgb(45 212 191 / .16), transparent 70%),
+    radial-gradient(44rem 20rem at 85% -8rem, rgb(125 211 252 / .16), transparent 70%);
 }
 html.dark .aurora {
   background:
-    radial-gradient(60rem 22rem at 18% -6rem, rgb(74 222 128 / .09), transparent 70%),
-    radial-gradient(40rem 18rem at 85% -8rem, rgb(56 189 248 / .05), transparent 70%);
+    radial-gradient(60rem 22rem at 18% -6rem, rgb(45 212 191 / .11), transparent 70%),
+    radial-gradient(44rem 20rem at 85% -8rem, rgb(56 189 248 / .08), transparent 70%);
 }
 
 /* Fine grid used on hero cards. */
