@@ -4,6 +4,9 @@
 > top of these scripts: `python app.py` → http://127.0.0.1:8765, or `bin/modellab run recipes/<template>.yaml`.
 > See [docs/MODELLAB.md](docs/MODELLAB.md) (usage, eval definition, what is and isn't tested) and
 > [docs/MODELLAB_VERIFICATION.md](docs/MODELLAB_VERIFICATION.md) (what lightly-train / rfdetr actually support).
+>
+> **ModelLab Hub** (new): the same app hosted on Railway for a team: pre-registered users sign in, and each user's
+> runs execute on their own Linux GPU PCs through a small agent installed with one command. See [docs/HUB.md](docs/HUB.md).
 
 Domain-adapt the RF-DETR Nano backbone by distilling a DINOv3 ViT teacher (default ViT-L/16; ViT-H+/16 and
 ViT-7B/16 via `--teacher-model`) into it with LightlyTrain

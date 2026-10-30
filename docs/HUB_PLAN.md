@@ -1,5 +1,7 @@
 # ModelLab Hub + Agent: build plan
 
+> Status: built. How to deploy and use it: [HUB.md](HUB.md).
+
 One web app (the **hub**, hosted on Railway) that pre-registered users log into, and a small background program
 (the **agent**) on each user's Linux GPU PC that runs the work. The hub holds accounts, the queue, results, logs and
 small artifacts. The PC holds the computation, the datasets, the weights and the checkpoints.

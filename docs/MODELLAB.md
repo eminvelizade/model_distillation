@@ -1,7 +1,8 @@
 # ModelLab
 
 A local web app plus engine for running, queueing and comparing vision-model experiments: fine-tune, distill,
-benchmark. It is single-user and has no auth, Docker or cloud services. It runs the same way on the online PC (RTX 5090)
+benchmark. It is single-user and has no auth, Docker or cloud services. (The same engine and UI also run as a
+hosted, multi-user hub with an agent on each GPU PC: [HUB.md](HUB.md).) It runs the same way on the online PC (RTX 5090)
 and the offline PC (conda-pack bundle, `offline_guard` on, no runtime downloads, no CDN assets).
 
 The engine comes first. The UI only calls it.
