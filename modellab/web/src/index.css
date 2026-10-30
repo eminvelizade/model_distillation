@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Theme tokens as RGB triplets so Tailwind opacity modifiers work (bg-surface/80 …).
-   Neutrals carry a faint icy-blue tint so they sit with the teal accent instead of against it. */
+   Neutrals carry a faint icy-blue tint so they sit with the glacier-ice accent instead of against it. */
 :root {
   color-scheme: light;
   --canvas: 246 249 250;
@@ -13,7 +13,7 @@
   --fg: 15 23 28;
   --muted: 84 98 108;
   --subtle: 134 148 158;
-  --accent: 13 148 146;
+  --accent: 10 130 150;
   --code: 13 24 30;
   --shadow-soft: 0 1px 2px rgb(15 40 50 / .04), 0 2px 10px -2px rgb(15 40 50 / .06);
   --shadow-lift: 0 1px 2px rgb(15 40 50 / .05), 0 18px 40px -14px rgb(15 40 50 / .2);
@@ -27,7 +27,7 @@ html.dark {
   --fg: 236 243 246;
   --muted: 155 170 179;
   --subtle: 101 116 125;
-  --accent: 94 234 222;
+  --accent: 110 226 240;
   --code: 8 13 17;
   --shadow-soft: inset 0 1px 0 rgb(255 255 255 / .03), 0 1px 2px rgb(0 0 0 / .3);
   --shadow-lift: inset 0 1px 0 rgb(255 255 255 / .04), 0 18px 44px -14px rgb(0 0 0 / .7);
@@ -38,7 +38,7 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
 }
-::selection { background: rgb(45 212 191 / 0.3); }
+::selection { background: rgb(56 205 227 / 0.3); }
 
 .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(120 140 150 / .35) transparent; }
 .scroll-thin::-webkit-scrollbar { height: 8px; width: 8px; }
@@ -49,14 +49,14 @@ body {
 /* Soft aurora behind the top of every page; it breathes very slowly. */
 .aurora {
   background:
-    radial-gradient(60rem 22rem at 18% -6rem, rgb(45 212 191 / .16), transparent 70%),
-    radial-gradient(44rem 20rem at 85% -8rem, rgb(125 211 252 / .16), transparent 70%);
+    radial-gradient(60rem 22rem at 18% -6rem, rgb(56 205 227 / .16), transparent 70%),
+    radial-gradient(44rem 20rem at 85% -8rem, rgb(149 238 221 / .14), transparent 70%);
   animation: drift 24s ease-in-out infinite alternate;
 }
 html.dark .aurora {
   background:
-    radial-gradient(60rem 22rem at 18% -6rem, rgb(45 212 191 / .11), transparent 70%),
-    radial-gradient(44rem 20rem at 85% -8rem, rgb(56 189 248 / .08), transparent 70%);
+    radial-gradient(60rem 22rem at 18% -6rem, rgb(56 205 227 / .11), transparent 70%),
+    radial-gradient(44rem 20rem at 85% -8rem, rgb(149 238 221 / .06), transparent 70%);
 }
 @keyframes drift {
   from { transform: translate3d(0, 0, 0) scale(1); }

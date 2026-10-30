@@ -1,7 +1,7 @@
 import { ResultRow } from "../api";
 
 /** Series colours for selected / compared results (also used by the Leaderboard selection). */
-export const SERIES = ["#14b8a6", "#3b82f6", "#f59e0b", "#f43f5e"];
+export const SERIES = ["#14b2cb", "#3b82f6", "#f59e0b", "#f43f5e"];
 
 /** Score in (0, 1] relative to the best value among `ref` (1 = as good as the best). */
 export function score(rows: ResultRow[], key: keyof ResultRow, better: "high" | "low", ref: ResultRow[] = rows) {

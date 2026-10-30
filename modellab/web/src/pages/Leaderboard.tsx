@@ -54,11 +54,11 @@ function ChampionCard({ best, second, ds }: { best: ResultRow; second?: ResultRo
       {/* soft frost light that follows the cursor */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         style={{ background: "radial-gradient(16rem circle at var(--mx, 50%) var(--my, 50%), rgb(165 243 252 / .14), transparent 65%)" }} />
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(45_212_191/.32),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(56_189_248/.2),transparent_60%)]" />
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(56_205_227/.3),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(149_238_221/.16),transparent_60%)]" />
       <div className="grid-bg absolute inset-0 -z-10" />
       {/* a little frost: twinkling sparkles */}
       {[["8%", "46%", 0], ["20%", "64%", 1.1], ["40%", "56%", 2.2], ["52%", "66%", 0.6], ["12%", "34%", 1.7], ["30%", "60%", 2.7]].map(([top, left, d]) => (
-        <span key={`${top}${left}`} aria-hidden className="pointer-events-none absolute -z-10 animate-twinkle text-[10px] text-cyan-100" style={{ top: top as string, left: left as string, animationDelay: `${d}s` }}>✦</span>
+        <span key={`${top}${left}`} aria-hidden className="pointer-events-none absolute -z-10 animate-twinkle text-[10px] text-ice-100" style={{ top: top as string, left: left as string, animationDelay: `${d}s` }}>✦</span>
       ))}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2.5 py-1 text-xs font-semibold text-amber-300 ring-1 ring-inset ring-amber-300/25">
@@ -239,7 +239,7 @@ export default function Leaderboard() {
                       className={cx("group cursor-pointer border-b border-line/70 transition last:border-0", on ? "bg-accent/[.06]" : "hover:bg-accent/[.035]")}>
                       <td className="relative pl-4">
                         {on && <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: seriesOf(k) }} />}
-                        <input type="checkbox" className="h-4 w-4 cursor-pointer rounded accent-teal-600" checked={on} onChange={() => toggle(k)} onClick={(e) => e.stopPropagation()} />
+                        <input type="checkbox" className="h-4 w-4 cursor-pointer rounded accent-ice-600" checked={on} onChange={() => toggle(k)} onClick={(e) => e.stopPropagation()} />
                       </td>
                       <td className="px-1 text-center"><Medal rank={rank.get(k) ?? null} /></td>
                       <td className="px-3 py-3">
@@ -261,7 +261,7 @@ export default function Leaderboard() {
                       <td className="px-3">
                         <div className="flex items-center justify-end gap-2.5">
                           <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-raised sm:block">
-                            <div className="h-full origin-left animate-growx rounded-full bg-gradient-to-r from-teal-300 to-cyan-500" style={{ width: `${Math.max(4, ((r.map ?? 0) / maxMap) * 100)}%`, opacity: why ? 0.4 : 1, animationDelay: `${300 + Math.min(i, 12) * 35}ms` }} />
+                            <div className="h-full origin-left animate-growx rounded-full bg-gradient-to-r from-ice-300 to-ice-500" style={{ width: `${Math.max(4, ((r.map ?? 0) / maxMap) * 100)}%`, opacity: why ? 0.4 : 1, animationDelay: `${300 + Math.min(i, 12) * 35}ms` }} />
                           </div>
                           <span className="w-10 text-right font-mono font-semibold tabular-nums text-fg">{fmt.pct(r.map)}</span>
                         </div>

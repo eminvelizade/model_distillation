@@ -15,7 +15,7 @@ const enc = (v: unknown) => (isRef(v) ? `@${v.from}` : v === undefined || v === 
 const dec = (s: string): unknown => (s.startsWith("@") ? { from: s.slice(1) } : s);
 
 const TYPE_STYLE: Record<string, { color: string; icon: typeof Target; blurb: string }> = {
-  distill: { color: "from-teal-300 to-cyan-500", icon: FlaskConical, blurb: "teacher → RF-DETR backbone" },
+  distill: { color: "from-ice-glint to-ice-500", icon: FlaskConical, blurb: "teacher → RF-DETR backbone" },
   finetune: { color: "from-sky-400 to-blue-500", icon: Target, blurb: "supervised detection training" },
   eval: { color: "from-orange-400 to-rose-400", icon: BadgeCheck, blurb: "identical COCO eval + latency" },
   features: { color: "from-amber-300 to-amber-500", icon: ScanSearch, blurb: "feature probe + PCA" },
@@ -25,10 +25,10 @@ const TYPE_STYLE: Record<string, { color: string; icon: typeof Target; blurb: st
 function templateStyle(name: string, i: number) {
   const n = name.toLowerCase();
   if (/sweep/.test(n)) return { icon: Shuffle, color: "from-amber-300 to-orange-400" };
-  if (/distill/.test(n)) return { icon: FlaskConical, color: "from-teal-300 to-cyan-500" };
+  if (/distill/.test(n)) return { icon: FlaskConical, color: "from-ice-glint to-ice-500" };
   if (/probe|feature/.test(n)) return { icon: ScanSearch, color: "from-amber-300 to-amber-500" };
   if (/fine|baseline/.test(n)) return { icon: Target, color: "from-sky-400 to-blue-500" };
-  return [{ icon: Wand2, color: "from-teal-400 to-cyan-500" }, { icon: Layers, color: "from-cyan-300 to-sky-500" }][i % 2];
+  return [{ icon: Wand2, color: "from-ice-300 to-ice-600" }, { icon: Layers, color: "from-ice-200 to-sky-500" }][i % 2];
 }
 
 function blankStage(type: string, existing: Stage[]): Stage {
@@ -189,7 +189,7 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
             <Select value={st.split ?? "test"} onChange={(v) => set("split", v === "test" ? undefined : v)}><option value="test">test</option><option value="valid">valid</option></Select>
           </Field>
           <label className="flex items-center gap-2 self-end pb-2 text-[13px] text-muted">
-            <input type="checkbox" checked={st.latency !== false} onChange={(e) => set("latency", e.target.checked ? undefined : false)} className="h-4 w-4 accent-teal-600" />
+            <input type="checkbox" checked={st.latency !== false} onChange={(e) => set("latency", e.target.checked ? undefined : false)} className="h-4 w-4 accent-ice-600" />
             measure latency (fp16, bs 1)
           </label>
         </>}
@@ -403,7 +403,7 @@ export default function NewExperiment() {
           ) : (
             <Card title="Recipe YAML" description="Edit freely; switch back to Builder when it fits the form">
               <textarea value={yamlText} onChange={(e) => setYamlText(e.target.value)} spellCheck={false}
-                className="scroll-thin h-[600px] w-full resize-y rounded-xl bg-code p-4 font-mono text-[12.5px] leading-[1.7] text-emerald-200 caret-teal-300 outline-none ring-1 ring-black/5 focus:ring-2 focus:ring-accent/60 dark:ring-white/[.07]" />
+                className="scroll-thin h-[600px] w-full resize-y rounded-xl bg-code p-4 font-mono text-[12.5px] leading-[1.7] text-emerald-200 caret-ice-300 outline-none ring-1 ring-black/5 focus:ring-2 focus:ring-accent/60 dark:ring-white/[.07]" />
             </Card>
           )}
         </div>
@@ -450,7 +450,7 @@ export default function NewExperiment() {
               )}
               {hub && (machines.length ? (
                 <div className="flex items-center gap-2.5 pt-1 text-xs text-muted">
-                  <span className="shrink-0">Runs on</span><MachinePicker compact className="min-w-0 flex-1" />
+                  <span className="shrink-0">Runs on</span><MachinePicker className="min-w-0 flex-1" />
                 </div>
               ) : <Callout tone="info">Add a GPU machine first on the <Link to="/machines" className="font-medium underline">Machines</Link> page.</Callout>)}
               {hub && machine && !machine.online && <div className="text-xs text-amber-700 dark:text-amber-300">{machine.name} is offline: runs wait in its queue until it's back.</div>}
