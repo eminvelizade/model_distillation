@@ -13,6 +13,7 @@ to machines that are already installed.
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
 import io
 import json
@@ -140,7 +141,7 @@ def build(root: Path = ROOT, version: str | None = None) -> tuple[dict, bytes]:
         tar.addfile(ti, io.BytesIO(data))
 
     info = {"version": version, "git_commit": commit, "dirty": dirty, "lock_hash": lock_hash(root), "python": PYTHON}
-    with tarfile.open(fileobj=buf, mode="w:gz", compresslevel=9) as tar:
+    with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=9, mtime=0) as gz, tarfile.open(fileobj=gz, mode="w") as tar:
         for p in files:
             add(tar, str(p.relative_to(root)), p.read_bytes(), 0o755 if p.parent.name == "bin" else 0o644)
         add(tar, "RELEASE.json", json.dumps(info, indent=2).encode())
