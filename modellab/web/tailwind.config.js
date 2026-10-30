@@ -20,11 +20,13 @@ export default {
         muted: v("muted"),
         subtle: v("subtle"),
         accent: v("accent"),
+        "accent-soft": v("accent-soft"),
         code: v("code"),
-        // the brand: Frozen ice blue (hue ~201), luminous and cool, no green in it; `frost` is the pale highlight.
-        // Use these instead of teal / cyan / sky for brand.
-        ice: { 50: "#f0f9ff", 100: "#dff2fe", 200: "#bfe6fc", 300: "#8fd3f8", 400: "#57bbf1", 500: "#2fa2e3", 600: "#2191d6",
-               700: "#1a7bb8", 800: "#19628f", 900: "#174f72", 950: "#0e3149", frost: "#cdeeff" },
+        // the brand: frosted cobalt, an azure-cobalt blue (hue ~213) paired with a pale frost (`ice-100` = `frost`).
+        // The signature "duo" is frost background + `ice-700` text (the accent-soft / accent tokens). Use these, not
+        // teal / cyan / sky, for brand.
+        ice: { 50: "#f3f8fe", 100: "#e9f2fc", 200: "#cfe2f8", 300: "#a6c9f2", 400: "#7eb0ee", 500: "#3d82dc", 600: "#2569c4",
+               700: "#1a58ac", 800: "#184a8e", 900: "#183f74", 950: "#102848", frost: "#e9f2fc" },
         ink: { 50: "#f7f7f8", 100: "#efeff2", 200: "#e2e2e7", 300: "#c8c8d0", 400: "#9898a6", 500: "#6e6e7c", 600: "#52525e", 700: "#3a3a44", 800: "#26262d", 850: "#1c1c22", 900: "#141418", 950: "#0b0b0e" },
       },
       fontSize: { "2xs": ["10.5px", "14px"] },

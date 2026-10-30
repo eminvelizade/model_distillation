@@ -179,7 +179,7 @@ export default function MachineDetail() {
                   {g.power_w ? <span className="font-mono tabular-nums text-subtle">{g.power_w.toFixed(0)} W</span> : null}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <Gauge label="Utilization" value={g.util} max={100} text={<>{Math.round(g.util)}<span className="text-[10px] text-subtle">%</span></>} colors={["#8fd3f8", "#2fa2e3"]} />
+                  <Gauge label="Utilization" value={g.util} max={100} text={<>{Math.round(g.util)}<span className="text-[10px] text-subtle">%</span></>} colors={["#a6c9f2", "#3d82dc"]} />
                   <Gauge label="VRAM" value={g.mem_used_mb} max={g.mem_total_mb} warn={0.92} text={<>{(g.mem_used_mb / 1024).toFixed(1)}<span className="text-[10px] text-subtle">G</span></>} colors={["#5eead4", "#14b8a6"]} />
                   <Gauge label="Temp" value={g.temp_c} max={95} warn={0.85} text={<>{Math.round(g.temp_c)}<span className="text-[10px] text-subtle">°</span></>} colors={["#f59e0b", "#f97316"]} />
                 </div>

@@ -58,7 +58,7 @@ export function CountUp({ value, decimals = 0 }: { value: number; decimals?: num
 export function sparkleBurst(el: Element | null | undefined, n = 12) {
   if (!el || reducedMotion()) return;
   const r = el.getBoundingClientRect();
-  const colors = ["#8fd3f8", "#cdeeff", "#bfe6fc", "#ffffff", "#57bbf1"];
+  const colors = ["#a6c9f2", "#e9f2fc", "#cfe2f8", "#ffffff", "#7eb0ee"];
   for (let i = 0; i < n; i++) {
     const s = document.createElement("span");
     const a = (Math.PI * 2 * i) / n + Math.random() * 0.5, d = 26 + Math.random() * 30;
@@ -206,7 +206,7 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
 }) {
   const v = {
     primary: "bg-fg text-canvas shadow-soft hover:bg-fg/85",
-    brand: "bg-gradient-to-b from-ice-500 to-ice-700 text-white shadow-[0_1px_0_rgb(255_255_255/.3)_inset,0_6px_18px_-6px_rgb(47_162_227/.6)] ring-1 ring-inset ring-ice-800/25 hover:from-ice-400 hover:to-ice-600",
+    brand: "bg-gradient-to-b from-ice-500 to-ice-700 text-white shadow-[0_1px_0_rgb(255_255_255/.3)_inset,0_6px_18px_-6px_rgb(61_130_220/.6)] ring-1 ring-inset ring-ice-800/25 hover:from-ice-400 hover:to-ice-600",
     secondary: "bg-surface text-fg ring-1 ring-inset ring-line shadow-soft hover:bg-raised",
     danger: "bg-surface text-rose-600 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/10 dark:text-rose-300",
     ghost: "text-muted hover:bg-raised hover:text-fg",
@@ -297,7 +297,7 @@ export function ProgressBar({ value, className, active }: { value: number; class
 }
 
 /** Circular progress / gauge. */
-export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#2191d6", "#8fd3f8"], track = "stroke-raised" }: {
+export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#2569c4", "#a6c9f2"], track = "stroke-raised" }: {
   value: number; size?: number; stroke?: number; children?: ReactNode; gradient?: [string, string]; track?: string;
 }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r;
@@ -396,7 +396,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputCls =
-  "w-full h-9 rounded-[10px] border-0 bg-surface px-3 text-[13.5px] text-fg shadow-soft ring-1 ring-inset ring-line placeholder:text-subtle transition duration-200 hover:ring-subtle/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:shadow-[0_0_0_4px_rgb(87_187_241/.12)] dark:bg-raised/60";
+  "w-full h-9 rounded-[10px] border-0 bg-surface px-3 text-[13.5px] text-fg shadow-soft ring-1 ring-inset ring-line placeholder:text-subtle transition duration-200 hover:ring-subtle/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:shadow-[0_0_0_4px_rgb(116_169_236/.12)] dark:bg-raised/60";
 
 export function SearchInput({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
   return (
@@ -411,7 +411,7 @@ export function SearchInput({ value, onChange, placeholder, className }: { value
 /** The small "beta" label under the ModelLab wordmark. */
 export function Beta({ className }: { className?: string }) {
   return (
-    <span className={cx("inline-flex items-center rounded-full bg-accent/10 px-1.5 py-px text-[9.5px] font-semibold uppercase leading-[14px] tracking-[.1em] text-accent ring-1 ring-inset ring-accent/20", className)}>beta</span>
+    <span className={cx("inline-flex items-center rounded-full bg-accent-soft px-1.5 py-px text-[9.5px] font-semibold uppercase leading-[14px] tracking-[.1em] text-accent ring-1 ring-inset ring-accent/20", className)}>beta</span>
   );
 }
 
@@ -441,7 +441,7 @@ export function Empty({ title, children, mood = "sleepy" }: { title: string; chi
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <div className="relative">
-        <div className="absolute inset-0 -z-0 scale-150 rounded-full bg-accent/10 blur-2xl" />
+        <div className="absolute inset-0 -z-0 scale-150 rounded-full bg-accent-soft blur-2xl" />
         <div className="animate-float"><Mascot size={60} mood={mood} /></div>
         {[["-6px", "-10px", 0], ["8px", "64px", 1.2], ["44px", "-16px", 2.1]].map(([t, l, d]) => (
           <span key={`${t}${l}`} aria-hidden className="absolute animate-twinkle text-[9px] text-accent" style={{ top: t as string, left: l as string, animationDelay: `${d}s` }}>✦</span>
@@ -468,20 +468,20 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
   );
 }
 
-/** The ModelLab logo: a tilted test tube with Frozen-ice liquid (the 🧪 emoji draws it green on most systems). */
+/** The ModelLab logo: a tilted test tube with frosted-cobalt liquid (the 🧪 emoji draws it green on most systems). */
 export function TubeLogo({ size = 30, className }: { size?: number; className?: string }) {
   const id = useRef(`t${Math.random().toString(36).slice(2, 8)}`).current;
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
       <defs>
-        <linearGradient id={`${id}l`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8fd3f8" /><stop offset="1" stopColor="#2191d6" /></linearGradient>
-        <linearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#dff2fe" /></linearGradient>
+        <linearGradient id={`${id}l`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#a6c9f2" /><stop offset="1" stopColor="#2569c4" /></linearGradient>
+        <linearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#e9f2fc" /></linearGradient>
       </defs>
       <g transform="rotate(35 16 16)">
-        <path d="M12 5h8v17a4 4 0 0 1-8 0z" fill={`url(#${id}g)`} stroke="#2191d6" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M12 5h8v17a4 4 0 0 1-8 0z" fill={`url(#${id}g)`} stroke="#2569c4" strokeWidth="1.6" strokeLinejoin="round" />
         <path d="M13 14h6v8a3 3 0 0 1-6 0z" fill={`url(#${id}l)`} />
-        <path d="M13 14h6" stroke="#cdeeff" strokeWidth="1" strokeLinecap="round" />
-        <rect x="10.4" y="2.6" width="11.2" height="3.2" rx="1.6" fill="#dff2fe" stroke="#2191d6" strokeWidth="1.6" />
+        <path d="M13 14h6" stroke="#ffffff" strokeWidth="1" strokeLinecap="round" />
+        <rect x="10.4" y="2.6" width="11.2" height="3.2" rx="1.6" fill="#e9f2fc" stroke="#2569c4" strokeWidth="1.6" />
         <path d="M14.2 8.5v11" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" opacity=".9" />
         <circle cx="16.8" cy="19" r=".9" fill="#ffffff" opacity=".85" />
       </g>
@@ -493,7 +493,7 @@ export function TubeLogo({ size = 30, className }: { size?: number; className?: 
 export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "happy" | "busy" | "sleepy" | "sad" }) {
   const id = useRef(`m${Math.random().toString(36).slice(2, 8)}`).current;
   const delay = useRef(`${-Math.random() * 5}s`).current; // several Labbys never blink in sync
-  const ink = "#0e3149";
+  const ink = "#102848";
   const eyes = mood === "sleepy"
     ? <><path d="M24 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /><path d="M34 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /></>
     : <g className="blink" style={{ animationDelay: delay }}><circle cx="27" cy="39" r="2.6" fill={ink} /><circle cx="37" cy="39" r="2.6" fill={ink} /><circle cx="27.8" cy="38.2" r=".8" fill="#fff" /><circle cx="37.8" cy="38.2" r=".8" fill="#fff" /></g>;
@@ -503,21 +503,21 @@ export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "h
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={cx("relative shrink-0", mood === "busy" && "animate-bob")} aria-hidden>
       <defs>
-        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#bfe6fc" /><stop offset="1" stopColor="#57bbf1" /></linearGradient>
+        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#cfe2f8" /><stop offset="1" stopColor="#7eb0ee" /></linearGradient>
       </defs>
-      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#f0f9ff" stroke="#2191d6" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#f3f8fe" stroke="#2569c4" strokeWidth="2.5" strokeLinejoin="round" />
       <path d="M18.6 40h26.8l3.2 5a4.5 4.5 0 0 1-3.8 7H19.2a4.5 4.5 0 0 1-3.8-7z" fill={`url(#${id}l)`} opacity=".95" />
       {eyes}
       {mouth}
       <circle cx="22" cy="44" r="1.8" fill="#fda4af" opacity=".8" /><circle cx="42" cy="44" r="1.8" fill="#fda4af" opacity=".8" />
-      <circle cx="44" cy="20" r="2.2" fill="#8fd3f8" className="animate-float" /><circle cx="48" cy="13" r="1.4" fill="#cdeeff" className="animate-float" style={{ animationDelay: "-1.4s" }} />
+      <circle cx="44" cy="20" r="2.2" fill="#a6c9f2" className="animate-float" /><circle cx="48" cy="13" r="1.4" fill="#e9f2fc" className="animate-float" style={{ animationDelay: "-1.4s" }} />
     </svg>
   );
 }
 
 export function Tag({ children, onRemove }: { children: ReactNode; onRemove?: () => void }) {
   return (
-    <span className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-md bg-accent/10 px-1.5 py-px text-[11px] font-medium text-accent">
+    <span className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-md bg-accent-soft px-1.5 py-px text-[11px] font-medium text-accent">
       <span className="opacity-60">#</span>{children}
       {onRemove && <button onClick={onRemove} className="ml-0.5 opacity-60 hover:opacity-100" aria-label="remove tag"><X className="h-3 w-3" /></button>}
     </span>

@@ -28,7 +28,7 @@ function templateStyle(name: string, i: number) {
   if (/distill/.test(n)) return { icon: FlaskConical, color: "from-ice-200 to-ice-500" };
   if (/probe|feature/.test(n)) return { icon: ScanSearch, color: "from-amber-300 to-amber-500" };
   if (/fine|baseline/.test(n)) return { icon: Target, color: "from-teal-300 to-teal-600" };
-  return [{ icon: Wand2, color: "from-ice-300 to-ice-600" }, { icon: Layers, color: "from-ice-300 to-blue-500" }][i % 2];
+  return [{ icon: Wand2, color: "from-ice-300 to-ice-600" }, { icon: Layers, color: "from-ice-300 to-ice-600" }][i % 2];
 }
 
 function blankStage(type: string, existing: Stage[]): Stage {

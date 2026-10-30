@@ -78,7 +78,7 @@ function NavItem({ to, label, icon: Icon, badge }: { to: string; label: string; 
   return (
     <NavLink to={to} end={to === "/"}
       className={({ isActive }) => cx("group relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition",
-        isActive ? "bg-accent/[.09] text-fg" : "text-muted hover:bg-raised/70 hover:text-fg")}>
+        isActive ? "bg-accent-soft text-accent" : "text-muted hover:bg-raised/70 hover:text-fg")}>
       {({ isActive }) => <>
         {isActive && <span className="absolute -left-3 top-1.5 h-5 w-[3px] animate-growy rounded-r-full bg-accent" />}
         <Icon className={cx("h-4 w-4 transition-transform duration-300 group-hover:scale-110", isActive ? "text-accent" : "text-subtle group-hover:text-muted")} />
@@ -96,7 +96,7 @@ function Logo() {
         <TubeLogo size={32} className="transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:-rotate-12" />
         {/* tiny bubbles drifting up out of the tube */}
         <span aria-hidden className="absolute right-0.5 top-0 h-[5px] w-[5px] animate-rise rounded-full bg-ice-300/90" />
-        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-ice-frost/90" style={{ animationDelay: "1.7s" }} />
+        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-ice-200" style={{ animationDelay: "1.7s" }} />
       </span>
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-fg">ModelLab</div>
@@ -114,7 +114,7 @@ function Account({ onPassword }: { onPassword: () => void }) {
   const u = me.user;
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[11px] font-semibold uppercase text-accent">{u.display_name.slice(0, 1)}</span>
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] font-semibold uppercase text-accent">{u.display_name.slice(0, 1)}</span>
       <span className="min-w-0 truncate text-xs font-medium text-muted" title={u.username}>{u.display_name}</span>
       <button onClick={onPassword} className="rounded p-1 text-subtle hover:text-fg" title="Change password" aria-label="Change password"><KeyRound className="h-3.5 w-3.5" /></button>
       <button onClick={logout} className="rounded p-1 text-subtle hover:text-fg" title="Sign out" aria-label="Sign out"><LogOut className="h-3.5 w-3.5" /></button>
@@ -197,7 +197,7 @@ function Shell() {
           {nav.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === "/"}
               className={({ isActive }) => cx("flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium",
-                isActive ? "bg-accent/[.09] text-fg" : "text-muted")}>
+                isActive ? "bg-accent-soft text-accent" : "text-muted")}>
               <Icon className="h-3.5 w-3.5" />{label}{badge(to)}
             </NavLink>
           ))}

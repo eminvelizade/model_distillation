@@ -209,7 +209,7 @@ export default function RunDetail() {
             </div>
             {r.results.length > 0 && (
               <Link to={`/compare?items=${r.results.map((x: any) => `${x.run_id}:${x.stage}`).slice(0, 4).join(",")}`}
-                className="mt-4 flex items-center justify-center gap-1.5 rounded-[10px] bg-raised py-2 text-[13px] font-medium text-fg transition hover:bg-accent/10 hover:text-accent">
+                className="mt-4 flex items-center justify-center gap-1.5 rounded-[10px] bg-raised py-2 text-[13px] font-medium text-fg transition hover:bg-accent-soft hover:text-accent">
                 <GitCompareArrows className="h-4 w-4" />Compare this run's results
               </Link>
             )}

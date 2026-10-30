@@ -89,7 +89,7 @@ export default function Team() {
                   </td>
                   <td className="px-3 py-2.5">
                     {u.disabled ? <span className="rounded-md bg-raised px-1.5 py-0.5 text-[11px] text-muted">disabled</span>
-                      : u.is_admin ? <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-1.5 py-0.5 text-[11px] font-medium text-accent"><Shield className="h-3 w-3" />admin</span>
+                      : u.is_admin ? <span className="inline-flex items-center gap-1 rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent"><Shield className="h-3 w-3" />admin</span>
                       : <span className="text-xs text-muted">member</span>}
                     {u.must_change_password && !u.disabled && <span className="ml-1.5 text-2xs text-amber-600 dark:text-amber-300">temp password</span>}
                   </td>

@@ -3,32 +3,34 @@
 @tailwind utilities;
 
 /* Theme tokens as RGB triplets so Tailwind opacity modifiers work (bg-surface/80 …).
-   Neutrals carry a faint icy-blue tint so they sit with the Frozen ice-blue accent instead of against it. */
+   Neutrals carry a faint icy-blue tint so they sit with the frosted-cobalt accent instead of against it. */
 :root {
   color-scheme: light;
-  --canvas: 246 249 250;
+  --canvas: 245 248 252;
   --surface: 255 255 255;
-  --raised: 239 244 246;
-  --line: 226 233 237;
-  --fg: 15 23 28;
-  --muted: 84 98 108;
-  --subtle: 134 148 158;
-  --accent: 26 123 184;
-  --code: 13 24 30;
-  --shadow-soft: 0 1px 2px rgb(15 40 50 / .04), 0 2px 10px -2px rgb(15 40 50 / .06);
-  --shadow-lift: 0 1px 2px rgb(15 40 50 / .05), 0 18px 40px -14px rgb(15 40 50 / .2);
+  --raised: 238 243 249;
+  --line: 225 232 241;
+  --fg: 14 22 34;
+  --muted: 82 96 116;
+  --subtle: 133 146 163;
+  --accent: 26 88 172;
+  --accent-soft: 233 242 252;
+  --code: 12 20 33;
+  --shadow-soft: 0 1px 2px rgb(15 30 60 / .04), 0 2px 10px -2px rgb(15 30 60 / .06);
+  --shadow-lift: 0 1px 2px rgb(15 30 60 / .05), 0 18px 40px -14px rgb(15 30 60 / .2);
 }
 html.dark {
   color-scheme: dark;
-  --canvas: 7 11 14;
-  --surface: 13 18 22;
-  --raised: 21 28 33;
-  --line: 31 40 46;
-  --fg: 236 243 246;
-  --muted: 155 170 179;
-  --subtle: 101 116 125;
-  --accent: 143 211 248;
-  --code: 8 13 17;
+  --canvas: 7 10 16;
+  --surface: 13 17 25;
+  --raised: 21 27 37;
+  --line: 31 39 52;
+  --fg: 235 241 249;
+  --muted: 154 167 186;
+  --subtle: 100 113 133;
+  --accent: 126 176 238;
+  --accent-soft: 23 38 62;
+  --code: 8 12 19;
   --shadow-soft: inset 0 1px 0 rgb(255 255 255 / .03), 0 1px 2px rgb(0 0 0 / .3);
   --shadow-lift: inset 0 1px 0 rgb(255 255 255 / .04), 0 18px 44px -14px rgb(0 0 0 / .7);
 }
@@ -38,7 +40,7 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
 }
-::selection { background: rgb(87 187 241 / 0.3); }
+::selection { background: rgb(116 169 236 / 0.3); }
 
 .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(120 140 150 / .35) transparent; }
 .scroll-thin::-webkit-scrollbar { height: 8px; width: 8px; }
@@ -49,14 +51,14 @@ body {
 /* Soft aurora behind the top of every page; it breathes very slowly. */
 .aurora {
   background:
-    radial-gradient(60rem 22rem at 18% -6rem, rgb(87 187 241 / .16), transparent 70%),
-    radial-gradient(44rem 20rem at 85% -8rem, rgb(143 211 248 / .2), transparent 70%);
+    radial-gradient(60rem 22rem at 18% -6rem, rgb(116 169 236 / .16), transparent 70%),
+    radial-gradient(44rem 20rem at 85% -8rem, rgb(166 201 242 / .2), transparent 70%);
   animation: drift 24s ease-in-out infinite alternate;
 }
 html.dark .aurora {
   background:
-    radial-gradient(60rem 22rem at 18% -6rem, rgb(87 187 241 / .11), transparent 70%),
-    radial-gradient(44rem 20rem at 85% -8rem, rgb(143 211 248 / .07), transparent 70%);
+    radial-gradient(60rem 22rem at 18% -6rem, rgb(116 169 236 / .11), transparent 70%),
+    radial-gradient(44rem 20rem at 85% -8rem, rgb(166 201 242 / .07), transparent 70%);
 }
 @keyframes drift {
   from { transform: translate3d(0, 0, 0) scale(1); }
