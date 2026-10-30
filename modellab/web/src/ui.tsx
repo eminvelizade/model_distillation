@@ -1,5 +1,5 @@
 import { MouseEvent, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Info, Loader2, Search, X, XCircle } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, ChevronsUpDown, Info, Loader2, Search, X, XCircle } from "lucide-react";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -58,7 +58,7 @@ export function CountUp({ value, decimals = 0 }: { value: number; decimals?: num
 export function sparkleBurst(el: Element | null | undefined, n = 12) {
   if (!el || reducedMotion()) return;
   const r = el.getBoundingClientRect();
-  const colors = ["#5eead4", "#7dd3fc", "#a5f3fc", "#ffffff", "#2dd4bf"];
+  const colors = ["#6ee2f0", "#95eedd", "#aaeff8", "#ffffff", "#38cde3"];
   for (let i = 0; i < n; i++) {
     const s = document.createElement("span");
     const a = (Math.PI * 2 * i) / n + Math.random() * 0.5, d = 26 + Math.random() * 30;
@@ -206,7 +206,7 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
 }) {
   const v = {
     primary: "bg-fg text-canvas shadow-soft hover:bg-fg/85",
-    brand: "bg-gradient-to-b from-teal-400 to-cyan-600 text-white shadow-[0_1px_0_rgb(255_255_255/.3)_inset,0_6px_18px_-6px_rgb(20_184_166/.65)] ring-1 ring-inset ring-cyan-700/25 hover:from-teal-300 hover:to-cyan-500",
+    brand: "bg-gradient-to-b from-ice-500 to-ice-700 text-white shadow-[0_1px_0_rgb(255_255_255/.3)_inset,0_6px_18px_-6px_rgb(20_178_203/.6)] ring-1 ring-inset ring-ice-800/25 hover:from-ice-400 hover:to-ice-600",
     secondary: "bg-surface text-fg ring-1 ring-inset ring-line shadow-soft hover:bg-raised",
     danger: "bg-surface text-rose-600 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/10 dark:text-rose-300",
     ghost: "text-muted hover:bg-raised hover:text-fg",
@@ -288,7 +288,7 @@ export function ProgressBar({ value, className, active }: { value: number; class
   const shown = useFillIn(value);
   return (
     <div className={cx("h-1.5 w-full overflow-hidden rounded-full bg-raised", className)}>
-      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-teal-300 via-cyan-400 to-sky-400 transition-all duration-1000 ease-[cubic-bezier(.2,.7,.2,1)]"
+      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-ice-500 via-ice-300 to-ice-glint transition-all duration-1000 ease-[cubic-bezier(.2,.7,.2,1)]"
         style={{ width: `${shown ? Math.max(2, Math.min(100, shown * 100)) : 0}%` }}>
         {active && <div className="shimmer absolute inset-0 animate-shimmer" />}
       </div>
@@ -297,7 +297,7 @@ export function ProgressBar({ value, className, active }: { value: number; class
 }
 
 /** Circular progress / gauge. */
-export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#5eead4", "#38bdf8"], track = "stroke-raised" }: {
+export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#14b2cb", "#95eedd"], track = "stroke-raised" }: {
   value: number; size?: number; stroke?: number; children?: ReactNode; gradient?: [string, string]; track?: string;
 }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r;
@@ -316,6 +316,75 @@ export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#5ee
   );
 }
 
+export interface DropdownOption<T extends string> { value: T; label: ReactNode; hint?: ReactNode; icon?: ReactNode }
+
+/** A select that matches the rest of the UI: the button looks like the search box, the list like a popover.
+ *  Keyboard: Enter / Space / ↓ opens, ↑ ↓ move, Enter picks, Esc closes. Opens upwards when there's no room below. */
+export function Dropdown<T extends string>({ value, options, onChange, label, footer, className }: {
+  value: T; options: DropdownOption<T>[]; onChange: (v: T) => void; label: string; footer?: (close: () => void) => ReactNode; className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [up, setUp] = useState(false);
+  const [active, setActive] = useState(0);
+  const box = useRef<HTMLDivElement>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  const current = options.find((o) => o.value === value);
+  const close = () => { setOpen(false); btn.current?.focus(); };
+  const show = () => {
+    const r = btn.current?.getBoundingClientRect();
+    setUp(!!r && window.innerHeight - r.bottom < 280 && r.top > 280);
+    setActive(Math.max(0, options.findIndex((o) => o.value === value)));
+    setOpen(true);
+  };
+  const pick = (v: T) => { onChange(v); close(); };
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: Event) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("touchstart", away);
+    return () => { document.removeEventListener("mousedown", away); document.removeEventListener("touchstart", away); };
+  }, [open]);
+  const onKey = (e: React.KeyboardEvent) => {
+    if (!open) {
+      if (["Enter", " ", "ArrowDown", "ArrowUp"].includes(e.key)) { e.preventDefault(); show(); }
+      return;
+    }
+    if (e.key === "Escape" || e.key === "Tab") { e.preventDefault(); close(); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(options.length - 1, a + 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(0, a - 1)); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (options[active]) pick(options[active].value); }
+  };
+  return (
+    <div ref={box} className={cx("relative min-w-0", className)} onKeyDown={onKey}>
+      <button ref={btn} type="button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} onClick={() => (open ? close() : show())}
+        className={cx("flex h-8 w-full items-center gap-2 rounded-lg bg-surface px-2.5 text-left text-[13px] text-fg shadow-soft ring-1 ring-inset transition duration-200 hover:ring-subtle/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+          open ? "ring-accent/40" : "ring-line")}>
+        {current?.icon}
+        <span className="min-w-0 flex-1 truncate font-medium">{current?.label ?? label}</span>
+        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-subtle" />
+      </button>
+      {open && (
+        <div className={cx("absolute inset-x-0 z-50 overflow-hidden rounded-xl border border-line bg-surface/95 shadow-lift backdrop-blur animate-pop", up ? "bottom-full mb-1.5" : "top-full mt-1.5")}>
+          <ul role="listbox" aria-label={label} className="scroll-thin max-h-72 overflow-y-auto p-1">
+            {options.map((o, i) => (
+              <li key={o.value} role="option" aria-selected={o.value === value} onMouseEnter={() => setActive(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(o.value)}
+                className={cx("flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors", i === active && "bg-raised")}>
+                {o.icon}
+                <span className="min-w-0 flex-1">
+                  <span className={cx("block truncate text-[13px]", o.value === value ? "font-medium text-fg" : "text-muted")}>{o.label}</span>
+                  {o.hint && <span className="block truncate text-2xs text-subtle">{o.hint}</span>}
+                </span>
+                {o.value === value && <Check className="h-3.5 w-3.5 shrink-0 text-accent" />}
+              </li>
+            ))}
+          </ul>
+          {footer && <div className="border-t border-line p-1">{footer(close)}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
   return (
     <label className="block min-w-0">
@@ -327,7 +396,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputCls =
-  "w-full h-9 rounded-[10px] border-0 bg-surface px-3 text-[13.5px] text-fg shadow-soft ring-1 ring-inset ring-line placeholder:text-subtle transition duration-200 hover:ring-subtle/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:shadow-[0_0_0_4px_rgb(45_212_191/.12)] dark:bg-raised/60";
+  "w-full h-9 rounded-[10px] border-0 bg-surface px-3 text-[13.5px] text-fg shadow-soft ring-1 ring-inset ring-line placeholder:text-subtle transition duration-200 hover:ring-subtle/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:shadow-[0_0_0_4px_rgb(56_205_227/.12)] dark:bg-raised/60";
 
 export function SearchInput({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
   return (
@@ -336,6 +405,13 @@ export function SearchInput({ value, onChange, placeholder, className }: { value
       <input className={cx(inputCls, "pl-9")} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
       {value && <button onClick={() => onChange("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-subtle hover:text-fg" aria-label="clear"><X className="h-3.5 w-3.5" /></button>}
     </div>
+  );
+}
+
+/** The small "beta" label under the ModelLab wordmark. */
+export function Beta({ className }: { className?: string }) {
+  return (
+    <span className={cx("inline-flex items-center rounded-full bg-accent/10 px-1.5 py-px text-[9.5px] font-semibold uppercase leading-[14px] tracking-[.1em] text-accent ring-1 ring-inset ring-accent/20", className)}>beta</span>
   );
 }
 
@@ -396,7 +472,7 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
 export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "happy" | "busy" | "sleepy" | "sad" }) {
   const id = useRef(`m${Math.random().toString(36).slice(2, 8)}`).current;
   const delay = useRef(`${-Math.random() * 5}s`).current; // several Labbys never blink in sync
-  const ink = "#134e4a";
+  const ink = "#07323b";
   const eyes = mood === "sleepy"
     ? <><path d="M24 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /><path d="M34 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /></>
     : <g className="blink" style={{ animationDelay: delay }}><circle cx="27" cy="39" r="2.6" fill={ink} /><circle cx="37" cy="39" r="2.6" fill={ink} /><circle cx="27.8" cy="38.2" r=".8" fill="#fff" /><circle cx="37.8" cy="38.2" r=".8" fill="#fff" /></g>;
@@ -406,14 +482,14 @@ export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "h
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={cx("relative shrink-0", mood === "busy" && "animate-bob")} aria-hidden>
       <defs>
-        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#a5f3fc" /><stop offset="1" stopColor="#2dd4bf" /></linearGradient>
+        <linearGradient id={`${id}l`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#aaeff8" /><stop offset="1" stopColor="#38cde3" /></linearGradient>
       </defs>
-      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#f0fdfa" stroke="#0d9488" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M25 8h14v4h-2v12l13 20a7 7 0 0 1-5.9 10.8H19.9A7 7 0 0 1 14 44l13-20V12h-2z" fill="#ecfcfe" stroke="#0b93ab" strokeWidth="2.5" strokeLinejoin="round" />
       <path d="M18.6 40h26.8l3.2 5a4.5 4.5 0 0 1-3.8 7H19.2a4.5 4.5 0 0 1-3.8-7z" fill={`url(#${id}l)`} opacity=".95" />
       {eyes}
       {mouth}
       <circle cx="22" cy="44" r="1.8" fill="#fda4af" opacity=".8" /><circle cx="42" cy="44" r="1.8" fill="#fda4af" opacity=".8" />
-      <circle cx="44" cy="20" r="2.2" fill="#5eead4" className="animate-float" /><circle cx="48" cy="13" r="1.4" fill="#7dd3fc" className="animate-float" style={{ animationDelay: "-1.4s" }} />
+      <circle cx="44" cy="20" r="2.2" fill="#6ee2f0" className="animate-float" /><circle cx="48" cy="13" r="1.4" fill="#95eedd" className="animate-float" style={{ animationDelay: "-1.4s" }} />
     </svg>
   );
 }
@@ -450,7 +526,7 @@ export function Toast({ msg, kind = "info", onClose }: { msg: string | null; kin
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
       <div className={cx("pointer-events-auto flex max-w-md items-center gap-2.5 rounded-full py-2 pl-3 pr-2 text-[13px] font-medium shadow-lift animate-pop",
         kind === "error" ? "bg-rose-600 text-white" : "bg-fg text-canvas ring-1 ring-white/10")}>
-        {kind === "error" ? <XCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-300 dark:text-teal-600" />}
+        {kind === "error" ? <XCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0 text-ice-300 dark:text-ice-600" />}
         <span className="min-w-0">{msg}</span>
         <button onClick={onClose} className="rounded-full p-1 opacity-60 hover:opacity-100" aria-label="dismiss"><X className="h-3.5 w-3.5" /></button>
       </div>
@@ -494,7 +570,7 @@ export function LogView({ runId, stage, height = "h-80", tabs, live }: { runId: 
             </div>
           )) : <div className="flex items-center gap-2 px-4 text-zinc-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> waiting for log lines…</div>}
         </pre>
-        {!follow && <button onClick={() => setFollow(true)} className="absolute bottom-3 right-4 rounded-full bg-teal-600 px-2.5 py-1 text-xs font-medium text-white shadow-lg">follow ↓</button>}
+        {!follow && <button onClick={() => setFollow(true)} className="absolute bottom-3 right-4 rounded-full bg-ice-600 px-2.5 py-1 text-xs font-medium text-white shadow-lg">follow ↓</button>}
       </div>
     </div>
   );

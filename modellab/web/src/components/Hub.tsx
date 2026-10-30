@@ -1,8 +1,9 @@
 import { FormEvent, useState } from "react";
-import { AlertTriangle, Check, CheckCircle2, Copy, KeyRound, Loader2, XCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { AlertTriangle, Check, CheckCircle2, Copy, KeyRound, Loader2, Settings2, XCircle } from "lucide-react";
 import { api, Machine } from "../api";
 import { useSession } from "../session";
-import { Button, Callout, cx, Field, inputCls, LiveDot, Modal } from "../ui";
+import { Button, Callout, cx, Dropdown, Field, inputCls, LiveDot, Modal, relTime } from "../ui";
 
 /** Online / busy / offline dot for a machine (busy = running a job). */
 export function MachineDot({ m, className }: { m: Machine | null; className?: string }) {
@@ -18,17 +19,22 @@ export function machineState(m: Machine): string {
 }
 
 /** Picks the machine new runs go to and the Queue shows. */
-export function MachinePicker({ className, compact }: { className?: string; compact?: boolean }) {
-  const { machines, machineId, machine, setMachineId } = useSession();
+export function MachinePicker({ className }: { className?: string }) {
+  const { machines, machineId, setMachineId } = useSession();
+  const nav = useNavigate();
   if (!machines.length) return null;
+  const options = machines.map((m) => ({
+    value: m.id, label: m.name, icon: <MachineDot m={m} className="shrink-0" />,
+    hint: m.online ? `${machineState(m)}${m.gpus[0] ? ` · ${m.gpus[0].name.replace("NVIDIA ", "").replace("GeForce ", "")}` : ""}` : `offline · seen ${relTime(m.last_seen)}`,
+  }));
   return (
-    <div className={cx("relative flex items-center", className)}>
-      <MachineDot m={machine} className="pointer-events-none absolute left-3 z-10" />
-      <select aria-label="Machine" value={machineId ?? ""} onChange={(e) => setMachineId(e.target.value)}
-        className={cx(inputCls, "pl-7 pr-8", compact && "h-8 text-[13px]")}>
-        {machines.map((m) => <option key={m.id} value={m.id}>{m.name}{m.online ? "" : " (offline)"}</option>)}
-      </select>
-    </div>
+    <Dropdown label="Machine" value={machineId ?? machines[0].id} options={options} onChange={setMachineId} className={className}
+      footer={(close) => (
+        <button type="button" onClick={() => { close(); nav("/machines"); }}
+          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] text-muted transition hover:bg-raised hover:text-fg">
+          <Settings2 className="h-3.5 w-3.5 text-subtle" />Manage machines
+        </button>
+      )} />
   );
 }
 

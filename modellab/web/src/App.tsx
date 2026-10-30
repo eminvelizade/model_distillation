@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { Command, KeyRound, Loader2, LogOut, Moon, Search, Sun, Trophy } from "lucide-react";
 import { api } from "./api";
-import { cx, Kbd, LiveDot, Mascot, usePoll, useTheme } from "./ui";
+import { Beta, cx, Kbd, LiveDot, Mascot, usePoll, useTheme } from "./ui";
 import { SessionProvider, useSession } from "./session";
 import { NAV, useNav } from "./nav";
 import CommandPalette from "./components/CommandPalette";
@@ -61,7 +61,7 @@ function WorkerWidget({ q }: { q: QueueData | null }) {
       </div>
       {running && (
         <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-raised">
-          <div className="h-full rounded-full bg-gradient-to-r from-teal-300 via-cyan-400 to-sky-400 transition-all duration-700" style={{ width: `${running.progress * 100}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-ice-500 via-ice-300 to-ice-glint transition-all duration-700" style={{ width: `${running.progress * 100}%` }} />
         </div>
       )}
       {g && (
@@ -95,12 +95,13 @@ function Logo() {
       <span className="relative flex h-8 w-8 items-center justify-center">
         <span className="text-[26px] leading-none transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:-rotate-12" role="img" aria-label="test tube">🧪</span>
         {/* tiny bubbles drifting up out of the tube */}
-        <span aria-hidden className="absolute right-0.5 top-0 h-[5px] w-[5px] animate-rise rounded-full bg-teal-300/90" />
-        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-sky-300/90" style={{ animationDelay: "1.7s" }} />
+        <span aria-hidden className="absolute right-0.5 top-0 h-[5px] w-[5px] animate-rise rounded-full bg-ice-300/90" />
+        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-ice-glint/90" style={{ animationDelay: "1.7s" }} />
       </span>
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-fg">ModelLab</div>
         <div className="text-2xs text-subtle">fine-tune · distill · benchmark</div>
+        <Beta className="mt-1" />
       </div>
     </NavLink>
   );
@@ -163,7 +164,7 @@ function Shell() {
             <Search className="h-3.5 w-3.5" /> <span className="flex-1 text-left">Search…</span>
             <span className="flex gap-0.5"><Kbd>{isMac ? <Command className="h-2.5 w-2.5" /> : "Ctrl"}</Kbd><Kbd>K</Kbd></span>
           </button>
-          {hub && <MachinePicker compact />}
+          {hub && <MachinePicker />}
         </div>
         <nav className="mt-4 flex-1 space-y-5 overflow-y-auto px-3">
           {[...new Set(nav.map((n) => n.group))].map((g) => (
@@ -191,7 +192,7 @@ function Shell() {
             <ThemeSwitch />
           </div>
         </div>
-        {hub && <div className="flex items-center gap-2 px-4 pt-2.5"><MachinePicker compact className="min-w-0 flex-1" /><Account onPassword={() => setPassword(true)} /></div>}
+        {hub && <div className="flex items-center gap-2 px-4 pt-2.5"><MachinePicker className="min-w-0 flex-1" /><Account onPassword={() => setPassword(true)} /></div>}
         <nav className="flex gap-1 overflow-x-auto px-3 py-2 scroll-none">
           {nav.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === "/"}

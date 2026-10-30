@@ -21,6 +21,10 @@ export default {
         subtle: v("subtle"),
         accent: v("accent"),
         code: v("code"),
+        // the brand: glacier ice, an ice blue (hue ~188) that leans towards emerald; `glint` is the minty highlight
+        // gradients drift into. Use these instead of teal / cyan.
+        ice: { 50: "#ecfcfe", 100: "#d3f7fc", 200: "#aaeff8", 300: "#6ee2f0", 400: "#38cde3", 500: "#14b2cb", 600: "#0b93ab",
+               700: "#0a8296", 800: "#0c6575", 900: "#0f5260", 950: "#07323b", glint: "#95eedd" },
         ink: { 50: "#f7f7f8", 100: "#efeff2", 200: "#e2e2e7", 300: "#c8c8d0", 400: "#9898a6", 500: "#6e6e7c", 600: "#52525e", 700: "#3a3a44", 800: "#26262d", 850: "#1c1c22", 900: "#141418", 950: "#0b0b0e" },
       },
       fontSize: { "2xs": ["10.5px", "14px"] },

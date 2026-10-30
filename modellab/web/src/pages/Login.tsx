@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Loader2, LogIn } from "lucide-react";
 import { api } from "../api";
-import { Button, Callout, Field, inputCls, Mascot } from "../ui";
+import { Beta, Button, Callout, Field, inputCls, Mascot } from "../ui";
 
 /** Hub only: accounts are created by an admin, there is no sign-up. */
 export default function Login({ onDone }: { onDone: () => void }) {
@@ -32,7 +32,8 @@ export default function Login({ onDone }: { onDone: () => void }) {
         <div className="mb-7 flex flex-col items-center text-center">
           <div className="animate-float"><Mascot size={64} mood={error ? "sad" : "happy"} /></div>
           <h1 className="mt-4 text-[24px] font-semibold tracking-[-0.02em] text-fg">ModelLab</h1>
-          <p className="mt-1 text-sm text-muted">fine-tune · distill · benchmark, on your own GPUs</p>
+          <Beta className="mt-1.5" />
+          <p className="mt-2 text-sm text-muted">fine-tune · distill · benchmark, on your own GPUs</p>
         </div>
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-lift">
           <Field label="Username">

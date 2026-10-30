@@ -7,7 +7,7 @@ import { useSession } from "../session";
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub?: string; hero?: boolean }) {
   return (
-    <div className={cx("min-w-0 rounded-xl px-3 py-2.5", hero ? "bg-gradient-to-br from-teal-400/15 to-sky-400/10 ring-1 ring-inset ring-accent/25" : "bg-raised/60")}>
+    <div className={cx("min-w-0 rounded-xl px-3 py-2.5", hero ? "bg-gradient-to-br from-ice-400/15 to-ice-glint/10 ring-1 ring-inset ring-accent/25" : "bg-raised/60")}>
       <div className="truncate text-2xs font-medium text-muted">{label}</div>
       <div className={cx("mt-0.5 truncate font-mono font-medium tabular-nums text-fg", hero ? "text-xl" : "text-[15px]")}>{value}</div>
       {sub && <div className="truncate font-mono text-2xs text-subtle">{sub}</div>}
@@ -36,7 +36,7 @@ function EvalResult({ m }: { m: any }) {
             <div key={c} className="flex items-center gap-3 text-xs">
               <span className="w-24 truncate text-muted">{c}</span>
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-raised">
-                <div className="h-full origin-left animate-growx rounded-full bg-gradient-to-r from-teal-300 to-cyan-500" style={{ width: `${((v ?? 0) / max) * 100}%` }} />
+                <div className="h-full origin-left animate-growx rounded-full bg-gradient-to-r from-ice-300 to-ice-500" style={{ width: `${((v ?? 0) / max) * 100}%` }} />
               </div>
               <span className="w-9 text-right font-mono tabular-nums text-fg">{fmt.pct(v)}</span>
             </div>
