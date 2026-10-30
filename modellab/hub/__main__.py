@@ -29,7 +29,9 @@ def cmd_serve(a) -> int:
 
     from modellab.hub.app import create_app
 
-    uvicorn.run(create_app(), host=a.host, port=a.port, proxy_headers=True, forwarded_allow_ips="*", log_level="info")
+    # timeout_graceful_shutdown: agents' long-polls and open log streams must not hold up a stop or redeploy
+    uvicorn.run(create_app(), host=a.host, port=a.port, proxy_headers=True, forwarded_allow_ips="*", log_level="info",
+                timeout_graceful_shutdown=10)
     return 0
 
 

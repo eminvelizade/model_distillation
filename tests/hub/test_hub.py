@@ -298,3 +298,113 @@ def test_hub_code_does_not_need_torch_or_numpy():
     src = "".join(open(m.__file__).read() for m in (agent_api, api, app, auth, db, model))
     assert "import torch" not in src and "import numpy" not in src
     assert json.loads(json.dumps(model.catalog_for(None)))["eval_version"]
+
+
+# ---------------------------------------------------------------- dataset picker (folder listings from the agent)
+
+def test_folder_broker_round_trip():
+    import asyncio
+
+    from fastapi import HTTPException
+
+    from modellab.hub.browse import Broker, check_request
+
+    async def scenario():
+        b = Broker()
+        assert not b.listening("m")
+        ask = asyncio.create_task(b.ask("m", {"path": "/data", "want": "dir"}, timeout=5))
+        await asyncio.sleep(0)
+        reqs = await b.poll("m", [], hold=5)
+        assert b.listening("m") and [r["path"] for r in reqs] == ["/data"]
+        poll = asyncio.create_task(b.poll("m", [{"id": reqs[0]["id"], "result": {"path": "/data", "entries": []}}], hold=0.2))
+        assert await ask == {"path": "/data", "entries": []}
+        assert await poll == []
+        # the agent's error reaches the web app; nobody answering -> 504; an answer for a request nobody waits for is dropped
+        ask = asyncio.create_task(b.ask("m", {"path": "/nope", "want": "dir"}, timeout=5))
+        await asyncio.sleep(0)
+        rid = (await b.poll("m", [], hold=5))[0]["id"]
+        await b.poll("m", [{"id": rid, "error": "/nope is not a folder on this machine"}, {"id": "stale", "result": {}}], hold=0)
+        with pytest.raises(HTTPException) as e:
+            await ask
+        assert e.value.status_code == 422 and "not a folder" in e.value.detail
+        with pytest.raises(HTTPException) as e:
+            await b.ask("m", {"path": None, "want": "dir"}, timeout=0.05)
+        assert e.value.status_code == 504 and b.pending["m"] == []
+        # a poll whose agent hung up leaves the request for the next poll
+        ask = asyncio.create_task(b.ask("m", {"path": None, "want": "dir"}, timeout=5))
+        await asyncio.sleep(0)
+        gone = asyncio.Event()
+        gone.set()
+        assert await b.poll("m", [], hold=1, gone=gone) == []
+        again = await b.poll("m", [], hold=1)
+        assert len(again) == 1
+        await b.poll("m", [{"id": again[0]["id"], "result": {"ok": 1}}], hold=0)
+        assert await ask == {"ok": 1}
+        # an agent that hangs up while its poll waits frees the hub at once, not after the whole hold
+        gone = asyncio.Event()
+        asyncio.get_running_loop().call_later(0.2, gone.set)
+        t0 = time.monotonic()
+        assert await b.poll("m", [], hold=30, gone=gone) == [] and time.monotonic() - t0 < 1
+
+    asyncio.run(scenario())
+    for path, want in [("relative/x", "dir"), ("/x", "zip"), ("/x\x00", "dir"), ("/" + "a" * 2000, "dir")]:
+        with pytest.raises(HTTPException):
+            check_request(path, want)
+    assert check_request("", "json") == {"path": None, "want": "json"} and check_request("~/d", "dir")["path"] == "~/d"
+
+
+def test_folder_browser_over_http(hub, tmp_path, monkeypatch):
+    import threading
+
+    from fastapi.testclient import TestClient
+
+    from modellab.agent import browse as agent_browse
+    from modellab.hub import browse
+
+    monkeypatch.setattr(browse, "POLL_HOLD_S", 0.5)
+    (tmp_path / "traffic" / "train").mkdir(parents=True)
+    for s in ("train", "valid", "test"):
+        (tmp_path / "traffic" / s).mkdir(exist_ok=True)
+        (tmp_path / "traffic" / s / "_annotations.coco.json").write_text("{}")
+    (tmp_path / "raw").mkdir()
+    (tmp_path / "raw" / "ann.json").write_text("{}")
+    admin = login(hub)
+    agent, mid = pair(hub, admin)
+    other = login(hub)
+    other.post("/api/users", json={"username": "bob", "password": "bob-pass-12345"})
+    bob = login(hub, "bob", "bob-pass-12345")
+    with TestClient(hub) as tc:  # one event loop for the agent's poll and the web app's request, as under uvicorn
+        tc.post("/api/auth/login", json={"username": ADMIN[0], "password": ADMIN[1]}, headers=H)
+        auth = {"Authorization": agent.headers["Authorization"]}
+        assert tc.post(f"/api/machines/{mid}/browse", json={"path": str(tmp_path)}, headers=H).status_code == 409  # never polled
+        stop = threading.Event()
+
+        def agent_loop():
+            answers = []
+            while not stop.is_set():
+                reqs = tc.post("/agent/v1/fs/poll", json={"answers": answers}, headers=auth).json()["requests"]
+                answers = [agent_browse.answer(r) for r in reqs]
+
+        t = threading.Thread(target=agent_loop, daemon=True)
+        t.start()
+        try:
+            deadline = time.time() + 5
+            while not tc.get(f"/api/machines/{mid}", headers=H).json()["browse"] and time.time() < deadline:
+                time.sleep(0.05)
+            r = tc.post(f"/api/machines/{mid}/browse", json={"path": str(tmp_path)}, headers=H)
+            assert r.status_code == 200, r.text
+            got = r.json()
+            assert got["path"] == str(tmp_path) and {e["name"]: e.get("layout") for e in got["entries"]} == {"raw": None, "traffic": "roboflow"}
+            r = tc.post(f"/api/machines/{mid}/browse", json={"path": str(tmp_path / "raw"), "want": "json"}, headers=H)
+            assert [e["name"] for e in r.json()["entries"]] == ["ann.json"]
+            r = tc.post(f"/api/machines/{mid}/browse", json={"path": str(tmp_path / "missing")}, headers=H)
+            assert r.status_code == 422 and "not a folder" in r.json()["detail"]
+            assert tc.post(f"/api/machines/{mid}/browse", json={"path": "relative"}, headers=H).status_code == 422
+            assert tc.post(f"/api/machines/{mid}/browse", json={"path": "/"}).status_code == 403  # CSRF header
+        finally:
+            stop.set()
+            t.join(timeout=5)
+    assert bob.post(f"/api/machines/{mid}/browse", json={"path": "/"}).status_code == 404  # not bob's machine
+    with hub.state.engine.begin() as c:  # offline machine: no waiting
+        c.execute(sa.text("UPDATE machines SET last_seen = 0"))
+    assert admin.post(f"/api/machines/{mid}/browse", json={"path": "/"}).status_code == 409

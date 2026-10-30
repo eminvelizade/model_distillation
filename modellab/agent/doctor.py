@@ -14,7 +14,6 @@ import shutil
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 from modellab import ROOT, catalog, datasets, release, weights
 from modellab.agent import AGENT_VERSION, SERVICE, data_dir, home, release_info
@@ -225,12 +224,22 @@ def dataset_hashes() -> dict:
         return {}
 
 
-def remember_hash(name: str, info: dict) -> None:
-    reg = dataset_hashes()
-    reg[name] = {"hash": info.get("hash"), "path": info.get("path"), "time": time.time()}
+def _save_hashes(reg: dict) -> None:
     p = data_dir() / HASHES
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(reg, indent=1))
+
+
+def remember_hash(name: str, info: dict) -> None:
+    reg = dataset_hashes()
+    reg[name] = {"hash": info.get("hash"), "path": info.get("path"), "time": time.time()}
+    _save_hashes(reg)
+
+
+def forget_hash(name: str) -> None:
+    reg = dataset_hashes()
+    if reg.pop(name, None) is not None:
+        _save_hashes(reg)
 
 
 def dataset_list() -> list[dict]:

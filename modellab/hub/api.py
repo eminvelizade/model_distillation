@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from modellab import recipe
-from modellab.hub import auth, db, model
+from modellab.hub import auth, browse, db, model
 
 router = APIRouter(prefix="/api")
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
@@ -190,7 +190,32 @@ def pairing(pairing_id: str, request: Request, user: dict = Depends(auth.current
 @router.get("/machines/{mid}")
 def machine(mid: str, request: Request, user: dict = Depends(auth.current_user)):
     with _engine(request).begin() as c:
-        return model.machine_detail(c, model.get_machine(c, user, mid), _cfg(request))
+        out = model.machine_detail(c, model.get_machine(c, user, mid), _cfg(request))
+    return {**out, "browse": out["online"] and request.app.state.browse.listening(mid)}
+
+
+class BrowseIn(BaseModel):
+    path: str | None = None
+    want: str = "dir"
+
+
+@router.post("/machines/{mid}/browse")
+async def browse_folder(mid: str, body: BrowseIn, request: Request, user: dict = Depends(auth.current_user)):
+    """A folder on the machine, for the dataset picker: its sub-folders (and .json files for want=json), never contents."""
+    req = browse.check_request(body.path, body.want)
+
+    def summary():
+        with _engine(request).begin() as c:
+            return model.machine_summary(model.get_machine(c, user, mid), _cfg(request))
+
+    m = await asyncio.to_thread(summary)
+    broker = request.app.state.browse
+    if not m["online"]:
+        raise HTTPException(409, f"{m['name']} is offline: type the path instead")
+    if not broker.listening(mid):
+        raise HTTPException(409, f"{m['name']} runs an agent without the folder browser: it updates itself when idle "
+                                 "(or use Now under Agent). Type the path meanwhile")
+    return await broker.ask(mid, req)
 
 
 class MachinePatch(BaseModel):

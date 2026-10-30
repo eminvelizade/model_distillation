@@ -25,13 +25,19 @@ COCO_VEHICLES = "coco-vehicles"
 COCO_VEHICLES_DIR = "data/coco-vehicles"
 
 
-def _load() -> dict:
+def _raw() -> dict:
     f = datasets_file()
-    reg = json.loads(f.read_text()) if f.is_file() else {}
-    # The quick set is always known (it may not be built yet).
-    reg.setdefault(COCO_VEHICLES, {"path": COCO_VEHICLES_DIR,
-                                   "description": "COCO 2017 car/truck/bus/motorcycle quick set (build-coco-vehicles)"})
-    return reg
+    return json.loads(f.read_text()) if f.is_file() else {}
+
+
+def _placeholder(name: str, entry: dict) -> bool:
+    """The never-built coco-vehicles entry older versions put in every registry (it showed up on every machine as
+    "not built" and could not be removed). Hidden; building the set registers it for real."""
+    return name == COCO_VEHICLES and entry.get("path") == COCO_VEHICLES_DIR and not (ROOT / COCO_VEHICLES_DIR).is_dir()
+
+
+def _load() -> dict:
+    return {k: v for k, v in _raw().items() if not _placeholder(k, v)}
 
 
 def _save(reg: dict) -> None:
@@ -132,7 +138,7 @@ def list_all() -> list[dict]:
 def add(name: str, path: Path, description: str = "") -> dict:
     path = path.resolve()
     validate_layout(path)
-    reg = _load()
+    reg = _load()  # drops a legacy placeholder for good
     try:
         rel = path.relative_to(ROOT)
         stored = str(rel)
@@ -170,9 +176,8 @@ def import_yolo(name: str, yolo_dir: Path, keep_splits: bool = False, out: Path 
 
 def remove(name: str) -> None:
     """Forget a dataset (its files stay where they are)."""
-    reg = _load()
+    reg = _raw()
     if name not in reg:
         raise KeyError(f"unknown dataset {name!r}")
-    raw = json.loads(datasets_file().read_text()) if datasets_file().is_file() else {}
-    raw.pop(name, None)
-    _save(raw)
+    del reg[name]
+    _save(reg)

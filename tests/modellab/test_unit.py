@@ -2,7 +2,6 @@
 
 import json
 import shutil
-from pathlib import Path
 
 import pytest
 
@@ -16,7 +15,7 @@ CHAIN = (ROOT / "tests/modellab/recipes/tiny_chain.yaml").read_text()
 def test_templates_and_test_recipes_validate(lab):
     from modellab import datasets, recipe
 
-    known = set(datasets._load())
+    known = set(datasets._load()) | {"coco-vehicles"}  # the templates' example dataset (the UI swaps in a real one)
     for f in [*sorted((ROOT / "recipes").glob("*.yaml")), *sorted((ROOT / "tests/modellab/recipes").glob("*.yaml"))]:
         plans, errors = recipe.plan(f.read_text(), known)
         assert not errors, (f.name, errors)
@@ -117,6 +116,30 @@ def test_dataset_add_rejects_bad_layout(lab, tmp_path):
     (tmp_path / "bad" / "train").mkdir(parents=True)
     with pytest.raises(FileNotFoundError):
         datasets.add("bad", tmp_path / "bad")
+
+
+def test_registry_has_no_phantom_dataset_and_every_entry_can_be_removed(lab, tiny_dataset, tmp_path):
+    """Regression: an unbuilt coco-vehicles entry showed up on every machine and could not be removed."""
+    from modellab import datasets
+
+    assert [d["name"] for d in datasets.list_all()] == ["tiny"]
+    reg = json.loads((tmp_path / "datasets.json").read_text())
+    reg["coco-vehicles"] = {"path": datasets.COCO_VEHICLES_DIR, "description": "left behind by an older version"}
+    (tmp_path / "datasets.json").write_text(json.dumps(reg))
+    assert [d["name"] for d in datasets.list_all()] == ["tiny"]  # never built: hidden
+    datasets.add("tiny2", tiny_dataset)
+    assert "coco-vehicles" not in json.loads((tmp_path / "datasets.json").read_text())
+
+    gone = tmp_path / "gone"
+    shutil.copytree(tiny_dataset, gone)
+    datasets.add("moved", gone)
+    shutil.rmtree(gone)
+    assert next(d for d in datasets.list_all() if d["name"] == "moved")["built"] is False
+    for name in ("moved", "tiny2", "tiny"):
+        datasets.remove(name)
+    assert datasets.list_all() == []
+    with pytest.raises(KeyError):
+        datasets.remove("tiny")
 
 
 # ---------- store / queue state ----------

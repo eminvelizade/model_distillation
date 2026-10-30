@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 
 from modellab import ROOT
-from modellab.hub import Config, agent_api, api, db, load_config, model
+from modellab.hub import Config, agent_api, api, browse, db, load_config, model
 
 WEB_DIST = ROOT / "modellab" / "web" / "dist"
 INSTALLER = ROOT / "modellab" / "hub" / "install.sh"
@@ -44,6 +44,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
 
     app = FastAPI(title="ModelLab Hub", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.cfg, app.state.engine = cfg, engine
+    app.state.browse = browse.Broker()
     csp = _csp()
 
     @app.middleware("http")

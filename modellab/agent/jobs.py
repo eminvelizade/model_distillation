@@ -38,9 +38,12 @@ def _path(args: dict, key: str, required: bool = True) -> Path | None:
         if required:
             raise ValueError(f"{key} is required")
         return None
-    if not isinstance(v, str) or not v.startswith("/") or "\x00" in v:
+    if not isinstance(v, str) or not v.startswith(("/", "~")) or "\x00" in v:
         raise ValueError(f"{key} must be an absolute path")
-    return Path(v)
+    p = Path(v).expanduser()
+    if not p.is_absolute():
+        raise ValueError(f"{key} must be an absolute path")
+    return p
 
 
 def _name(args: dict) -> str:
@@ -166,7 +169,11 @@ class Jobs(threading.Thread):
             return {**_ds_summary(info), "changed": changed, "previous": before}
         if ctype == "dataset_remove":
             name = _name(a)
-            datasets.remove(name)
+            try:
+                datasets.remove(name)
+            except KeyError:
+                say(f"{name} was not registered (already removed)")
+            doctor.forget_hash(name)
             return {"removed": name}
         if ctype == "weights_fetch":
             keys = weights.expand(list(a.get("ids") or []))
