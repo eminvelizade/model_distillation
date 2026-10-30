@@ -71,10 +71,10 @@ function NavItem({ to, label, icon: Icon, badge }: { to: string; label: string; 
   return (
     <NavLink to={to} end={to === "/"}
       className={({ isActive }) => cx("group relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition",
-        isActive ? "bg-raised text-fg" : "text-muted hover:bg-raised/60 hover:text-fg")}>
+        isActive ? "bg-accent/[.09] text-fg" : "text-muted hover:bg-raised/70 hover:text-fg")}>
       {({ isActive }) => <>
-        {isActive && <span className="absolute -left-3 top-1.5 h-5 w-[3px] rounded-r-full bg-accent" />}
-        <Icon className={cx("h-4 w-4", isActive ? "text-accent" : "text-subtle group-hover:text-muted")} />
+        {isActive && <span className="absolute -left-3 top-1.5 h-5 w-[3px] animate-growy rounded-r-full bg-accent" />}
+        <Icon className={cx("h-4 w-4 transition-transform duration-300 group-hover:scale-110", isActive ? "text-accent" : "text-subtle group-hover:text-muted")} />
         <span className="flex-1">{label}</span>
         {badge}
       </>}
@@ -84,8 +84,13 @@ function NavItem({ to, label, icon: Icon, badge }: { to: string; label: string; 
 
 function Logo() {
   return (
-    <NavLink to="/" className="flex items-center gap-2.5">
-      <span className="flex h-8 w-8 items-center justify-center text-[26px] leading-none" role="img" aria-label="test tube">🧪</span>
+    <NavLink to="/" className="group flex items-center gap-2.5">
+      <span className="relative flex h-8 w-8 items-center justify-center">
+        <span className="text-[26px] leading-none transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:-rotate-12" role="img" aria-label="test tube">🧪</span>
+        {/* tiny bubbles drifting up out of the tube */}
+        <span aria-hidden className="absolute right-0.5 top-0 h-[5px] w-[5px] animate-rise rounded-full bg-teal-300/90" />
+        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-sky-300/90" style={{ animationDelay: "1.7s" }} />
+      </span>
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-fg">ModelLab</div>
         <div className="text-2xs text-subtle">fine-tune · distill · benchmark</div>
@@ -164,16 +169,16 @@ export default function App() {
           {NAV.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === "/"}
               className={({ isActive }) => cx("flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium",
-                isActive ? "bg-raised text-fg" : "text-muted")}>
+                isActive ? "bg-accent/[.09] text-fg" : "text-muted")}>
               <Icon className="h-3.5 w-3.5" />{label}{badge(to)}
             </NavLink>
           ))}
         </nav>
       </header>
 
-      <main className="relative isolate min-w-0">
+      <main className="relative isolate min-w-0 overflow-x-clip">
         <div className="aurora pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px]" />
-        <div key={loc.pathname} className="mx-auto max-w-[1320px] px-4 py-6 animate-enter sm:px-8 lg:py-10">
+        <div key={loc.pathname} className="page mx-auto max-w-[1320px] px-4 py-6 sm:px-8 lg:py-10">
           <Routes>
             <Route path="/" element={<NewExperiment />} />
             <Route path="/queue" element={<Queue />} />

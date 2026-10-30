@@ -28,7 +28,7 @@ const AXES: { key: keyof ResultRow; label: string; better: "high" | "low" }[] = 
  * Radar of accuracy / speed / size. Each axis is scored against the best of `reference` (default: the plotted rows),
  * then stretched so the worst reference score sits at 25% radius — close contenders stay distinguishable.
  */
-export default function Radar({ rows, colors = SERIES, reference }: { rows: ResultRow[]; colors?: string[]; reference?: ResultRow[] }) {
+export default function Radar({ rows, colors = SERIES, reference, highlight }: { rows: ResultRow[]; colors?: string[]; reference?: ResultRow[]; highlight?: number | null }) {
   const S = 340, c = S / 2, R = 108;
   const ref = reference?.length ? reference : rows;
   const axes = AXES.map((a) => ({ ...a, s: score(rows, a.key, a.better, ref), refS: score(ref, a.key, a.better, ref) }));
@@ -57,10 +57,13 @@ export default function Radar({ rows, colors = SERIES, reference }: { rows: Resu
       {rows.map((_, ri) => {
         const pts = axes.map((a, i) => pt(i, radius(a.s[ri])));
         return (
-          <g key={ri} className="animate-fade">
-            <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={colors[ri % colors.length]} fillOpacity={0.14} stroke={colors[ri % colors.length]} strokeWidth={2} strokeLinejoin="round"
-              style={{ transition: "all .4s cubic-bezier(.2,.7,.2,1)" }} />
+          // keyed by result, so a newly selected model blooms in while the others stay put
+          <g key={`${rows[ri].run_id}:${rows[ri].stage}`} className="radar-in" style={{ animationDelay: `${ri * 90}ms` }}>
+            <g style={{ opacity: highlight == null || highlight === ri ? 1 : 0.18, transition: "opacity .3s ease" }}>
+            <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={colors[ri % colors.length]} fillOpacity={highlight === ri ? 0.24 : 0.14} stroke={colors[ri % colors.length]} strokeWidth={2} strokeLinejoin="round"
+              style={{ transition: "fill-opacity .3s ease" }} />
             {pts.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r={3} fill={colors[ri % colors.length]} className="stroke-surface" strokeWidth={1.5} />)}
+            </g>
           </g>
         );
       })}

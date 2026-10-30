@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { MouseEvent, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Info, Loader2, Search, X, XCircle } from "lucide-react";
 
 export function cx(...c: (string | false | null | undefined)[]) {
@@ -29,12 +29,14 @@ export function usePoll<T>(fn: () => Promise<T>, ms: number, deps: unknown[] = [
   return { data, error, refresh: () => fnRef.current().then(setData).catch((e) => setError(String(e))) };
 }
 
+export const reducedMotion = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 /** Animates a number towards `value` (ease-out). Jumps straight there when motion is reduced. */
 export function useCountUp(value: number, ms = 700) {
   const [v, setV] = useState(value);
   const from = useRef(0);
   useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setV(value); return; }
+    if (reducedMotion()) { setV(value); return; }
     const a = from.current, t0 = performance.now();
     let raf = 0;
     const step = (t: number) => {
@@ -48,9 +50,39 @@ export function useCountUp(value: number, ms = 700) {
   return v;
 }
 
+export function CountUp({ value, decimals = 0 }: { value: number; decimals?: number }) {
+  return <>{useCountUp(value).toFixed(decimals)}</>;
+}
+
+/** A soft burst of icy sparkles from an element (a success moment). Nothing when motion is reduced. */
+export function sparkleBurst(el: Element | null | undefined, n = 12) {
+  if (!el || reducedMotion()) return;
+  const r = el.getBoundingClientRect();
+  const colors = ["#5eead4", "#7dd3fc", "#a5f3fc", "#ffffff", "#2dd4bf"];
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement("span");
+    const a = (Math.PI * 2 * i) / n + Math.random() * 0.5, d = 26 + Math.random() * 30;
+    s.className = "spark";
+    s.textContent = i % 3 ? "✦" : "•";
+    Object.assign(s.style, {
+      left: `${r.left + r.width / 2 + (Math.random() - 0.5) * r.width * 0.5}px`, top: `${r.top + r.height / 2}px`,
+      color: colors[i % colors.length], fontSize: `${8 + Math.random() * 7}px`, textShadow: "0 0 6px rgb(94 234 212 / .6)",
+      animationDelay: `${Math.random() * 80}ms`,
+    });
+    s.style.setProperty("--dx", `${Math.cos(a) * d}px`);
+    s.style.setProperty("--dy", `${Math.sin(a) * d - 8}px`);
+    s.style.setProperty("--r", `${(Math.random() - 0.5) * 120}deg`);
+    document.body.appendChild(s);
+    window.setTimeout(() => s.remove(), 1100);
+  }
+}
+
 export function useTheme() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const set = (d: boolean) => {
+    const html = document.documentElement;
+    html.classList.add("theme-transition");
+    window.setTimeout(() => html.classList.remove("theme-transition"), 450);
     setDark(d);
     document.documentElement.classList.toggle("dark", d);
     try { localStorage.setItem("modellab-theme", d ? "dark" : "light"); } catch { /* private mode */ }
@@ -104,7 +136,7 @@ export function Card({ children, className, title, description, actions, icon, f
   flush?: boolean; bodyClassName?: string;
 }) {
   return (
-    <section className={cx("min-w-0 rounded-2xl border border-line bg-surface shadow-soft", className)}>
+    <section className={cx("min-w-0 rounded-2xl border border-line bg-surface shadow-soft transition-shadow duration-300", className)}>
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 pb-1 pt-4">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -124,10 +156,10 @@ export function Card({ children, className, title, description, actions, icon, f
 
 export function Stat({ label, value, sub, icon, className }: { label: ReactNode; value: ReactNode; sub?: ReactNode; icon?: ReactNode; className?: string }) {
   return (
-    <div className={cx("min-w-0 rounded-2xl border border-line bg-surface p-4 shadow-soft", className)}>
+    <div className={cx("group min-w-0 rounded-2xl border border-line bg-surface p-4 shadow-soft transition duration-300 hover:-translate-y-px hover:border-accent/30 hover:shadow-lift", className)}>
       <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted">
         <span className="truncate">{label}</span>
-        {icon && <span className="text-subtle">{icon}</span>}
+        {icon && <span className="text-subtle transition duration-300 group-hover:scale-110 group-hover:text-accent">{icon}</span>}
       </div>
       <div className="mt-2 truncate font-mono text-[22px] font-medium tabular-nums tracking-tight text-fg">{value}</div>
       {sub && <div className="mt-0.5 truncate text-xs text-subtle">{sub}</div>}
@@ -169,7 +201,7 @@ export function StatusPill({ status }: { status: string }) {
 // ---------- controls ----------
 
 export function Button({ children, onClick, variant = "secondary", disabled, title, type = "button", small, className }: {
-  children: ReactNode; onClick?: () => void; variant?: "primary" | "brand" | "secondary" | "danger" | "ghost"; disabled?: boolean; title?: string;
+  children: ReactNode; onClick?: (e: MouseEvent<HTMLButtonElement>) => void; variant?: "primary" | "brand" | "secondary" | "danger" | "ghost"; disabled?: boolean; title?: string;
   type?: "button" | "submit"; small?: boolean; className?: string;
 }) {
   const v = {
@@ -181,8 +213,9 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
   }[variant];
   return (
     <button type={type} title={title} disabled={disabled} onClick={onClick}
-      className={cx("inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] font-medium transition active:scale-[.98] disabled:pointer-events-none disabled:opacity-45 [&_svg]:h-[15px] [&_svg]:w-[15px]",
+      className={cx("group/btn relative inline-flex select-none items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-[10px] font-medium transition duration-200 active:scale-[.97] disabled:pointer-events-none disabled:opacity-45 [&_svg]:h-[15px] [&_svg]:w-[15px]",
         small ? "h-7 px-2.5 text-xs [&_svg]:!h-3.5 [&_svg]:!w-3.5" : "h-9 px-3.5 text-[13.5px]", v, className)}>
+      {variant === "brand" && <span aria-hidden className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/35 to-transparent opacity-0 transition-all duration-700 ease-out group-hover/btn:left-[120%] group-hover/btn:opacity-100" />}
       {children}
     </button>
   );
@@ -200,13 +233,28 @@ export function IconButton({ children, onClick, title, disabled, className }: { 
 export function Segmented<T extends string>({ options, value, onChange, small, className }: {
   options: { value: T; label: ReactNode; icon?: ReactNode }[]; value: T; onChange: (v: T) => void; small?: boolean; className?: string;
 }) {
+  // the white "thumb" slides between options instead of jumping
+  const box = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState<{ left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = [...(box.current?.querySelectorAll<HTMLElement>("[data-seg]") ?? [])].find((b) => b.dataset.seg === value);
+      if (el) setThumb({ left: el.offsetLeft, width: el.offsetWidth });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (box.current) ro.observe(box.current);
+    return () => ro.disconnect();
+  }, [value, options.length]);
   return (
-    <div className={cx("inline-flex max-w-full overflow-x-auto rounded-[10px] bg-raised p-0.5 scroll-none", className)}>
+    <div ref={box} className={cx("relative inline-flex max-w-full overflow-x-auto rounded-[10px] bg-raised p-0.5 scroll-none", className)}>
+      {thumb && <span aria-hidden className="absolute bottom-0.5 top-0.5 rounded-lg bg-surface shadow-soft ring-1 ring-line/70 transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)]"
+        style={{ left: thumb.left, width: thumb.width }} />}
       {options.map((o) => (
-        <button key={o.value} onClick={() => onChange(o.value)}
-          className={cx("inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg font-medium transition [&_svg]:h-3.5 [&_svg]:w-3.5",
+        <button key={o.value} data-seg={o.value} onClick={() => onChange(o.value)}
+          className={cx("relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg font-medium transition-colors duration-200 [&_svg]:h-3.5 [&_svg]:w-3.5",
             small ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-[13px]",
-            value === o.value ? "bg-surface text-fg shadow-soft ring-1 ring-line/70" : "text-muted hover:text-fg")}>
+            value === o.value ? "text-fg" : "text-muted hover:text-fg", !thumb && value === o.value && "bg-surface shadow-soft")}>
           {o.icon}{o.label}
         </button>
       ))}
@@ -218,19 +266,30 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
   return (
     <label className="inline-flex cursor-pointer select-none items-center gap-2 text-[13px] text-muted">
       <button role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
-        className={cx("relative h-5 w-9 rounded-full transition", checked ? "bg-accent" : "bg-line")}>
-        <span className={cx("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all", checked ? "left-[18px]" : "left-0.5")} />
+        className={cx("relative h-5 w-9 rounded-full transition-colors duration-300", checked ? "bg-accent" : "bg-line")}>
+        <span className={cx("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]", checked ? "left-[18px]" : "left-0.5")} />
       </button>
       {label}
     </label>
   );
 }
 
+/** `value`, but starting from 0 on mount so bars and rings fill in instead of appearing. */
+function useFillIn(value: number) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => requestAnimationFrame(() => setV(value)));
+    return () => cancelAnimationFrame(r);
+  }, [value]);
+  return v;
+}
+
 export function ProgressBar({ value, className, active }: { value: number; className?: string; active?: boolean }) {
+  const shown = useFillIn(value);
   return (
     <div className={cx("h-1.5 w-full overflow-hidden rounded-full bg-raised", className)}>
-      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-teal-300 via-cyan-400 to-sky-400 transition-all duration-700"
-        style={{ width: `${Math.max(2, Math.min(100, value * 100))}%` }}>
+      <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-teal-300 via-cyan-400 to-sky-400 transition-all duration-1000 ease-[cubic-bezier(.2,.7,.2,1)]"
+        style={{ width: `${shown ? Math.max(2, Math.min(100, shown * 100)) : 0}%` }}>
         {active && <div className="shimmer absolute inset-0 animate-shimmer" />}
       </div>
     </div>
@@ -243,13 +302,14 @@ export function Ring({ value, size = 96, stroke = 8, children, gradient = ["#5ee
 }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r;
   const id = useRef(`g${Math.random().toString(36).slice(2, 8)}`).current;
+  const shown = useFillIn(value);
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={gradient[0]} /><stop offset="1" stopColor={gradient[1]} /></linearGradient></defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className={track} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} stroke={`url(#${id})`} strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(0, Math.min(1, value)))} style={{ transition: "stroke-dashoffset .8s cubic-bezier(.2,.7,.2,1)" }} />
+          strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(0, Math.min(1, shown)))} style={{ transition: "stroke-dashoffset 1.1s cubic-bezier(.2,.7,.2,1)" }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
     </div>
@@ -267,7 +327,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputCls =
-  "w-full h-9 rounded-[10px] border-0 bg-surface px-3 text-[13.5px] text-fg shadow-soft ring-1 ring-inset ring-line placeholder:text-subtle transition focus:outline-none focus:ring-2 focus:ring-accent/60 dark:bg-raised/60";
+  "w-full h-9 rounded-[10px] border-0 bg-surface px-3 text-[13.5px] text-fg shadow-soft ring-1 ring-inset ring-line placeholder:text-subtle transition duration-200 hover:ring-subtle/40 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:shadow-[0_0_0_4px_rgb(45_212_191/.12)] dark:bg-raised/60";
 
 export function SearchInput({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
   return (
@@ -306,7 +366,10 @@ export function Empty({ title, children, mood = "sleepy" }: { title: string; chi
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <div className="relative">
         <div className="absolute inset-0 -z-0 scale-150 rounded-full bg-accent/10 blur-2xl" />
-        <Mascot size={60} mood={mood} />
+        <div className="animate-float"><Mascot size={60} mood={mood} /></div>
+        {[["-6px", "-10px", 0], ["8px", "64px", 1.2], ["44px", "-16px", 2.1]].map(([t, l, d]) => (
+          <span key={`${t}${l}`} aria-hidden className="absolute animate-twinkle text-[9px] text-accent" style={{ top: t as string, left: l as string, animationDelay: `${d}s` }}>✦</span>
+        ))}
       </div>
       <div className="text-sm font-semibold text-fg">{title}</div>
       {children && <div className="max-w-md text-[13px] text-muted">{children}</div>}
@@ -321,7 +384,7 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink-950/40 p-4 pt-[12vh] backdrop-blur-[3px] animate-fade" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink-950/25 p-4 pt-[12vh] backdrop-blur-[6px] animate-fade dark:bg-black/50" onClick={onClose}>
       <div className={cx("w-full max-w-md overflow-hidden rounded-2xl border border-line bg-surface shadow-lift animate-pop", className)} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
@@ -332,10 +395,11 @@ export function Modal({ children, onClose, className }: { children: ReactNode; o
 /** "Labby": a little flask with eyes. Moods change the face. */
 export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "happy" | "busy" | "sleepy" | "sad" }) {
   const id = useRef(`m${Math.random().toString(36).slice(2, 8)}`).current;
+  const delay = useRef(`${-Math.random() * 5}s`).current; // several Labbys never blink in sync
   const ink = "#134e4a";
   const eyes = mood === "sleepy"
     ? <><path d="M24 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /><path d="M34 39q3 2 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" /></>
-    : <><circle cx="27" cy="39" r="2.6" fill={ink} /><circle cx="37" cy="39" r="2.6" fill={ink} /><circle cx="27.8" cy="38.2" r=".8" fill="#fff" /><circle cx="37.8" cy="38.2" r=".8" fill="#fff" /></>;
+    : <g className="blink" style={{ animationDelay: delay }}><circle cx="27" cy="39" r="2.6" fill={ink} /><circle cx="37" cy="39" r="2.6" fill={ink} /><circle cx="27.8" cy="38.2" r=".8" fill="#fff" /><circle cx="37.8" cy="38.2" r=".8" fill="#fff" /></g>;
   const mouth = mood === "sad" ? <path d="M29 47q3-2.5 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" />
     : mood === "busy" ? <ellipse cx="32" cy="46" rx="2" ry="1.6" fill={ink} />
     : <path d="M29 45q3 3 6 0" stroke={ink} strokeWidth="2" fill="none" strokeLinecap="round" />;
@@ -349,7 +413,7 @@ export function Mascot({ size = 36, mood = "happy" }: { size?: number; mood?: "h
       {eyes}
       {mouth}
       <circle cx="22" cy="44" r="1.8" fill="#fda4af" opacity=".8" /><circle cx="42" cy="44" r="1.8" fill="#fda4af" opacity=".8" />
-      <circle cx="44" cy="20" r="2.2" fill="#5eead4" /><circle cx="48" cy="13" r="1.4" fill="#7dd3fc" />
+      <circle cx="44" cy="20" r="2.2" fill="#5eead4" className="animate-float" /><circle cx="48" cy="13" r="1.4" fill="#7dd3fc" className="animate-float" style={{ animationDelay: "-1.4s" }} />
     </svg>
   );
 }
@@ -385,8 +449,8 @@ export function Toast({ msg, kind = "info", onClose }: { msg: string | null; kin
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
       <div className={cx("pointer-events-auto flex max-w-md items-center gap-2.5 rounded-full py-2 pl-3 pr-2 text-[13px] font-medium shadow-lift animate-pop",
-        kind === "error" ? "bg-rose-600 text-white" : "bg-ink-900 text-white ring-1 ring-white/10 dark:bg-white dark:text-ink-900")}>
-        {kind === "error" ? <XCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 dark:text-emerald-600" />}
+        kind === "error" ? "bg-rose-600 text-white" : "bg-fg text-canvas ring-1 ring-white/10")}>
+        {kind === "error" ? <XCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-300 dark:text-teal-600" />}
         <span className="min-w-0">{msg}</span>
         <button onClick={onClose} className="rounded-full p-1 opacity-60 hover:opacity-100" aria-label="dismiss"><X className="h-3.5 w-3.5" /></button>
       </div>
@@ -409,7 +473,7 @@ export function LogView({ runId, stage, height = "h-80", tabs, live }: { runId: 
     if (follow && box.current) box.current.scrollTop = box.current.scrollHeight;
   }, [lines, follow]);
   return (
-    <div className="overflow-hidden rounded-xl bg-[#0c0c10] ring-1 ring-black/5 dark:ring-white/[.07]">
+    <div className="overflow-hidden rounded-xl bg-code ring-1 ring-black/5 dark:ring-white/[.07]">
       <div className="flex flex-wrap items-center gap-3 border-b border-white/[.06] px-3 py-2">
         <div className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" /><span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" /><span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" /></div>
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scroll-none">{tabs}</div>
@@ -454,7 +518,7 @@ export function Yaml({ text, className }: { text: string; className?: string }) 
     return <span className="text-emerald-300">{s}</span>;
   };
   return (
-    <pre className={cx("scroll-thin overflow-auto rounded-xl bg-[#0c0c10] py-3 font-mono text-[11.5px] leading-[1.7] ring-1 ring-black/5 dark:ring-white/[.07]", className)}>
+    <pre className={cx("scroll-thin overflow-auto rounded-xl bg-code py-3 font-mono text-[11.5px] leading-[1.7] ring-1 ring-black/5 dark:ring-white/[.07]", className)}>
       {lines.map((l, i) => {
         const m = l.match(/^(\s*)(-\s+)?([\w.-]+)(:)(.*)$/);
         return (

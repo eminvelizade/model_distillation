@@ -14,7 +14,7 @@ export function StageStepper({ run }: { run: RunSummary }) {
         const done = s.status === "done", live = s.status === "running", bad = s.status === "failed", stop = ["cancelled", "interrupted"].includes(s.status);
         return (
           <li key={s.name} className="flex items-center">
-            {i > 0 && <span className={cx("mx-2 h-px w-6 sm:w-10", done || live ? "bg-gradient-to-r from-emerald-500/60 to-sky-500/60" : "bg-line")} />}
+            {i > 0 && <span className={cx("mx-2 h-px w-6 sm:w-10", live ? "flow-line" : done ? "bg-emerald-500/50" : "bg-line")} />}
             <span className="flex items-center gap-2">
               <span className={cx("flex h-6 w-6 items-center justify-center rounded-full ring-1 ring-inset [&_svg]:h-3.5 [&_svg]:w-3.5",
                 done ? "bg-emerald-500 text-white ring-emerald-500" : live ? "bg-sky-500/10 text-sky-600 ring-sky-500/40 dark:text-sky-400" : bad ? "bg-rose-500 text-white ring-rose-500"
@@ -162,7 +162,7 @@ export default function Queue() {
                 {waiting.map((r, i) => (
                   <li key={r.id} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-raised/60">
                     <span className={cx("flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-semibold",
-                      i === 0 ? "bg-accent text-white" : "bg-raised text-muted ring-1 ring-inset ring-line")}>{i + 1}</span>
+                      i === 0 ? "bg-accent text-canvas" : "bg-raised text-muted ring-1 ring-inset ring-line")}>{i + 1}</span>
                     <div className="min-w-0 flex-1">
                       <Link to={`/runs/${r.id}`} className="block truncate text-[13px] font-medium text-fg hover:text-accent">{r.name}</Link>
                       <div className="mt-0.5 flex items-center gap-1">

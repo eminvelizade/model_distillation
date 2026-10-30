@@ -31,6 +31,7 @@ export function niceTicks(a: number, b: number, n = 5): number[] {
 
 export default function Scatter({ points, onPick, selected, ringColor }: { points: Pt[]; onPick?: (p: Pt) => void; selected: Set<string>; ringColor?: (key: string) => string | undefined }) {
   const [hover, setHover] = useState<Pt | null>(null);
+  const [ripple, setRipple] = useState<{ key: string; n: number } | null>(null);
   const [ref, W] = useWidth<HTMLDivElement>();
   const H = W < 560 ? 280 : 360, P = { l: 40, r: 20, t: 30, b: 46 };
   if (!points.length) return <div ref={ref} className="flex h-64 items-center justify-center text-sm text-subtle">No results with a latency measurement yet.</div>;
@@ -89,28 +90,32 @@ export default function Scatter({ points, onPick, selected, ringColor }: { point
           <text x={0} y={12} className="fill-muted text-[11px] font-medium">↑ mAP50:95 (%)</text>
           <text x={W - P.r} y={H - 4} textAnchor="end" className="fill-muted text-[11px] font-medium">latency, ms (median · bs 1) →</text>
 
-          {area && <path d={area} fill="url(#pf-area)" />}
-          {line && <path d={line} fill="none" stroke="url(#pf-line)" strokeWidth={2} strokeLinejoin="round" />}
+          {area && <path d={area} fill="url(#pf-area)" className="animate-fade" style={{ animationDuration: ".9s", animationDelay: ".7s" }} />}
+          {line && <path d={line} fill="none" stroke="url(#pf-line)" strokeWidth={2} strokeLinejoin="round" pathLength={1} strokeDasharray={1} className="animate-draw" />}
 
           {hover && <>
             <line x1={sx(hover.x)} x2={sx(hover.x)} y1={sy(hover.y)} y2={H - P.b} className="stroke-subtle" strokeDasharray="3 3" />
             <line x1={P.l} x2={sx(hover.x)} y1={sy(hover.y)} y2={sy(hover.y)} className="stroke-subtle" strokeDasharray="3 3" />
           </>}
 
-          {points.map((p) => {
+          {points.map((p, i) => {
             const onFront = front.has(p.key), sel = selected.has(p.key), hov = hover?.key === p.key;
             const cx = sx(p.x), cy = sy(p.y), c = famColor(p.family);
             const lab = labels.get(p.key);
             return (
-              <g key={p.key} onMouseEnter={() => setHover(p)} onMouseLeave={() => setHover(null)} onClick={() => onPick?.(p)} className="cursor-pointer">
-                <circle cx={cx} cy={cy} r={16} fill="transparent" />
-                {onFront && <circle cx={cx} cy={cy} r={12} fill={c} opacity={0.14} />}
-                {sel && <circle cx={cx} cy={cy} r={10.5} fill="none" className={ringColor?.(p.key) ? undefined : "stroke-accent"} stroke={ringColor?.(p.key)} strokeWidth={2.5} />}
-                <circle cx={cx} cy={cy} r={hov ? 7.5 : 6} fill={p.comparable ? c : "transparent"} stroke={p.comparable ? undefined : c}
-                  className={p.comparable ? "stroke-surface" : undefined} strokeWidth={p.comparable ? 2 : 1.75} strokeDasharray={p.comparable ? undefined : "2.5 2"}
-                  style={{ transition: "r .15s ease" }} />
+              <g key={p.key} onMouseEnter={() => setHover(p)} onMouseLeave={() => setHover(null)} className="cursor-pointer"
+                onClick={() => { setRipple({ key: p.key, n: Date.now() }); onPick?.(p); }}>
+                <g className="svg-center animate-popin" style={{ animationDelay: `${250 + i * 45}ms` }}>
+                  <circle cx={cx} cy={cy} r={16} fill="transparent" />
+                  {onFront && <circle cx={cx} cy={cy} r={hov ? 14 : 12} fill={c} opacity={0.14} style={{ transition: "r .25s ease" }} />}
+                  {sel && <circle cx={cx} cy={cy} r={10.5} fill="none" className={`svg-center animate-popin ${ringColor?.(p.key) ? "" : "stroke-accent"}`} stroke={ringColor?.(p.key)} strokeWidth={2.5} />}
+                  <circle cx={cx} cy={cy} r={hov ? 7.5 : 6} fill={p.comparable ? c : "transparent"} stroke={p.comparable ? undefined : c}
+                    className={p.comparable ? "stroke-surface" : undefined} strokeWidth={p.comparable ? 2 : 1.75} strokeDasharray={p.comparable ? undefined : "2.5 2"}
+                    style={{ transition: "r .2s cubic-bezier(.34,1.56,.64,1)" }} />
+                </g>
+                {ripple?.key === p.key && <circle key={ripple.n} cx={cx} cy={cy} r={7} fill="none" stroke={ringColor?.(p.key) ?? c} strokeWidth={1.5} className="svg-center pointer-events-none animate-ripple" />}
                 {lab && W > 560 && (
-                  <text x={lab.x} y={lab.y} textAnchor={lab.anchor} className="pointer-events-none fill-muted text-[11px] font-medium">{short(p.label)}</text>
+                  <text x={lab.x} y={lab.y} textAnchor={lab.anchor} className="pointer-events-none animate-fade fill-muted text-[11px] font-medium" style={{ animationDuration: ".6s", animationDelay: "1.1s" }}>{short(p.label)}</text>
                 )}
               </g>
             );

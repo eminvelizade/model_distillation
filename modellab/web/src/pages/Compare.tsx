@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Crown, Loader2 } from "lucide-react";
 import { api, fmt, ResultRow } from "../api";
-import { Button, Callout, Card, cx, Empty, PageHeader, useWidth } from "../ui";
+import { Button, Callout, Card, CountUp, cx, Empty, PageHeader, useWidth } from "../ui";
 import Radar, { score, SERIES as PALETTE } from "../components/Radar";
 
 type Metric = { key: keyof ResultRow; label: string; better: "high" | "low"; f: (v: any) => string };
@@ -45,7 +45,7 @@ function ClassBars({ rows }: { rows: ResultRow[] }) {
               <g key={c}>
                 {rows.map((r, ri) => {
                   const v = ((r.metrics?.per_class as Record<string, number | null> | undefined)?.[c]) ?? 0;
-                  return <rect key={ri} x={x0 + ri * (bw + 3)} y={sy(v)} width={bw} height={Math.max(0, H - bottom - sy(v))} rx={4} fill={PALETTE[ri]} className="transition-opacity hover:opacity-80">
+                  return <rect key={ri} x={x0 + ri * (bw + 3)} y={sy(v)} width={bw} height={Math.max(0, H - bottom - sy(v))} rx={4} fill={PALETTE[ri]} fillOpacity={0.85} className="svg-bottom animate-growy transition-opacity hover:opacity-80" style={{ animationDelay: `${200 + ci * 70 + ri * 40}ms` }}>
                     <title>{`${r.label} · ${c}: ${(v * 100).toFixed(1)}`}</title></rect>;
                 })}
                 <text x={left + ci * groupW + groupW / 2} y={H - bottom + 18} textAnchor="middle" className="fill-muted text-[11.5px]">{c}</text>
@@ -58,8 +58,12 @@ function ClassBars({ rows }: { rows: ResultRow[] }) {
   );
 }
 
-function Legend({ rows }: { rows: ResultRow[] }) {
-  return <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{rows.map((r, i) => <span key={i} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: PALETTE[i] }} />{r.label}</span>)}</div>;
+function Legend({ rows, onHover }: { rows: ResultRow[]; onHover?: (i: number | null) => void }) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" onMouseLeave={() => onHover?.(null)}>
+      {rows.map((r, i) => <span key={i} onMouseEnter={() => onHover?.(i)} className={cx("flex items-center gap-1.5", onHover && "cursor-default transition-colors hover:text-fg")}><span className="h-2.5 w-2.5 rounded-sm" style={{ background: PALETTE[i] }} />{r.label}</span>)}
+    </div>
+  );
 }
 
 export default function Compare() {
@@ -67,6 +71,7 @@ export default function Compare() {
   const items = (params.get("items") ?? "").split(",").filter(Boolean);
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [hi, setHi] = useState<number | null>(null);
   const nav = useNavigate();
   useEffect(() => {
     if (items.length) api.compare(items).then(setData).catch((e) => setErr(String(e.message)));
@@ -100,11 +105,11 @@ export default function Compare() {
                   <Link to={`/runs/${r.run_id}`} className="block truncate text-[14px] font-semibold text-fg hover:text-accent">{r.label}</Link>
                   <div className="truncate text-xs text-subtle">{r.model} · {r.run_name}</div>
                 </div>
-                {lead && <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-300"><Crown className="h-3 w-3" />Leader</span>}
+                {lead && <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-300"><Crown className="h-3 w-3" />Leader<span aria-hidden className="-ml-0.5 -mt-2 animate-twinkle text-[8px]">✦</span></span>}
               </div>
               <div className="mt-4 flex items-end justify-between gap-2">
                 <div>
-                  <div className="font-mono text-[34px] font-medium leading-none tracking-tight tabular-nums text-fg">{fmt.pct(r.map)}<span className="text-base text-subtle">%</span></div>
+                  <div className="font-mono text-[34px] font-medium leading-none tracking-tight tabular-nums text-fg">{r.map != null ? <CountUp value={r.map * 100} decimals={1} /> : "–"}<span className="text-base text-subtle">%</span></div>
                   <div className="mt-1 text-2xs text-subtle">mAP50:95{!lead && r.map != null && <span className="ml-1.5 font-mono text-rose-500">−{((topMap - r.map) * 100).toFixed(1)}</span>}</div>
                 </div>
                 <div className="text-right font-mono text-xs tabular-nums text-muted">
@@ -142,7 +147,7 @@ export default function Compare() {
                 </tr>
               </thead>
               <tbody>
-                {METRICS.map((m) => {
+                {METRICS.map((m, mi) => {
                   const vals = rows.map((r) => r[m.key] as number | null);
                   const sc = score(rows, m.key, m.better);
                   const valid = vals.filter((v): v is number => v !== null && v !== undefined);
@@ -158,7 +163,7 @@ export default function Compare() {
                               {m.f(v)}{win && <Crown className="h-3 w-3" />}
                             </div>
                             <div className="mt-1 h-1 overflow-hidden rounded-full bg-raised">
-                              <div className="h-full rounded-full" style={{ width: `${(sc[i] ?? 0) * 100}%`, background: PALETTE[i], opacity: win ? 1 : 0.55 }} />
+                              <div className="h-full origin-left animate-growx rounded-full" style={{ width: `${(sc[i] ?? 0) * 100}%`, background: PALETTE[i], opacity: win ? 1 : 0.55, animationDelay: `${250 + mi * 50}ms` }} />
                             </div>
                           </td>
                         );
@@ -173,8 +178,8 @@ export default function Compare() {
           </div>
         </Card>
         <Card title="Shape" description="Outer ring = best of this set on that axis">
-          <Radar rows={rows} />
-          <div className="mt-2 flex justify-center"><Legend rows={rows} /></div>
+          <Radar rows={rows} highlight={hi} />
+          <div className="mt-2 flex justify-center"><Legend rows={rows} onHover={setHi} /></div>
         </Card>
       </div>
 

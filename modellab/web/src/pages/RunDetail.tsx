@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowUpRight, Calendar, Check, Copy, CopyPlus, Database, FileText, GitCompareArrows, Loader2, RotateCcw, Square, Timer, Trash2, X } from "lucide-react";
 import { api, fmt } from "../api";
-import { Button, Callout, Card, cx, LogView, PageHeader, ProgressBar, Segmented, StatusPill, Tag, TermTab, Toast, Yaml, inputCls, relTime, usePoll } from "../ui";
+import { Button, Callout, Card, cx, LogView, PageHeader, ProgressBar, Segmented, sparkleBurst, StatusPill, Tag, TermTab, Toast, Yaml, inputCls, relTime, usePoll } from "../ui";
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub?: string; hero?: boolean }) {
   return (
@@ -35,7 +35,7 @@ function EvalResult({ m }: { m: any }) {
             <div key={c} className="flex items-center gap-3 text-xs">
               <span className="w-24 truncate text-muted">{c}</span>
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-raised">
-                <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style={{ width: `${((v ?? 0) / max) * 100}%` }} />
+                <div className="h-full origin-left animate-growx rounded-full bg-gradient-to-r from-teal-300 to-cyan-500" style={{ width: `${((v ?? 0) / max) * 100}%` }} />
               </div>
               <span className="w-9 text-right font-mono tabular-nums text-fg">{fmt.pct(v)}</span>
             </div>
@@ -178,7 +178,7 @@ export default function RunDetail() {
 
           <Card title="Run info" actions={<Segmented small value={tab} onChange={setTab} options={[{ value: "recipe", label: "recipe" }, { value: "env", label: "env" }, { value: "data", label: "data" }]} />}>
             {tab === "recipe" ? <Yaml text={r.recipe_yaml || "# no recipe.yaml"} className="max-h-[420px]" />
-              : <pre className="scroll-thin max-h-[420px] overflow-auto rounded-xl bg-[#0c0c10] p-4 font-mono text-[11.5px] leading-relaxed text-zinc-300 ring-1 ring-black/5 dark:ring-white/[.07]">{JSON.stringify(tab === "env" ? r.env : r.datasets, null, 2)}</pre>}
+              : <pre className="scroll-thin max-h-[420px] overflow-auto rounded-xl bg-code p-4 font-mono text-[11.5px] leading-relaxed text-zinc-300 ring-1 ring-black/5 dark:ring-white/[.07]">{JSON.stringify(tab === "env" ? r.env : r.datasets, null, 2)}</pre>}
           </Card>
         </div>
 
@@ -205,7 +205,7 @@ export default function RunDetail() {
             <textarea className={cx(inputCls, "h-40 resize-y py-2.5 leading-relaxed")}
               value={notes ?? r.notes ?? ""} placeholder="e.g. bigger teacher helps small objects…" onChange={(e) => setNotes(e.target.value)} />
             <div className="mt-3 flex justify-end">
-              <Button small variant="primary" disabled={notes === null} onClick={() => api.patch(r.id, { notes: notes ?? "" }).then(() => { setNotes(null); refresh(); setToast("Notes saved"); })}>Save notes</Button>
+              <Button small variant="primary" disabled={notes === null} onClick={(e) => { const el = e.currentTarget; api.patch(r.id, { notes: notes ?? "" }).then(() => { sparkleBurst(el, 8); setNotes(null); refresh(); setToast("Notes saved"); }); }}>Save notes</Button>
             </div>
           </Card>
         </div>

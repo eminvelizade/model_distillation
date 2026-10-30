@@ -2,7 +2,7 @@ import { Children, isValidElement, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, BadgeCheck, Code2, FlaskConical, Layers, ListPlus, Loader2, Play, Plus, ScanSearch, Shuffle, Target, Trash2, Wand2, X } from "lucide-react";
 import { api, Catalog, Preview } from "../api";
-import { Button, Callout, Card, cx, Field, IconButton, inputCls, Mascot, PageHeader, Segmented, Tag, Toast, Yaml } from "../ui";
+import { Button, Callout, Card, cx, Field, IconButton, inputCls, Mascot, PageHeader, Segmented, sparkleBurst, Tag, Toast, Yaml } from "../ui";
 
 type Ref = { from: string };
 type Stage = Record<string, any> & { name: string; type: string };
@@ -113,7 +113,7 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
 
   const Icon = style?.icon ?? Target;
   return (
-    <div className="relative flex gap-4">
+    <div className="relative flex animate-pop gap-4">
       {/* pipeline rail */}
       <div className="hidden w-9 shrink-0 flex-col items-center sm:flex">
         <div className={cx("z-10 flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-soft ring-4 ring-canvas", style?.color)}><Icon className="h-4 w-4" /></div>
@@ -274,10 +274,11 @@ export default function NewExperiment() {
   const vars = useMemo(() => Object.keys(recipe.matrix ?? {}), [recipe.matrix]);
   const setStage = (i: number, s: Stage) => setRecipe((r) => ({ ...r, stages: r.stages.map((x, j) => (j === i ? s : x)) }));
 
-  const submit = async (position: "front" | "end") => {
+  const submit = async (position: "front" | "end", from?: HTMLElement) => {
     setBusy(true);
     try {
       const res = await api.submit(mode === "builder" ? preview?.yaml ?? "" : yamlText, position);
+      sparkleBurst(from, 14);
       setToast({ msg: `${res.run_ids.length} run${res.run_ids.length > 1 ? "s" : ""} ${position === "front" ? "starting next" : "added to the queue"} ✨`, kind: "info" });
       window.setTimeout(() => nav("/queue"), 700);
     } catch (e) {
@@ -307,7 +308,7 @@ export default function NewExperiment() {
               <button key={t.id} onClick={() => loadYaml(t.yaml)}
                 className="group relative overflow-hidden rounded-2xl border border-line bg-surface p-4 text-left shadow-soft transition duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-lift">
                 <div className={cx("absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br opacity-[.12] blur-xl transition group-hover:opacity-25", ts.color)} />
-                <span className={cx("flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-soft", ts.color)}><ts.icon className="h-4 w-4" /></span>
+                <span className={cx("flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-soft transition duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:-rotate-6 group-hover:scale-110", ts.color)}><ts.icon className="h-4 w-4" /></span>
                 <div className="mt-3 text-[13.5px] font-semibold text-fg">{t.name}</div>
                 <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{t.description}</p>
               </button>
@@ -397,7 +398,7 @@ export default function NewExperiment() {
           ) : (
             <Card title="Recipe YAML" description="Edit freely; switch back to Builder when it fits the form">
               <textarea value={yamlText} onChange={(e) => setYamlText(e.target.value)} spellCheck={false}
-                className="scroll-thin h-[600px] w-full resize-y rounded-xl bg-[#0c0c10] p-4 font-mono text-[12.5px] leading-[1.7] text-emerald-200 caret-teal-300 outline-none ring-1 ring-black/5 focus:ring-2 focus:ring-accent/60 dark:ring-white/[.07]" />
+                className="scroll-thin h-[600px] w-full resize-y rounded-xl bg-code p-4 font-mono text-[12.5px] leading-[1.7] text-emerald-200 caret-teal-300 outline-none ring-1 ring-black/5 focus:ring-2 focus:ring-accent/60 dark:ring-white/[.07]" />
             </Card>
           )}
         </div>
@@ -442,10 +443,10 @@ export default function NewExperiment() {
                 </div>
               )}
               <div className="flex items-center gap-2 pt-1">
-                <Button variant="brand" className="flex-1" disabled={!preview?.ok || busy} onClick={() => submit("front")} title="Put at the front of the queue">
+                <Button variant="brand" className="flex-1" disabled={!preview?.ok || busy} onClick={(e) => submit("front", e.currentTarget)} title="Put at the front of the queue">
                   {busy ? <Loader2 className="animate-spin" /> : <Play />}Run next
                 </Button>
-                <Button className="flex-1" disabled={!preview?.ok || busy} onClick={() => submit("end")}><ListPlus />Add to queue</Button>
+                <Button className="flex-1" disabled={!preview?.ok || busy} onClick={(e) => submit("end", e.currentTarget)}><ListPlus />Add to queue</Button>
                 <Mascot size={34} mood={!preview ? "happy" : preview.ok ? "happy" : "sad"} />
               </div>
             </div>

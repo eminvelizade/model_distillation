@@ -2,28 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Theme tokens as RGB triplets so Tailwind opacity modifiers work (bg-surface/80 …). */
+/* Theme tokens as RGB triplets so Tailwind opacity modifiers work (bg-surface/80 …).
+   Neutrals carry a faint icy-blue tint so they sit with the teal accent instead of against it. */
 :root {
   color-scheme: light;
-  --canvas: 248 248 250;
+  --canvas: 246 249 250;
   --surface: 255 255 255;
-  --raised: 243 243 246;
-  --line: 230 230 235;
-  --fg: 17 17 22;
-  --muted: 92 92 106;
-  --subtle: 140 140 154;
+  --raised: 239 244 246;
+  --line: 226 233 237;
+  --fg: 15 23 28;
+  --muted: 84 98 108;
+  --subtle: 134 148 158;
   --accent: 13 148 146;
+  --code: 13 24 30;
+  --shadow-soft: 0 1px 2px rgb(15 40 50 / .04), 0 2px 10px -2px rgb(15 40 50 / .06);
+  --shadow-lift: 0 1px 2px rgb(15 40 50 / .05), 0 18px 40px -14px rgb(15 40 50 / .2);
 }
 html.dark {
   color-scheme: dark;
-  --canvas: 9 9 11;
-  --surface: 17 17 21;
-  --raised: 26 26 32;
-  --line: 39 39 46;
-  --fg: 244 244 247;
-  --muted: 166 166 178;
-  --subtle: 108 108 122;
+  --canvas: 7 11 14;
+  --surface: 13 18 22;
+  --raised: 21 28 33;
+  --line: 31 40 46;
+  --fg: 236 243 246;
+  --muted: 155 170 179;
+  --subtle: 101 116 125;
   --accent: 94 234 222;
+  --code: 8 13 17;
+  --shadow-soft: inset 0 1px 0 rgb(255 255 255 / .03), 0 1px 2px rgb(0 0 0 / .3);
+  --shadow-lift: inset 0 1px 0 rgb(255 255 255 / .04), 0 18px 44px -14px rgb(0 0 0 / .7);
 }
 
 body {
@@ -33,22 +40,27 @@ body {
 }
 ::selection { background: rgb(45 212 191 / 0.3); }
 
-.scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(120 120 140 / .35) transparent; }
+.scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(120 140 150 / .35) transparent; }
 .scroll-thin::-webkit-scrollbar { height: 8px; width: 8px; }
-.scroll-thin::-webkit-scrollbar-thumb { background: rgb(120 120 140 / 0.35); border-radius: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: rgb(120 140 150 / 0.35); border-radius: 8px; }
 .scroll-none { scrollbar-width: none; }
 .scroll-none::-webkit-scrollbar { display: none; }
 
-/* Soft aurora behind the top of every page. */
+/* Soft aurora behind the top of every page; it breathes very slowly. */
 .aurora {
   background:
     radial-gradient(60rem 22rem at 18% -6rem, rgb(45 212 191 / .16), transparent 70%),
     radial-gradient(44rem 20rem at 85% -8rem, rgb(125 211 252 / .16), transparent 70%);
+  animation: drift 24s ease-in-out infinite alternate;
 }
 html.dark .aurora {
   background:
     radial-gradient(60rem 22rem at 18% -6rem, rgb(45 212 191 / .11), transparent 70%),
     radial-gradient(44rem 20rem at 85% -8rem, rgb(56 189 248 / .08), transparent 70%);
+}
+@keyframes drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(3%, 1.5rem, 0) scale(1.06); }
 }
 
 /* Fine grid used on hero cards. */
@@ -65,6 +77,48 @@ html.dark .aurora {
   background-size: 200% 100%;
 }
 
+/* Page sections drift in one after another (the routed page's direct children). */
+.page > * > * { animation: enter .55s cubic-bezier(.2, .7, .2, 1) backwards; }
+.page > * > :nth-child(2) { animation-delay: 50ms; }
+.page > * > :nth-child(3) { animation-delay: 100ms; }
+.page > * > :nth-child(4) { animation-delay: 150ms; }
+.page > * > :nth-child(5) { animation-delay: 200ms; }
+.page > * > :nth-child(n+6) { animation-delay: 250ms; }
+
+/* SVG pieces that scale around their own centre (chart points, radar shapes, bars). */
+.svg-center { transform-box: fill-box; transform-origin: center; }
+.svg-bottom { transform-box: fill-box; transform-origin: bottom; }
+.radar-in { transform-box: view-box; transform-origin: 50% 50%; animation: radar-in .7s cubic-bezier(.2, .7, .2, 1) backwards; }
+@keyframes radar-in { from { transform: scale(.5); opacity: 0; } }
+
+/* Labby blinks every few seconds. */
+.blink { transform-box: fill-box; transform-origin: center; animation: blink 5.5s infinite; }
+@keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+
+/* Flowing connector between a finished and a running stage. */
+.flow-line {
+  background-image: linear-gradient(90deg, rgb(16 185 129 / .55), rgb(56 189 248 / .9), rgb(16 185 129 / .55));
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+
+/* Smooth cross-fade while switching light / dark (class is set for a moment by useTheme). */
+html.theme-transition, html.theme-transition *, html.theme-transition *::before, html.theme-transition *::after {
+  transition: background-color .4s ease, border-color .4s ease, color .4s ease, fill .4s ease, stroke .4s ease, box-shadow .4s ease !important;
+  transition-delay: 0s !important;
+}
+
+/* Sparkle burst (see sparkleBurst in ui.tsx). */
+.spark {
+  position: fixed; z-index: 70; pointer-events: none; line-height: 1;
+  animation: spark .9s cubic-bezier(.2, .7, .2, 1) forwards;
+}
+@keyframes spark {
+  0% { transform: translate(-50%, -50%) scale(.2); opacity: 1; }
+  70% { opacity: .9; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--r)); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }

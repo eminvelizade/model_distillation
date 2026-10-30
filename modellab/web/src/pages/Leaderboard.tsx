@@ -5,7 +5,7 @@ import { api, fmt, ResultRow } from "../api";
 import { comparability } from "../comparability";
 import Scatter, { FAMILY, paretoFront, Pt, ScatterLegend } from "../components/Scatter";
 import Radar, { SERIES } from "../components/Radar";
-import { Button, Card, cx, Empty, inputCls, Medal, Modal, PageHeader, SearchInput, Segmented, Stat, Switch, Tag, Toast, relTime, useCountUp, usePoll } from "../ui";
+import { Button, Card, CountUp, cx, sparkleBurst, Empty, inputCls, Medal, Modal, PageHeader, SearchInput, Segmented, Stat, Switch, Tag, Toast, relTime, useCountUp, usePoll } from "../ui";
 
 type SortKey = "label" | "map" | "map50" | "ap_small" | "ap_medium" | "ap_large" | "latency_ms" | "params_m" | "peak_vram_mb" | "created";
 const COLS: { key: SortKey; label: string; fmt: (r: ResultRow) => string; num?: boolean }[] = [
@@ -35,7 +35,7 @@ function NotesEditor({ row, onDone }: { row: ResultRow; onDone: () => void }) {
       </div>
       <div className="flex justify-end gap-2 border-t border-line bg-raised/40 px-5 py-3">
         <Button variant="ghost" onClick={onDone}>Cancel</Button>
-        <Button variant="primary" onClick={() => api.patch(row.run_id, { tags: tags.split(",").map((t) => t.trim()).filter(Boolean), notes }).then(onDone)}>Save</Button>
+        <Button variant="primary" onClick={(e) => { const el = e.currentTarget; api.patch(row.run_id, { tags: tags.split(",").map((t) => t.trim()).filter(Boolean), notes }).then(() => { sparkleBurst(el, 8); onDone(); }); }}>Save</Button>
       </div>
     </Modal>
   );
@@ -45,7 +45,15 @@ function ChampionCard({ best, second, ds }: { best: ResultRow; second?: ResultRo
   const v = useCountUp((best.map ?? 0) * 100, 900);
   const delta = second?.map != null && best.map != null ? (best.map - second.map) * 100 : null;
   return (
-    <div className="relative isolate min-w-0 overflow-hidden rounded-2xl bg-[#06161a] p-6 text-white shadow-lift ring-1 ring-white/10">
+    <div className="group relative isolate min-w-0 overflow-hidden rounded-2xl bg-[#06161a] p-6 text-white shadow-lift ring-1 ring-white/10"
+      onMouseMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+        e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+      }}>
+      {/* soft frost light that follows the cursor */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        style={{ background: "radial-gradient(16rem circle at var(--mx, 50%) var(--my, 50%), rgb(165 243 252 / .14), transparent 65%)" }} />
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_100%_0%,rgb(45_212_191/.32),transparent_60%),radial-gradient(30rem_16rem_at_0%_100%,rgb(56_189_248/.2),transparent_60%)]" />
       <div className="grid-bg absolute inset-0 -z-10" />
       {/* a little frost: twinkling sparkles */}
@@ -100,6 +108,7 @@ export default function Leaderboard() {
   const [onlyComparable, setOnlyComparable] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<ResultRow | null>(null);
+  const [hi, setHi] = useState<number | null>(null); // legend row hovered -> spotlight that shape
   const [toast, setToast] = useState<string | null>(null);
   const nav = useNavigate();
 
@@ -173,11 +182,11 @@ export default function Leaderboard() {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
           {ranked[0] ? <ChampionCard best={ranked[0]} second={ranked[1]} ds={ds} /> : <Card><Empty title="No comparable results on this dataset" /></Card>}
           <div className="grid grid-cols-2 gap-4">
-            <Stat label="Results" icon={<Sparkles className="h-3.5 w-3.5" />} value={dsRows.length}
+            <Stat label="Results" icon={<Sparkles className="h-3.5 w-3.5" />} value={<CountUp value={dsRows.length} />}
               sub={`${ranked.length} comparable · ${new Set(dsRows.map((r) => r.model)).size} models`} />
-            <Stat label="Pareto front" icon={<Gauge className="h-3.5 w-3.5" />} value={front.size} sub="best accuracy-for-speed trade-offs" />
-            <Stat label="Fastest" icon={<Zap className="h-3.5 w-3.5" />} value={fastest ? <>{fastest.latency_ms!.toFixed(2)}<span className="text-sm text-subtle"> ms</span></> : "–"} sub={fastest?.label} />
-            <Stat label="Best mAP50" icon={<Trophy className="h-3.5 w-3.5" />} value={bestM50 ? <>{fmt.pct(bestM50.map50)}<span className="text-sm text-subtle">%</span></> : "–"} sub={bestM50?.label} />
+            <Stat label="Pareto front" icon={<Gauge className="h-3.5 w-3.5" />} value={<CountUp value={front.size} />} sub="best accuracy-for-speed trade-offs" />
+            <Stat label="Fastest" icon={<Zap className="h-3.5 w-3.5" />} value={fastest ? <><CountUp value={fastest.latency_ms!} decimals={2} /><span className="text-sm text-subtle"> ms</span></> : "–"} sub={fastest?.label} />
+            <Stat label="Best mAP50" icon={<Trophy className="h-3.5 w-3.5" />} value={bestM50 ? <><CountUp value={(bestM50.map50 ?? 0) * 100} decimals={1} /><span className="text-sm text-subtle">%</span></> : "–"} sub={bestM50?.label} />
           </div>
         </div>
 
@@ -187,10 +196,10 @@ export default function Leaderboard() {
           </Card>
           <Card title="Model shape" description={selRows.length ? "Outer ring = best on this leaderboard" : "Showing the champion · select rows to overlay"}>
             {shapeRows.length ? <>
-              <Radar rows={shapeRows} colors={selRows.length ? SERIES : [SERIES[0]]} reference={ranked.length ? ranked : dsRows} />
-              <ul className="mt-3 space-y-1">
+              <Radar rows={shapeRows} colors={selRows.length ? SERIES : [SERIES[0]]} reference={ranked.length ? ranked : dsRows} highlight={hi} />
+              <ul className="mt-3 space-y-1" onMouseLeave={() => setHi(null)}>
                 {shapeRows.map((r, i) => (
-                  <li key={rk(r)} className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-raised/60">
+                  <li key={rk(r)} onMouseEnter={() => setHi(i)} className="group flex animate-fade items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors hover:bg-raised/70">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: SERIES[i] }} />
                     <span className="min-w-0 flex-1 truncate font-medium text-fg">{r.label}</span>
                     <span className="font-mono tabular-nums text-muted">{fmt.pct(r.map)}</span>
@@ -223,11 +232,11 @@ export default function Leaderboard() {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((r) => {
+                {visible.map((r, i) => {
                   const why = comp.reason(r), k = rk(r), on = sel.has(k);
                   return (
                     <tr key={k} onClick={() => toggle(k)}
-                      className={cx("group cursor-pointer border-b border-line/70 transition last:border-0", on ? "bg-accent/[.05]" : "hover:bg-raised/50")}>
+                      className={cx("group cursor-pointer border-b border-line/70 transition last:border-0", on ? "bg-accent/[.06]" : "hover:bg-accent/[.035]")}>
                       <td className="relative pl-4">
                         {on && <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: seriesOf(k) }} />}
                         <input type="checkbox" className="h-4 w-4 cursor-pointer rounded accent-teal-600" checked={on} onChange={() => toggle(k)} onClick={(e) => e.stopPropagation()} />
@@ -252,7 +261,7 @@ export default function Leaderboard() {
                       <td className="px-3">
                         <div className="flex items-center justify-end gap-2.5">
                           <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-raised sm:block">
-                            <div className="h-full rounded-full bg-gradient-to-r from-teal-300 to-cyan-500" style={{ width: `${Math.max(4, ((r.map ?? 0) / maxMap) * 100)}%`, opacity: why ? 0.4 : 1 }} />
+                            <div className="h-full origin-left animate-growx rounded-full bg-gradient-to-r from-teal-300 to-cyan-500" style={{ width: `${Math.max(4, ((r.map ?? 0) / maxMap) * 100)}%`, opacity: why ? 0.4 : 1, animationDelay: `${300 + Math.min(i, 12) * 35}ms` }} />
                           </div>
                           <span className="w-10 text-right font-mono font-semibold tabular-nums text-fg">{fmt.pct(r.map)}</span>
                         </div>
@@ -273,7 +282,7 @@ export default function Leaderboard() {
 
       {sel.size > 0 && (
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center px-4 lg:pl-[248px]">
-          <div className="pointer-events-auto flex max-w-full items-center gap-3 rounded-2xl border border-white/10 bg-ink-900/95 py-2 pl-4 pr-2 text-white shadow-lift backdrop-blur animate-pop dark:bg-ink-800/95">
+          <div className="pointer-events-auto flex max-w-full items-center gap-3 rounded-2xl border border-white/10 bg-code/90 py-2 pl-4 pr-2 text-white shadow-lift backdrop-blur-md animate-pop dark:bg-raised/90">
             <span className="whitespace-nowrap text-[13px] font-medium">{sel.size} selected</span>
             <div className="hidden min-w-0 items-center gap-1.5 overflow-hidden md:flex">
               {selRows.map((r) => (
