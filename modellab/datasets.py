@@ -76,8 +76,9 @@ def _md5(path: Path) -> str:
     return h.hexdigest()
 
 
-def split_hash(path: Path, split: str) -> str:
-    """sha256 over canonical annotations (per image: md5 of bytes, size, sorted (class name, bbox)) ."""
+def split_hash(path: Path, split: str, fresh: bool = False) -> str:
+    """sha256 over canonical annotations (per image: md5 of bytes, size, sorted (class name, bbox)) .
+    `fresh`: ignore the cache (which only notices changed annotation files) and re-read every image."""
     ann_file = path / split / "_annotations.coco.json"
     d = json.loads(ann_file.read_text())
     cache_f = path / ".modellab_hash.json"
@@ -87,7 +88,7 @@ def split_hash(path: Path, split: str) -> str:
         cache = {}
     st = ann_file.stat()
     key = f"{split}:{st.st_size}:{st.st_mtime_ns}"
-    if key in cache:
+    if key in cache and not fresh:
         return cache[key]
     names = {c["id"]: c["name"] for c in d["categories"]}
     boxes: dict[int, list] = {}
@@ -106,14 +107,14 @@ def split_hash(path: Path, split: str) -> str:
     return h
 
 
-def info(name: str, with_hash: bool = True) -> dict:
+def info(name: str, with_hash: bool = True, fresh: bool = False) -> dict:
     p = path_of(name)
     out = {"name": name, "path": str(p), "description": _load()[name].get("description", ""), "built": p.is_dir()}
     if not p.is_dir():
         return out
     out.update(validate_layout(p))
     if with_hash:
-        out["hash"] = {s: split_hash(p, s) for s in SPLITS}
+        out["hash"] = {s: split_hash(p, s, fresh) for s in SPLITS}
         out["hash"]["all"] = hashlib.sha256("".join(out["hash"][s] for s in SPLITS).encode()).hexdigest()
     return out
 
@@ -142,10 +143,36 @@ def add(name: str, path: Path, description: str = "") -> dict:
     return info(name)
 
 
-def import_coco(name: str, coco_json: Path, images_dir: Path | None, out: Path | None = None, extra: list[str] = ()) -> dict:
+def _make_splits(args: list[str]) -> None:
+    r = subprocess.run([sys.executable, str(ROOT / "make_splits.py"), *args], cwd=ROOT, capture_output=True, text=True)
+    if r.stdout:
+        print(r.stdout, end="")
+    if r.returncode:
+        tail = "\n".join((r.stderr or r.stdout).strip().splitlines()[-15:])
+        raise RuntimeError(f"make_splits.py failed (exit {r.returncode}):\n{tail}")
+
+
+def import_coco(name: str, coco_json: Path, images_dir: Path | None, out: Path | None = None, extra: list[str] = (),
+                description: str = "") -> dict:
     """Normalize any COCO json (+images) through make_splits.py into data/<name>, then register it."""
     out = out or ROOT / "data" / name
-    cmd = [sys.executable, str(ROOT / "make_splits.py"), "--format", "coco", "--coco-json", str(coco_json), "--out", str(out),
-           *(["--images-dir", str(images_dir)] if images_dir else []), *extra]
-    subprocess.run(cmd, check=True, cwd=ROOT)
-    return add(name, out)
+    _make_splits(["--format", "coco", "--coco-json", str(coco_json), "--out", str(out),
+                  *(["--images-dir", str(images_dir)] if images_dir else []), *extra])
+    return add(name, out, description)
+
+
+def import_yolo(name: str, yolo_dir: Path, keep_splits: bool = False, out: Path | None = None, description: str = "") -> dict:
+    """A YOLO dataset (images/ + labels/ + data.yaml) through make_splits.py into data/<name>, then register it."""
+    out = out or ROOT / "data" / name
+    _make_splits(["--format", "yolo", "--yolo-dir", str(yolo_dir), "--out", str(out), *(["--keep-splits"] if keep_splits else [])])
+    return add(name, out, description)
+
+
+def remove(name: str) -> None:
+    """Forget a dataset (its files stay where they are)."""
+    reg = _load()
+    if name not in reg:
+        raise KeyError(f"unknown dataset {name!r}")
+    raw = json.loads(datasets_file().read_text()) if datasets_file().is_file() else {}
+    raw.pop(name, None)
+    _save(raw)

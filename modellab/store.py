@@ -69,8 +69,9 @@ def new_id(name: str) -> str:
 
 
 def create_run(name: str, recipe_name: str, recipe_yaml: str, resolved: dict, group_id: str | None,
-               tags: list[str] = (), status: str = "queued") -> str:
-    rid = new_id(name)
+               tags: list[str] = (), status: str = "queued", rid: str | None = None) -> str:
+    """`rid`: use this id (the agent mirrors runs the hub created) instead of a new one."""
+    rid = rid or new_id(name)
     d = run_dir(rid)
     (d / "stages").mkdir(parents=True)
     (d / "recipe.yaml").write_text(recipe_yaml)

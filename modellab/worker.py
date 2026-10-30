@@ -111,6 +111,8 @@ class Worker:
     def _spawn(self, run: dict) -> None:
         rd = store.run_dir(run["id"])
         env = dict(os.environ, PYTHONPATH=str(ROOT), PYTHONUNBUFFERED="1")
+        if env.get("MODELLAB_GUARD_CHILDREN") == "1":  # the agent talks to the hub; its training processes must not
+            env.pop("ALLOW_NETWORK", None)
         out = open(rd / "runner.log", "a")
         self.proc = subprocess.Popen([sys.executable, "-m", "modellab.runner", run["id"]], cwd=ROOT, env=env, stdout=out,
                                      stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
@@ -162,23 +164,34 @@ class Worker:
         else:
             _log(f"run {rid} finished: {r['status']}")
 
-    def loop(self, once: bool = False) -> int:
+    def start(self) -> bool:
+        """Take the runs/ lock and recover a run left behind by a previous worker. False if another worker runs."""
         if not self.acquire():
             _log("another worker is already running")
-            return 1
-        signal.signal(signal.SIGTERM, lambda *_: setattr(self, "stop", True))
+            return False
         _log(f"worker up (pid {os.getpid()}, runs in {runs_dir()})")
         self.recover()
+        return True
+
+    def tick(self) -> bool:
+        """One round: watch the current run, or start the next queued one. Returns False when there was nothing to do."""
+        self.heartbeat()
+        if self.current:
+            self._check_current()
+        if not self.current:
+            nxt = store.claim_next()
+            if not nxt:
+                return False
+            self._spawn(nxt)
+        return True
+
+    def loop(self, once: bool = False) -> int:
+        if not self.start():
+            return 1
+        signal.signal(signal.SIGTERM, lambda *_: setattr(self, "stop", True))
         while not self.stop:
-            self.heartbeat()
-            if self.current:
-                self._check_current()
-            if not self.current:
-                nxt = store.claim_next()
-                if nxt:
-                    self._spawn(nxt)
-                elif once:
-                    break
+            if not self.tick() and once:
+                break
             time.sleep(POLL_S)
         _log("worker exiting" + (" (a run is still in progress and continues on its own)" if self.current else ""))
         return 0

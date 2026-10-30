@@ -9,3 +9,5 @@ modellab/web/node_modules/
 datasets.json
 GIT_COMMIT
 vendor/
+hub.sqlite
+hub.sqlite-*
