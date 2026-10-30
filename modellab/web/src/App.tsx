@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { Command, KeyRound, Loader2, LogOut, Moon, Search, Sun, Trophy } from "lucide-react";
 import { api } from "./api";
-import { Beta, cx, Kbd, LiveDot, Mascot, usePoll, useTheme } from "./ui";
+import { Beta, cx, Kbd, LiveDot, Mascot, TubeLogo, usePoll, useTheme } from "./ui";
 import { SessionProvider, useSession } from "./session";
 import { NAV, useNav } from "./nav";
 import CommandPalette from "./components/CommandPalette";
@@ -61,7 +61,7 @@ function WorkerWidget({ q }: { q: QueueData | null }) {
       </div>
       {running && (
         <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-raised">
-          <div className="h-full rounded-full bg-gradient-to-r from-ice-500 via-ice-300 to-ice-glint transition-all duration-700" style={{ width: `${running.progress * 100}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-ice-600 via-ice-400 to-ice-300 transition-all duration-700" style={{ width: `${running.progress * 100}%` }} />
         </div>
       )}
       {g && (
@@ -91,12 +91,12 @@ function NavItem({ to, label, icon: Icon, badge }: { to: string; label: string; 
 
 function Logo() {
   return (
-    <NavLink to="/" className="group flex items-center gap-2.5">
+    <NavLink to="/" className="group flex items-center gap-2.5" aria-label="ModelLab home">
       <span className="relative flex h-8 w-8 items-center justify-center">
-        <span className="text-[26px] leading-none transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:-rotate-12" role="img" aria-label="test tube">🧪</span>
+        <TubeLogo size={32} className="transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:-rotate-12" />
         {/* tiny bubbles drifting up out of the tube */}
         <span aria-hidden className="absolute right-0.5 top-0 h-[5px] w-[5px] animate-rise rounded-full bg-ice-300/90" />
-        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-ice-glint/90" style={{ animationDelay: "1.7s" }} />
+        <span aria-hidden className="absolute right-2 top-0.5 h-[3px] w-[3px] animate-rise rounded-full bg-ice-frost/90" style={{ animationDelay: "1.7s" }} />
       </span>
       <div className="leading-tight">
         <div className="text-[15px] font-semibold tracking-tight text-fg">ModelLab</div>

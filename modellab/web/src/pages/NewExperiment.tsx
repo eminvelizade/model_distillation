@@ -15,8 +15,8 @@ const enc = (v: unknown) => (isRef(v) ? `@${v.from}` : v === undefined || v === 
 const dec = (s: string): unknown => (s.startsWith("@") ? { from: s.slice(1) } : s);
 
 const TYPE_STYLE: Record<string, { color: string; icon: typeof Target; blurb: string }> = {
-  distill: { color: "from-ice-glint to-ice-500", icon: FlaskConical, blurb: "teacher → RF-DETR backbone" },
-  finetune: { color: "from-sky-400 to-blue-500", icon: Target, blurb: "supervised detection training" },
+  distill: { color: "from-ice-200 to-ice-500", icon: FlaskConical, blurb: "teacher → RF-DETR backbone" },
+  finetune: { color: "from-teal-300 to-teal-600", icon: Target, blurb: "supervised detection training" },
   eval: { color: "from-orange-400 to-rose-400", icon: BadgeCheck, blurb: "identical COCO eval + latency" },
   features: { color: "from-amber-300 to-amber-500", icon: ScanSearch, blurb: "feature probe + PCA" },
 };
@@ -25,10 +25,10 @@ const TYPE_STYLE: Record<string, { color: string; icon: typeof Target; blurb: st
 function templateStyle(name: string, i: number) {
   const n = name.toLowerCase();
   if (/sweep/.test(n)) return { icon: Shuffle, color: "from-amber-300 to-orange-400" };
-  if (/distill/.test(n)) return { icon: FlaskConical, color: "from-ice-glint to-ice-500" };
+  if (/distill/.test(n)) return { icon: FlaskConical, color: "from-ice-200 to-ice-500" };
   if (/probe|feature/.test(n)) return { icon: ScanSearch, color: "from-amber-300 to-amber-500" };
-  if (/fine|baseline/.test(n)) return { icon: Target, color: "from-sky-400 to-blue-500" };
-  return [{ icon: Wand2, color: "from-ice-300 to-ice-600" }, { icon: Layers, color: "from-ice-200 to-sky-500" }][i % 2];
+  if (/fine|baseline/.test(n)) return { icon: Target, color: "from-teal-300 to-teal-600" };
+  return [{ icon: Wand2, color: "from-ice-300 to-ice-600" }, { icon: Layers, color: "from-ice-300 to-blue-500" }][i % 2];
 }
 
 function blankStage(type: string, existing: Stage[]): Stage {

@@ -75,8 +75,8 @@ export default function Scatter({ points, onPick, selected, ringColor }: { point
       {W > 0 && (
         <svg width={W} height={H} className="block select-none overflow-visible">
           <defs>
-            <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#38cde3" stopOpacity=".14" /><stop offset="1" stopColor="#95eedd" stopOpacity="0" /></linearGradient>
-            <linearGradient id="pf-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#14b2cb" /><stop offset="1" stopColor="#95eedd" /></linearGradient>
+            <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#57bbf1" stopOpacity=".14" /><stop offset="1" stopColor="#cdeeff" stopOpacity="0" /></linearGradient>
+            <linearGradient id="pf-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#2191d6" /><stop offset="1" stopColor="#8fd3f8" /></linearGradient>
           </defs>
           {yt.map((t) => (
             <g key={`y${t}`}>
@@ -144,7 +144,7 @@ export function ScatterLegend() {
       {Object.entries(FAMILY).map(([k, f]) => (
         <span key={k} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full ring-2 ring-surface" style={{ background: f.color }} />{f.label}</span>
       ))}
-      <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full bg-gradient-to-r from-ice-500 to-ice-glint" />Pareto front</span>
+      <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full bg-gradient-to-r from-ice-600 to-ice-300" />Pareto front</span>
       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-dashed border-subtle" />not comparable</span>
     </div>
   );
