@@ -79,8 +79,11 @@ def logout(request: Request, response: Response):
 
 
 @router.get("/auth/me")
-def me(request: Request, user: dict = Depends(auth.current_user)):
-    return {"mode": "hub", "user": auth.public_user(user), "public_url": public_url(request)}
+def me(request: Request):
+    """Never 401: the UI asks this first to learn the mode and whether to show the login page."""
+    with _engine(request).begin() as c:
+        user = auth.session_user(c, request.cookies.get(auth.COOKIE))
+    return {"mode": "hub", "user": auth.public_user(user) if user else None, "public_url": public_url(request)}
 
 
 class PasswordIn(BaseModel):

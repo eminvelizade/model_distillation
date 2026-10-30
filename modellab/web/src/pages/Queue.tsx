@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowUpRight, Ban, Check, CheckCircle2, Clock, Cpu, Hourglass, Loader2, Play, RotateCcw, Square, Timer, X, XCircle } from "lucide-react";
 import { api, fmt, RunSummary } from "../api";
+import { machineState } from "../components/Hub";
+import { useSession } from "../session";
 import { Button, Card, cx, Empty, IconButton, LogView, Mascot, PageHeader, ProgressBar, Ring, StatusPill, TermTab, Toast, relTime, useCountUp, usePoll } from "../ui";
 
 const STAGE_DOT: Record<string, string> = { distill: "bg-teal-400", finetune: "bg-sky-500", eval: "bg-orange-400", features: "bg-amber-400" };
@@ -33,7 +35,7 @@ export function StageStepper({ run }: { run: RunSummary }) {
   );
 }
 
-function Gauge({ label, value, max, text, colors, warn }: { label: string; value: number; max: number; text: React.ReactNode; colors: [string, string]; warn?: number }) {
+export function Gauge({ label, value, max, text, colors, warn }: { label: string; value: number; max: number; text: React.ReactNode; colors: [string, string]; warn?: number }) {
   const f = max ? value / max : 0;
   return (
     <div className="flex flex-col items-center gap-2">
@@ -78,7 +80,7 @@ function NowRunning({ run, onCancel }: { run: RunSummary; onCancel: () => void }
           <StageStepper run={run} />
           <div>
             <div className="mb-1.5 flex justify-between gap-3 text-xs">
-              <span className="truncate text-muted"><span className="font-medium text-fg">{run.current_stage}</span> · {sp?.message ?? "starting…"}</span>
+              <span className="truncate text-muted">{run.current_stage ? <><span className="font-medium text-fg">{run.current_stage}</span> · {sp?.message ?? "starting…"}</> : run.status_message ?? "starting…"}</span>
               <span className="font-mono tabular-nums text-subtle">{sp ? `${Math.round(sp.fraction * 100)}%` : ""}</span>
             </div>
             <ProgressBar value={sp?.fraction ?? 0} active />
@@ -97,9 +99,10 @@ const FINISHED_ICON: Record<string, React.ReactNode> = {
 };
 
 export default function Queue() {
-  const q = usePoll(api.queue, 2000);
-  const gpu = usePoll(api.gpu, 2000);
-  const recent = usePoll(() => api.runs("done,failed,cancelled,interrupted"), 5000);
+  const { hub, machine, machineId } = useSession();
+  const q = usePoll(api.queue, 2000, [machineId]);
+  const gpu = usePoll(api.gpu, 2000, [machineId]);
+  const recent = usePoll(() => api.runs("done,failed,cancelled,interrupted", true), 5000, [machineId]);
   const [toast, setToast] = useState<string | null>(null);
   const [logStage, setLogStage] = useState<string | null>(null);
   const [openErr, setOpenErr] = useState<string | null>(null);
@@ -111,15 +114,19 @@ export default function Queue() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Run" title="Queue"
-        description="One GPU, one job at a time. Runs keep going in the background if you close this tab or restart the app."
-        actions={q.data && !alive && <Button variant="brand" onClick={() => api.startWorker().then(() => q.refresh())}><Play />Start worker</Button>} />
+      <PageHeader eyebrow="Run" title={hub && machine ? <>Queue <span className="text-muted">· {machine.name}</span></> : "Queue"}
+        description={hub ? "One job at a time on this machine's GPU. Runs keep going on the PC if you close this tab; pick another machine in the sidebar."
+          : "One GPU, one job at a time. Runs keep going in the background if you close this tab or restart the app."}
+        actions={!hub && q.data && !alive && <Button variant="brand" onClick={() => api.startWorker().then(() => q.refresh())}><Play />Start worker</Button>} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5">
           {running ? <NowRunning run={running} onCancel={() => act(api.cancel(running.id))} /> : (
-            <Card><Empty title={alive ? "Nothing running" : "Worker is offline"} mood={alive ? "happy" : "sleepy"}>
-              {alive ? <>The GPU is free. Queue something from <Link className="font-medium text-accent hover:underline" to="/">New experiment</Link>.</> : <>Start it with the button above or run <code className="rounded bg-raised px-1 font-mono text-xs">modellab worker</code>.</>}
+            <Card><Empty title={alive ? "Nothing running" : hub ? (machine ? `${machine.name} is offline` : "No machine yet") : "Worker is offline"} mood={alive ? "happy" : "sleepy"}>
+              {alive ? <>The GPU is free. Queue something from <Link className="font-medium text-accent hover:underline" to="/">New experiment</Link>.</>
+                : hub ? (machine ? <>Runs wait here until it's back. Is the PC on? On it, <code className="rounded bg-raised px-1 font-mono text-xs">systemctl --user status modellab-agent</code> shows the agent.</>
+                  : <>Add your GPU PC on the <Link className="font-medium text-accent hover:underline" to="/machines">Machines</Link> page.</>)
+                : <>Start it with the button above or run <code className="rounded bg-raised px-1 font-mono text-xs">modellab worker</code>.</>}
             </Empty></Card>
           )}
           {running && (
@@ -131,16 +138,18 @@ export default function Queue() {
         </div>
 
         <div className="min-w-0 space-y-5">
-          <Card title="System" icon={<Cpu className="h-3.5 w-3.5" />}>
+          <Card title={hub ? "Machine" : "System"} icon={<Cpu className="h-3.5 w-3.5" />}
+            actions={hub && machine && <Link to={`/machines/${machine.id}`} className="text-xs text-subtle hover:text-accent">details</Link>}>
             <div className="flex items-center gap-3 rounded-xl bg-raised/60 p-3">
               <Mascot size={40} mood={!alive ? "sleepy" : running ? "busy" : "happy"} />
               <div className="min-w-0 text-[13px]">
-                <div className="font-semibold text-fg">{!q.data ? "…" : alive ? (running ? "Cooking an experiment" : "Idle, ready for work") : "Offline"}</div>
-                <div className="truncate text-xs text-subtle">{alive ? `worker pid ${q.data?.worker.pid} · ${waiting.length} waiting` : "start it here or run `modellab worker`"}</div>
+                <div className="font-semibold text-fg">{!q.data ? "…" : alive ? (running ? "Cooking an experiment" : hub && machine && machineState(machine) !== "idle" ? machineState(machine) : "Idle, ready for work") : "Offline"}</div>
+                <div className="truncate text-xs text-subtle">{hub ? (machine ? `${machine.hostname ?? machine.name} · ${waiting.length} waiting` : "no machine")
+                  : alive ? `worker pid ${q.data?.worker.pid} · ${waiting.length} waiting` : "start it here or run `modellab worker`"}</div>
               </div>
             </div>
             {!gpu.data ? <div className="mt-4 text-sm text-subtle">…</div> : !gpu.data.available ? (
-              <div className="mt-4 text-[13px] text-muted">No NVIDIA GPU visible (NVML: {gpu.data.reason ?? "unavailable"}). Jobs run on CPU here.</div>
+              <div className="mt-4 text-[13px] text-muted">{hub ? `No live GPU data (${gpu.data.reason ?? "unavailable"}).` : <>No NVIDIA GPU visible (NVML: {gpu.data.reason ?? "unavailable"}). Jobs run on CPU here.</>}</div>
             ) : gpu.data.gpus.map((g) => (
               <div key={g.index} className="mt-4">
                 <div className="mb-4 flex items-center justify-between gap-2 text-xs">

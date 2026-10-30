@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowUpRight, Calendar, Check, Copy, CopyPlus, Database, FileText, GitCompareArrows, Loader2, RotateCcw, Square, Timer, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Calendar, Check, Copy, CopyPlus, Database, FileText, GitCompareArrows, HardDrive, Loader2, RotateCcw, Server, Square, Timer, Trash2, X } from "lucide-react";
 import { api, fmt } from "../api";
-import { Button, Callout, Card, cx, LogView, PageHeader, ProgressBar, Segmented, sparkleBurst, StatusPill, Tag, TermTab, Toast, Yaml, inputCls, relTime, usePoll } from "../ui";
+import { Button, Callout, Card, cx, LogView, Modal, PageHeader, ProgressBar, Segmented, sparkleBurst, StatusPill, Switch, Tag, TermTab, Toast, Yaml, inputCls, relTime, usePoll } from "../ui";
+import { useSession } from "../session";
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub?: string; hero?: boolean }) {
   return (
@@ -101,7 +102,10 @@ export default function RunDetail() {
   const [notes, setNotes] = useState<string | null>(null);
   const [tab, setTab] = useState<"recipe" | "env" | "data">("recipe");
   const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteFiles, setDeleteFiles] = useState(false);
   const nav = useNavigate();
+  const { hub } = useSession();
   if (!r) return <div className="flex items-center justify-center gap-2 py-24 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />loading…</div>;
   const act = (p: Promise<{ result: string }>, then?: () => void) => p.then((x) => { setToast(x.result); refresh(); then?.(); }).catch((e) => setToast(String(e.message)));
   const stageForLogs = logStage ?? r.current_stage ?? r.stages.find((s: any) => s.status === "failed")?.name ?? "runner";
@@ -118,17 +122,19 @@ export default function RunDetail() {
           <Button variant="brand" onClick={() => nav(`/?clone=${r.id}`)}><CopyPlus />Clone & edit</Button>
           {(r.status === "running" || r.status === "queued") && <Button variant="danger" onClick={() => act(api.cancel(r.id))}><Square />Cancel</Button>}
           {finished && <Button onClick={() => act(api.requeue(r.id))} title="finished stages are kept; resumes at the first unfinished one"><RotateCcw />Re-queue</Button>}
-          {finished && <Button variant="ghost" onClick={() => { if (window.confirm("Delete this run and its files?")) act(api.remove(r.id), () => nav("/leaderboard")); }}><Trash2 />Delete</Button>}
+          {finished && <Button variant="ghost" onClick={() => (hub ? setDeleting(true) : window.confirm("Delete this run and its files?") && act(api.remove(r.id), () => nav("/leaderboard")))}><Trash2 />Delete</Button>}
         </>}>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
           <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-subtle" />{fmt.time(r.created)}</span>
           <span className="flex items-center gap-1.5"><Timer className="h-3.5 w-3.5 text-subtle" />{r.started ? `ran ${fmt.dur(r.started, r.finished)}` : "not started"}</span>
           <span className="flex items-center gap-1.5"><Database className="h-3.5 w-3.5 text-subtle" />{r.dataset}</span>
+          {r.machine_name && <Link to={`/machines/${r.machine_id}`} className="flex items-center gap-1.5 hover:text-accent"><Server className="h-3.5 w-3.5 text-subtle" />{r.machine_name}</Link>}
           {r.tags.map((t: string) => <Tag key={t}>{t}</Tag>)}
         </div>
       </PageHeader>
 
       {r.status === "running" && <ProgressBar value={r.progress} active />}
+      {r.status === "running" && !r.current_stage && r.status_message && <div className="-mt-3 text-xs text-sky-700 dark:text-sky-300">{r.status_message}</div>}
       {r.error_tail && r.status !== "done" && (
         <Callout tone="error" title="Run failed">
           <pre className="scroll-thin mt-1 max-h-48 overflow-auto whitespace-pre font-mono text-[11.5px] leading-relaxed">{r.error_tail}</pre>
@@ -158,7 +164,14 @@ export default function RunDetail() {
                   )}
                   {s.artifacts?.length > 0 && (
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
-                      {s.artifacts.filter((a: any) => !a.path.endsWith("progress.json")).map((a: any) => (
+                      {s.artifacts.filter((a: any) => !a.path.endsWith("progress.json")).map((a: any) => a.stored === false ? (
+                        // hub: checkpoints (and files not uploaded) stay on the machine; copy their path there
+                        <button key={a.path} title={`On ${r.machine_name ?? "the machine"}: ${a.local_path ?? a.path} (click to copy the path)`}
+                          onClick={() => navigator.clipboard?.writeText(a.local_path ?? a.path).then(() => setToast("path copied")).catch(() => undefined)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-line bg-raised/40 px-2 py-1 font-mono text-[11px] text-muted transition hover:border-accent/40 hover:text-fg">
+                          <HardDrive className="h-3 w-3 text-subtle" />{a.path.split("/").slice(2).join("/")} <span className="text-subtle">{fmt.mb(a.size / 2 ** 20)}</span>
+                        </button>
+                      ) : (
                         <a key={a.path} href={api.fileUrl(r.id, a.path)} target="_blank" rel="noreferrer"
                           className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-1 font-mono text-[11px] text-muted shadow-soft transition hover:border-accent/40 hover:text-accent">
                           {a.path.split("/").slice(2).join("/")} <span className="text-subtle">{fmt.mb(a.size / 2 ** 20)}</span><ArrowUpRight className="h-3 w-3" />
@@ -210,6 +223,19 @@ export default function RunDetail() {
           </Card>
         </div>
       </div>
+      {deleting && (
+        <Modal onClose={() => setDeleting(false)}>
+          <div className="space-y-4 p-5">
+            <h2 className="text-[15px] font-semibold text-fg">Delete this run?</h2>
+            <p className="text-[13px] text-muted">It disappears from the hub: results, logs and stored files.</p>
+            <Switch checked={deleteFiles} onChange={setDeleteFiles} label={<>Also delete its files on {r.machine_name ?? "the machine"} (checkpoints)</>} />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setDeleting(false)}>Cancel</Button>
+              <Button variant="danger" onClick={() => { setDeleting(false); act(api.remove(r.id, deleteFiles), () => nav("/leaderboard")); }}><Trash2 />Delete</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
       <Toast msg={toast} onClose={() => setToast(null)} />
     </div>
   );

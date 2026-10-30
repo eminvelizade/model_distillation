@@ -1,8 +1,10 @@
 import { Children, isValidElement, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, BadgeCheck, Code2, FlaskConical, Layers, ListPlus, Loader2, Play, Plus, ScanSearch, Shuffle, Target, Trash2, Wand2, X } from "lucide-react";
 import { api, Catalog, Preview } from "../api";
 import { Button, Callout, Card, cx, Field, IconButton, inputCls, Mascot, PageHeader, Segmented, sparkleBurst, Tag, Toast, Yaml } from "../ui";
+import { MachinePicker } from "../components/Hub";
+import { useSession } from "../session";
 
 type Ref = { from: string };
 type Stage = Record<string, any> & { name: string; type: string };
@@ -242,8 +244,10 @@ export default function NewExperiment() {
   const [tagDraft, setTagDraft] = useState("");
   const [params] = useSearchParams();
   const nav = useNavigate();
+  const { hub, machine, machineId, machines } = useSession();
 
-  useEffect(() => { api.catalog().then(setCat).catch((e) => setToast({ msg: String(e), kind: "error" })); }, []);
+  // on the hub the datasets (and missing weights) are those of the machine picked in the sidebar
+  useEffect(() => { api.catalog().then(setCat).catch((e) => setToast({ msg: String(e), kind: "error" })); }, [machineId]);
 
   const loadYaml = async (text: string) => {
     try {
@@ -269,7 +273,7 @@ export default function NewExperiment() {
       api.preview(body).then((p) => { setPreview(p); if (mode === "builder") setYamlText(p.yaml); }).catch(() => undefined);
     }, 350);
     return () => window.clearTimeout(t);
-  }, [recipe, yamlText, mode]);
+  }, [recipe, yamlText, mode, machineId]);
 
   const vars = useMemo(() => Object.keys(recipe.matrix ?? {}), [recipe.matrix]);
   const setStage = (i: number, s: Stage) => setRecipe((r) => ({ ...r, stages: r.stages.map((x, j) => (j === i ? s : x)) }));
@@ -279,7 +283,7 @@ export default function NewExperiment() {
     try {
       const res = await api.submit(mode === "builder" ? preview?.yaml ?? "" : yamlText, position);
       sparkleBurst(from, 14);
-      setToast({ msg: `${res.run_ids.length} run${res.run_ids.length > 1 ? "s" : ""} ${position === "front" ? "starting next" : "added to the queue"} ✨`, kind: "info" });
+      setToast({ msg: `${res.run_ids.length} run${res.run_ids.length > 1 ? "s" : ""} ${position === "front" ? "starting next" : "added to the queue"}${hub && machine ? ` on ${machine.name}` : ""} ✨`, kind: "info" });
       window.setTimeout(() => nav("/queue"), 700);
     } catch (e) {
       setToast({ msg: String((e as Error).message), kind: "error" });
@@ -326,7 +330,8 @@ export default function NewExperiment() {
                   <Field label="Name"><input className={inputCls} value={recipe.name} onChange={(e) => setRecipe({ ...recipe, name: e.target.value })} /></Field>
                   <Field label="Dataset">
                     <select className={cx(inputCls, "pr-8")} value={recipe.dataset ?? ""} onChange={(e) => setRecipe({ ...recipe, dataset: e.target.value })}>
-                      {cat.datasets.map((d) => <option key={d.name} value={d.name}>{d.name}{d.built === false ? " (not built)" : ""}</option>)}
+                      {recipe.dataset && !cat.datasets.some((d) => d.name === recipe.dataset) && <option value={recipe.dataset}>{recipe.dataset} (not on this machine)</option>}
+                      {cat.datasets.map((d) => <option key={d.name} value={d.name}>{d.name}{d.built === false ? " (not built)" : d.error ? " (broken)" : ""}</option>)}
                     </select>
                   </Field>
                   <Field label="Seed"><NumberInput value={recipe.seed} onChange={(v) => setRecipe({ ...recipe, seed: v })} /></Field>
@@ -435,13 +440,20 @@ export default function NewExperiment() {
                           );
                         })}
                       </div>
-                      {r.missing_weights.length > 0 && (
-                        <div className="mt-2 text-xs text-amber-700 dark:text-amber-300">⚠ weights not downloaded: {r.missing_weights.join(", ")} (online: <code className="font-mono">modellab weights fetch …</code>)</div>
+                      {r.missing_weights.length > 0 && (hub
+                        ? <div className="mt-2 text-xs text-sky-700 dark:text-sky-300">↓ {machine?.name ?? "the machine"} downloads {r.missing_weights.join(", ")} before the run starts</div>
+                        : <div className="mt-2 text-xs text-amber-700 dark:text-amber-300">⚠ weights not downloaded: {r.missing_weights.join(", ")} (online: <code className="font-mono">modellab weights fetch …</code>)</div>
                       )}
                     </div>
                   ))}
                 </div>
               )}
+              {hub && (machines.length ? (
+                <div className="flex items-center gap-2.5 pt-1 text-xs text-muted">
+                  <span className="shrink-0">Runs on</span><MachinePicker compact className="min-w-0 flex-1" />
+                </div>
+              ) : <Callout tone="info">Add a GPU machine first on the <Link to="/machines" className="font-medium underline">Machines</Link> page.</Callout>)}
+              {hub && machine && !machine.online && <div className="text-xs text-amber-700 dark:text-amber-300">{machine.name} is offline: runs wait in its queue until it's back.</div>}
               <div className="flex items-center gap-2 pt-1">
                 <Button variant="brand" className="flex-1" disabled={!preview?.ok || busy} onClick={(e) => submit("front", e.currentTarget)} title="Put at the front of the queue">
                   {busy ? <Loader2 className="animate-spin" /> : <Play />}Run next

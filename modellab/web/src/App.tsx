@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
-import { Command, FlaskConical, GitCompareArrows, ListOrdered, Moon, Search, Sun, Trophy } from "lucide-react";
+import { Command, KeyRound, Loader2, LogOut, Moon, Search, Sun, Trophy } from "lucide-react";
 import { api } from "./api";
 import { cx, Kbd, LiveDot, Mascot, usePoll, useTheme } from "./ui";
+import { SessionProvider, useSession } from "./session";
+import { NAV, useNav } from "./nav";
 import CommandPalette from "./components/CommandPalette";
+import { ChangePassword, MachinePicker, machineState } from "./components/Hub";
 import NewExperiment from "./pages/NewExperiment";
 import Queue from "./pages/Queue";
 import Leaderboard from "./pages/Leaderboard";
 import Compare from "./pages/Compare";
 import RunDetail from "./pages/RunDetail";
-
-export const NAV = [
-  { group: "Build", to: "/", label: "New experiment", icon: FlaskConical },
-  { group: "Run", to: "/queue", label: "Queue", icon: ListOrdered },
-  { group: "Analyze", to: "/leaderboard", label: "Leaderboard", icon: Trophy },
-  { group: "Analyze", to: "/compare", label: "Compare", icon: GitCompareArrows },
-];
+import Login from "./pages/Login";
+import Machines from "./pages/Machines";
+import MachineDetail from "./pages/MachineDetail";
+import Team from "./pages/Team";
 
 function ThemeSwitch() {
   const { dark, set } = useTheme();
@@ -33,22 +33,29 @@ function ThemeSwitch() {
 
 type QueueData = Awaited<ReturnType<typeof api.queue>>;
 
+/** Local: the worker on this PC. Hub: the machine picked above (its agent, live GPU). */
 function WorkerWidget({ q }: { q: QueueData | null }) {
-  const gpu = usePoll(api.gpu, 5000);
+  const { hub, machine, machines } = useSession();
+  const gpu = usePoll(api.gpu, 5000, [machine?.id]);
   const running = q?.runs.find((r) => r.status === "running");
   const waiting = q?.runs.filter((r) => r.status === "queued").length ?? 0;
   const alive = q?.worker.alive;
   const g = gpu.data?.available ? gpu.data.gpus[0] : null;
+  const title = hub ? (!machines.length ? "No machine yet" : !machine ? "…" : !machine.online ? "Machine offline" : running ? "Training" : machineState(machine) === "idle" ? "Idle" : machineState(machine))
+    : !q ? "Connecting…" : !alive ? "Worker offline" : running ? "Training" : "Idle";
+  const sub = hub ? (!machines.length ? "add one under Machines" : running ? running.name : waiting ? `${waiting} waiting` : machine?.online ? "ready for work" : "is the PC on?")
+    : running ? running.name : waiting ? `${waiting} waiting` : alive ? "ready for work" : "start it from Queue";
+  const online = hub ? !!machine?.online : !!alive;
   return (
-    <NavLink to="/queue" className="group block rounded-xl border border-line bg-surface p-3 shadow-soft transition hover:shadow-lift">
+    <NavLink to={hub && !machines.length ? "/machines" : "/queue"} className="group block rounded-xl border border-line bg-surface p-3 shadow-soft transition hover:shadow-lift">
       <div className="flex items-center gap-2.5">
-        <Mascot size={30} mood={!q ? "happy" : !alive ? "sleepy" : running ? "busy" : "happy"} />
+        <Mascot size={30} mood={!online ? "sleepy" : running ? "busy" : "happy"} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-fg">
-            {alive ? (running ? <LiveDot /> : <span className="h-2 w-2 rounded-full bg-emerald-500" />) : <span className="h-2 w-2 rounded-full bg-subtle" />}
-            {!q ? "Connecting…" : !alive ? "Worker offline" : running ? "Training" : "Idle"}
+            {online ? (running ? <LiveDot /> : <span className="h-2 w-2 rounded-full bg-emerald-500" />) : <span className="h-2 w-2 rounded-full bg-subtle" />}
+            {title}
           </div>
-          <div className="truncate text-2xs text-subtle">{running ? running.name : waiting ? `${waiting} waiting` : alive ? "ready for work" : "start it from Queue"}</div>
+          <div className="truncate text-2xs text-subtle">{sub}</div>
         </div>
         {running && <span className="font-mono text-xs font-medium tabular-nums text-muted">{Math.round(running.progress * 100)}%</span>}
       </div>
@@ -99,10 +106,28 @@ function Logo() {
   );
 }
 
-export default function App() {
-  const q = usePoll(api.queue, 4000);
+/** Sidebar footer: "local · offline" on the single-user app, the signed-in user on the hub. */
+function Account({ onPassword }: { onPassword: () => void }) {
+  const { hub, me, logout } = useSession();
+  if (!hub || !me?.user) return <span className="text-2xs text-subtle">local · offline</span>;
+  const u = me.user;
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[11px] font-semibold uppercase text-accent">{u.display_name.slice(0, 1)}</span>
+      <span className="min-w-0 truncate text-xs font-medium text-muted" title={u.username}>{u.display_name}</span>
+      <button onClick={onPassword} className="rounded p-1 text-subtle hover:text-fg" title="Change password" aria-label="Change password"><KeyRound className="h-3.5 w-3.5" /></button>
+      <button onClick={logout} className="rounded p-1 text-subtle hover:text-fg" title="Sign out" aria-label="Sign out"><LogOut className="h-3.5 w-3.5" /></button>
+    </div>
+  );
+}
+
+function Shell() {
+  const { hub, me, machineId } = useSession();
+  const q = usePoll(api.queue, 4000, [machineId]);
   const [palette, setPalette] = useState(false);
+  const [password, setPassword] = useState(false);
   const loc = useLocation();
+  const nav = useNav();
   const waiting = q.data?.runs.filter((r) => r.status === "queued").length ?? 0;
   const busy = q.data?.runs.some((r) => r.status === "running");
 
@@ -123,7 +148,7 @@ export default function App() {
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
   useEffect(() => {
-    const page = loc.pathname.startsWith("/runs/") ? "Run" : NAV.find((n) => n.to === loc.pathname)?.label;
+    const page = loc.pathname.startsWith("/runs/") ? "Run" : loc.pathname.startsWith("/machines/") ? "Machine" : NAV.find((n) => n.to === loc.pathname)?.label;
     document.title = page ? `${page} · ModelLab` : "ModelLab";
   }, [loc.pathname]);
 
@@ -132,25 +157,26 @@ export default function App() {
       {/* desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col border-r border-line bg-canvas lg:flex">
         <div className="px-5 pb-4 pt-5"><Logo /></div>
-        <div className="px-3">
+        <div className="space-y-2 px-3">
           <button onClick={() => setPalette(true)}
             className="flex h-8 w-full items-center gap-2 rounded-lg bg-surface px-2.5 text-[13px] text-subtle shadow-soft ring-1 ring-inset ring-line transition hover:text-muted">
             <Search className="h-3.5 w-3.5" /> <span className="flex-1 text-left">Search…</span>
             <span className="flex gap-0.5"><Kbd>{isMac ? <Command className="h-2.5 w-2.5" /> : "Ctrl"}</Kbd><Kbd>K</Kbd></span>
           </button>
+          {hub && <MachinePicker compact />}
         </div>
         <nav className="mt-4 flex-1 space-y-5 overflow-y-auto px-3">
-          {[...new Set(NAV.map((n) => n.group))].map((g) => (
+          {[...new Set(nav.map((n) => n.group))].map((g) => (
             <div key={g}>
               <div className="mb-1 px-2.5 text-[11px] font-medium uppercase tracking-wider text-subtle/80">{g}</div>
-              <div className="space-y-0.5">{NAV.filter((n) => n.group === g).map((n) => <NavItem key={n.to} {...n} badge={badge(n.to)} />)}</div>
+              <div className="space-y-0.5">{nav.filter((n) => n.group === g).map((n) => <NavItem key={n.to} {...n} badge={badge(n.to)} />)}</div>
             </div>
           ))}
         </nav>
         <div className="space-y-3 p-3">
           <WorkerWidget q={q.data} />
-          <div className="flex items-center justify-between px-1">
-            <span className="text-2xs text-subtle">local · offline</span>
+          <div className="flex items-center justify-between gap-2 px-1">
+            <Account onPassword={() => setPassword(true)} />
             <ThemeSwitch />
           </div>
         </div>
@@ -165,8 +191,9 @@ export default function App() {
             <ThemeSwitch />
           </div>
         </div>
+        {hub && <div className="flex items-center gap-2 px-4 pt-2.5"><MachinePicker compact className="min-w-0 flex-1" /><Account onPassword={() => setPassword(true)} /></div>}
         <nav className="flex gap-1 overflow-x-auto px-3 py-2 scroll-none">
-          {NAV.map(({ to, label, icon: Icon }) => (
+          {nav.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === "/"}
               className={({ isActive }) => cx("flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium",
                 isActive ? "bg-accent/[.09] text-fg" : "text-muted")}>
@@ -185,10 +212,25 @@ export default function App() {
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/runs/:id" element={<RunDetail />} />
+            {hub && <Route path="/machines" element={<Machines />} />}
+            {hub && <Route path="/machines/:id" element={<MachineDetail />} />}
+            {hub && me?.user?.is_admin && <Route path="/team" element={<Team />} />}
           </Routes>
         </div>
       </main>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
+      {(password || me?.user?.must_change_password) && <ChangePassword forced={!!me?.user?.must_change_password} onClose={() => setPassword(false)} />}
     </div>
   );
+}
+
+function Gate() {
+  const { ready, needsLogin, reload } = useSession();
+  if (needsLogin) return <Login onDone={reload} />;
+  if (!ready) return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />opening the lab…</div>;
+  return <Shell />;
+}
+
+export default function App() {
+  return <SessionProvider><Gate /></SessionProvider>;
 }

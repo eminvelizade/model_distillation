@@ -69,6 +69,13 @@ def _flatten(d, prefix="") -> dict:
     return out
 
 
+# ---------- mode (the UI also talks to the hub, modellab/hub, which has logins and machines) ----------
+
+@app.get("/api/auth/me")
+def me():
+    return {"mode": "local", "user": None}
+
+
 # ---------- catalog / datasets / templates ----------
 
 @app.get("/api/catalog")

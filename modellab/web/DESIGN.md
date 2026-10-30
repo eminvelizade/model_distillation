@@ -122,7 +122,8 @@ Keep sections as direct children of the page root so the entrance stagger works.
 | overlays | `Modal` (Esc / click outside closes), `CommandPalette` |
 | code / logs | `Yaml`, `LogView` + `TermTab` (always-dark `bg-code` surfaces) |
 | charts | `Scatter`, `Radar` (`components/`); `useWidth` for pixel-sized SVG |
-| mascot | `Mascot` (moods: happy / busy / sleepy / sad). Labby appears in empty states, the worker widget, the Queue system card and the preview footer only |
+| mascot | `Mascot` (moods: happy / busy / sleepy / sad). Labby appears in empty states, the worker widget, the Queue system card, the preview footer and the hub's sign-in page only |
+| hub pieces | `components/Hub.tsx`: `MachinePicker`, `MachineDot`, `CheckIcon` (ok / warn / fail), `CopyBox` (commands, one-time secrets), `ChangePassword` |
 
 If a component is almost right, extend it with a prop rather than copying it.
 
@@ -217,4 +218,6 @@ on errors, on polling updates, or as decoration in tables and forms. Ambient twi
 | `tailwind.config.js` | token → Tailwind colour mapping, fonts, keyframes and `animate-*` names |
 | `src/ui.tsx` | shared components and hooks (`useCountUp`, `CountUp`, `sparkleBurst`, `useTheme`, `useWidth`, …) |
 | `src/components/` | `Scatter`, `Radar` (+ `SERIES`), `CommandPalette` |
-| `src/App.tsx` | shell: sidebar, nav groups, worker widget, logo, page wrapper, tab titles |
+| `src/App.tsx` | shell: sidebar, machine picker, worker / machine widget, account, logo, page wrapper, tab titles |
+| `src/nav.ts` | pages in the sidebar and ⌘K (`hub` / `admin` flags hide them on the local app) |
+| `src/session.tsx` | mode (local app or hub), signed-in user, the user's machines and the selected one |

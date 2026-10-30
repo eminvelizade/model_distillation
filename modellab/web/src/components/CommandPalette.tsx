@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CornerDownLeft, FlaskConical, GitCompareArrows, ListOrdered, Moon, Search, Trophy } from "lucide-react";
+import { ArrowRight, CornerDownLeft, Moon, Search, Server } from "lucide-react";
 import { api, fmt, RunSummary } from "../api";
 import { cx, Kbd, Modal, StatusPill, useTheme } from "../ui";
+import { useNav } from "../nav";
+import { useSession } from "../session";
 
 type Item = { id: string; group: string; label: string; hint?: React.ReactNode; icon: React.ReactNode; run: () => void };
 
@@ -14,16 +16,17 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
   const nav = useNavigate();
   const theme = useTheme();
   const list = useRef<HTMLDivElement>(null);
+  const pages = useNav();
+  const { machines } = useSession();
   useEffect(() => { api.runs().then(setRuns).catch(() => undefined); }, []);
 
   const go = (to: string) => () => { nav(to); onClose(); };
   const items: Item[] = useMemo(() => {
     const ic = "h-4 w-4";
     const base: Item[] = [
-      { id: "p-new", group: "Pages", label: "New experiment", icon: <FlaskConical className={ic} />, run: go("/") },
-      { id: "p-queue", group: "Pages", label: "Queue", icon: <ListOrdered className={ic} />, run: go("/queue") },
-      { id: "p-lb", group: "Pages", label: "Leaderboard", icon: <Trophy className={ic} />, run: go("/leaderboard") },
-      { id: "p-cmp", group: "Pages", label: "Compare", icon: <GitCompareArrows className={ic} />, run: go("/compare") },
+      ...pages.map((p) => ({ id: `p-${p.to}`, group: "Pages", label: p.label, icon: <p.icon className={ic} />, run: go(p.to) })),
+      ...machines.map((m) => ({ id: `m-${m.id}`, group: "Machines", label: m.name, icon: <Server className={ic} />,
+        hint: <span className="text-[11px] text-muted">{m.online ? "online" : "offline"}</span>, run: go(`/machines/${m.id}`) })),
       { id: "a-theme", group: "Actions", label: `Switch to ${theme.dark ? "light" : "dark"} theme`, icon: <Moon className={ic} />, run: () => { theme.toggle(); onClose(); } },
       ...runs.map((r) => ({
         id: r.id, group: "Runs", label: r.name, icon: <span className="font-mono text-[10px]">{r.id.slice(-4)}</span>,
@@ -34,7 +37,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
     const ql = q.toLowerCase().trim();
     return ql ? base.filter((x) => `${x.label} ${x.group} ${x.id}`.toLowerCase().includes(ql)) : base;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, runs, theme.dark]);
+  }, [q, runs, theme.dark, pages, machines]);
 
   useEffect(() => setI(0), [q]);
   useEffect(() => { list.current?.querySelector(`[data-i="${i}"]`)?.scrollIntoView({ block: "nearest" }); }, [i]);
