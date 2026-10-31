@@ -67,8 +67,18 @@ Current version: **v0.1** (beta).
 
 ## Roadmap
 
-- **Clusters**: share machines with teammates by invitation.
-- **Model builder**: design or modify your own model architectures and train them like any other model.
+**Phase 2: the R&D playground** ([plan](docs/PHASE2_PLAN.md))
+- **Model library**: use any vision model from Hugging Face (`transformers`, `timm`) or upload your own, then
+  fine-tune, distill and compare it like the built-in models.
+- **Architecture editor**: swap backbones and heads, add or change layers, or build a model from scratch. See what
+  stays pretrained, and check the model on your GPU in seconds.
+- **Datasets from Hugging Face**, with a viewer.
+- **Automated search**: ModelLab tries the variants and finds the best model for your data within your speed budget.
+- **Claude through MCP**: connect ModelLab to your own Claude account to debug runs, plan experiments, find papers and
+  edit architectures.
+- Tasks: detection, classification and segmentation.
+
+**Phase 3**: cloud GPUs, and clusters (sharing machines with teammates by invitation).
 
 ## Repository
 
