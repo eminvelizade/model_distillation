@@ -67,16 +67,18 @@ Current version: **v0.1** (beta).
 
 ## Roadmap
 
-**Phase 2: the R&D playground** ([plan](docs/PHASE2_PLAN.md))
-- **Model library**: use any vision model from Hugging Face (`transformers`, `timm`) or upload your own, then
-  fine-tune, distill and compare it like the built-in models.
-- **Architecture editor**: swap backbones and heads, add or change layers, or build a model from scratch. See what
-  stays pretrained, and check the model on your GPU in seconds.
-- **Datasets from Hugging Face**, with a viewer.
-- **Automated search**: ModelLab tries the variants and finds the best model for your data within your speed budget.
-- **Claude through MCP**: connect ModelLab to your own Claude account to debug runs, plan experiments, find papers and
-  edit architectures.
-- Tasks: detection, classification and segmentation.
+**Phase 2: the first market release (MVP)** ([plan](docs/PHASE2_PLAN.md))
+- **Find my best model**: give ModelLab a dataset, your machines and a speed budget. It tries models, sizes, input
+  sizes, learning rates and distillation, then recommends the most accurate model that fits.
+- **Export**: ONNX and TensorRT files for the winner, with a model card and an inference example.
+- **Dataset check** before training.
+- **Accounts for teams**: sign-up, organisations and billing.
+
+**After launch: the R&D playground**
+- Any vision model from Hugging Face (`transformers`, `timm`), or your own upload.
+- An architecture editor: swap backbones and heads, add or change layers, or build a model from scratch.
+- Hugging Face datasets with a viewer; classification and segmentation.
+- Claude through MCP, on your own Claude account: debug runs, plan experiments, find papers, edit architectures.
 
 **Phase 3**: cloud GPUs, and clusters (sharing machines with teammates by invitation).
 
