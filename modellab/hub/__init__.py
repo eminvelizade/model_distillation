@@ -8,6 +8,8 @@ Configuration (environment variables):
   MODELLAB_RELEASE_PUBKEY         Ed25519 public key (base64) that agent releases are signed with
   MODELLAB_RELEASE_UPLOAD_TOKEN   bearer token CI uses to upload signed releases
   MODELLAB_INSECURE_COOKIES=1     allow login over plain http (local development only)
+  MODELLAB_SECRET_KEY             optional: encrypts the Claude API keys users save for Yeti (default: a random key kept
+                                  in the database)
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ class Config:
     session_days: float = 30.0
     online_after_s: float = 30.0  # a machine counts as online if its last heartbeat is this recent
     pairing_minutes: float = 10.0
+    secret_key: str | None = None
 
 
 def load_config() -> Config:
@@ -46,4 +49,5 @@ def load_config() -> Config:
         admin_password=e.get("MODELLAB_ADMIN_PASSWORD") or None,
         release_pubkey=e.get("MODELLAB_RELEASE_PUBKEY") or None,
         release_upload_token=e.get("MODELLAB_RELEASE_UPLOAD_TOKEN") or None,
+        secret_key=e.get("MODELLAB_SECRET_KEY") or None,
     )

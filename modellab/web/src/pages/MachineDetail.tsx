@@ -1,5 +1,7 @@
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import ExplainButton from "../components/yeti/ExplainButton";
+import { useYetiPage } from "../components/yeti/YetiContext";
 import { Activity, Cpu, Database, Download, HardDrive, ListOrdered, Loader2, Package, Pencil, Plus, RefreshCw, Server, Stethoscope, Trash2 } from "lucide-react";
 import { api, Command, DatasetInfo, MachineDetail as MD } from "../api";
 import { CheckIcon, CopyBox, MachineDot, machineState } from "../components/Hub";
@@ -166,6 +168,9 @@ function CommandRow({ c }: { c: Command }) {
 export default function MachineDetail() {
   const { id = "" } = useParams();
   const m = usePoll(() => api.machine(id), 3000, [id]);
+  const badChecks = (m.data?.report?.checks ?? []).filter((c: { status: string }) => c.status !== "ok").length;
+  useYetiPage({ kind: "machine", id, label: m.data?.name },
+    badChecks ? { text: "Some checks on this machine need attention. Want help fixing them?", ask: "Which checks on this machine need attention, and how do I fix them?", focus: "checks", about: "the checks" } : null);
   const { machines, refreshMachines, setMachineId } = useSession();
   // the machine you look at becomes the one the sidebar, New experiment and Queue work with
   useEffect(() => { if (machines.some((x) => x.id === id)) setMachineId(id); }, [id, machines, setMachineId]);
@@ -257,7 +262,8 @@ export default function MachineDetail() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-5">
           <Card title="Checks" icon={<Stethoscope className="h-3.5 w-3.5" />}
-            description={rep.time ? `self-check ${relTime(rep.time)}` : "no self-check yet"}>
+            description={rep.time ? `self-check ${relTime(rep.time)}` : "no self-check yet"}
+            actions={badChecks ? <ExplainButton label="How do I fix this?" focus="checks" about="the checks" ask="Which checks on this machine need attention, why, and how do I fix them?" /> : undefined}>
             {!checks.length ? <div className="text-[13px] text-subtle">The agent sends its first self-check right after installing.</div> : (
               <ul className="divide-y divide-line">
                 {checks.map((c) => (
@@ -277,7 +283,10 @@ export default function MachineDetail() {
           </Card>
 
           <Card title="Datasets" icon={<Database className="h-3.5 w-3.5" />} description="registered on this machine" flush
-            actions={<Button small onClick={() => setAddDs(true)}><Plus />Add dataset</Button>}>
+            actions={<div className="flex items-center gap-2">
+              {datasets.some((x: any) => (x.check?.errors?.length ?? 0) + (x.check?.warnings?.length ?? 0) > 0) &&
+                <ExplainButton label="Explain the issues" focus="datasets" about="the dataset checks" ask="Explain the problems and warnings the dataset check found on this machine, what they mean for training and evaluation, and how to fix them." />}
+              <Button small onClick={() => setAddDs(true)}><Plus />Add dataset</Button></div>}>
             {!datasets.length && !adding.length ? <div className="px-5 pb-5 text-[13px] text-subtle">None yet: add the folders this machine trains on.</div> : (
               <ul className="px-2 pb-2">
                 {datasets.map((ds) => (

@@ -131,6 +131,7 @@ Keep sections as direct children of the page root so the entrance stagger works.
 | code / logs | `Yaml`, `LogView` + `TermTab` (always-dark `bg-code` surfaces) |
 | charts | `Scatter`, `Radar` (`components/`); `useWidth` for pixel-sized SVG |
 | mascot | `Mascot` (moods: happy / busy / sleepy / sad). Labby appears in empty states, the worker widget, the Queue system card, the preview footer and the hub's sign-in page only |
+| the assistant | `Yeti` (`components/yeti/`; poses idle / wave / think / happy / sleep): the bottom-right button (`YetiDock`), the chat panel, and `ExplainButton`, the small "Explain" pill with a mini Yeti next to a result. Pages tell Yeti what's on screen with `useYetiPage({kind, id, label}, suggestion?)`; a suggestion makes Yeti wave once with a short bubble (once per page per session). One `ExplainButton` per card, in its `actions`, worded as the question ("Why this model?") |
 | hub pieces | `components/Hub.tsx`: `MachinePicker`, `MachineDot`, `CheckIcon` (ok / warn / fail), `CopyBox` (commands, one-time secrets), `ChangePassword` |
 | a path on a machine | `PathField` (`components/FolderPicker.tsx`): typed path + **Browse**, an inline explorer listing that machine's folders through its agent (`want="json"` picks a file, `expect` marks dataset folders) |
 | export a fine-tuned model | `ExportPanel` (`components/Export.tsx`): Export button, live status of the machine's export command, the model card summary and the folder path |
@@ -165,7 +166,8 @@ Everything is CSS (Tailwind `animate-*` in `tailwind.config.js`, helpers in `ind
 Rules:
 
 - Animate on **mount or change**, then rest. The only things that loop are live status and the existing ambient
-  touches (aurora drift, champion twinkles, logo bubbles, Labby's blink and float).
+  touches (aurora drift, champion twinkles, logo bubbles, Labby's and Yeti's blink and float). Yeti's wave plays once
+  (when it offers an explanation, or on hover), and its snowflake turns only while it is answering (live status).
 - Entrance animations on containers use fill mode **`backwards`, never `both`/`forwards`**. A lingering transform
   turns the element into the containing block for `position: fixed` children (toasts, the selection bar).
 - Polling refreshes must not replay animations: key lists by stable ids, not indexes.
@@ -232,3 +234,4 @@ on errors, on polling updates, or as decoration in tables and forms. Ambient twi
 | `src/App.tsx` | shell: sidebar, machine picker, worker / machine widget, account, logo, page wrapper, tab titles |
 | `src/nav.ts` | pages in the sidebar and ⌘K (`hub` / `admin` flags hide them on the local app) |
 | `src/session.tsx` | mode (local app or hub), signed-in user, the user's machines and the selected one |
+| `src/components/yeti/` | Yeti: the mascot SVG, the dock, the chat panel, the safe Markdown renderer, `ExplainButton`, and `YetiContext` (chat state, page context, settings) |

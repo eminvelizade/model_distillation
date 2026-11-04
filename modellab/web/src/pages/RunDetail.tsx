@@ -5,6 +5,8 @@ import { api, fmt } from "../api";
 import { Button, Callout, Card, cx, LogView, Modal, PageHeader, ProgressBar, Segmented, sparkleBurst, StatusPill, Switch, Tag, TermTab, Toast, Yaml, inputCls, relTime, usePoll } from "../ui";
 import { useSession } from "../session";
 import ExportPanel from "../components/Export";
+import ExplainButton from "../components/yeti/ExplainButton";
+import { useYetiPage } from "../components/yeti/YetiContext";
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub?: string; hero?: boolean }) {
   return (
@@ -107,6 +109,14 @@ export default function RunDetail() {
   const [deleteFiles, setDeleteFiles] = useState(false);
   const nav = useNavigate();
   const { hub } = useSession();
+  const failedRun = r && (r.status === "failed" || r.status === "interrupted");
+  const hasFeatures = r?.stages?.some((s: any) => s.type === "features" && s.status === "done");
+  const hasResults = r?.results?.length > 0;
+  useYetiPage({ kind: "run", id, label: r?.name },
+    failedRun ? { text: "This run failed. Want me to look at why?", ask: "Why did this run fail, and how do I fix it?", focus: "failure", about: "the failure" }
+      : hasFeatures ? { text: "I can explain what the PCA and attention figures show.", ask: "What do this run's feature figures (PCA, attention) and probe numbers show? What changed between the backbones?", focus: "pca", about: "the feature figures" }
+      : r?.status === "done" && hasResults ? { text: "I can explain these results.", ask: "Explain this run's results: what's good, what's weak, and why?", focus: "results", about: "the results" }
+      : null);
   if (!r) return <div className="flex items-center justify-center gap-2 py-24 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />loading…</div>;
   // `then` replaces the refresh (after a delete there is nothing left to fetch)
   const act = (p: Promise<{ result: string }>, then?: () => void) => p.then((x) => { setToast(x.result); if (then) then(); else refresh(); }).catch((e) => setToast(String(e.message)));
@@ -138,7 +148,8 @@ export default function RunDetail() {
       {r.status === "running" && <ProgressBar value={r.progress} active />}
       {r.status === "running" && !r.current_stage && r.status_message && <div className="-mt-3 text-xs text-sky-700 dark:text-sky-300">{r.status_message}</div>}
       {r.error_tail && r.status !== "done" && (
-        <Callout tone="error" title="Run failed">
+        <Callout tone="error" title={<span className="flex flex-wrap items-center justify-between gap-2">Run failed
+          <ExplainButton label="Why did it fail?" focus="failure" about="the failure" ask="Why did this run fail, and how do I fix it?" /></span>}>
           <pre className="scroll-thin mt-1 max-h-48 overflow-auto whitespace-pre font-mono text-[11.5px] leading-relaxed">{r.error_tail}</pre>
         </Callout>
       )}
@@ -159,7 +170,9 @@ export default function RunDetail() {
                     <button onClick={() => setLogStage(s.name)} className="ml-auto inline-flex items-center gap-1 text-xs text-subtle hover:text-accent"><FileText className="h-3 w-3" />logs</button>
                   </div>
                   {s.status === "running" && s.progress && <ProgressBar className="mt-2" value={s.progress.fraction} active />}
-                  {s.result?.metrics && s.type === "eval" && <div className="mt-3"><EvalResult m={s.result.metrics} /></div>}
+                  {s.result?.metrics && s.type === "eval" && <div className="mt-3"><EvalResult m={s.result.metrics} />
+                    <ExplainButton className="mt-2.5" label="Explain these results" focus="results" about={`the ${s.name} results`}
+                      ask={`Explain the results of stage ${s.name}: what's good, what's weak (classes, object sizes), how it compares with my other results, and why.`} /></div>}
                   {s.result?.metrics && s.type === "speed" && (s.result.metrics.error
                     ? <div className="mt-2 text-xs text-rose-600 dark:text-rose-300">could not time {s.result.metrics.label}: {s.result.metrics.error}</div>
                     : <div className="mt-3 grid max-w-xl grid-cols-3 gap-2">
@@ -167,7 +180,9 @@ export default function RunDetail() {
                         <Kpi label="Params" value={`${s.result.metrics.params_m.toFixed(1)} M`} />
                         <Kpi label="Peak VRAM" value={fmt.mb(s.result.metrics.peak_vram_mb)} sub={s.result.metrics.latency_device} />
                       </div>)}
-                  {s.result?.metrics && s.type === "features" && <div className="mt-3"><FeaturesResult m={{ ...s.result.metrics, __stage: s.name }} runId={r.id} outputs={s.result.outputs} /></div>}
+                  {s.result?.metrics && s.type === "features" && <div className="mt-3"><FeaturesResult m={{ ...s.result.metrics, __stage: s.name }} runId={r.id} outputs={s.result.outputs} />
+                    <ExplainButton className="mt-2.5" label="What does this show?" focus="pca" about={`the ${s.name} figures`}
+                      ask={`What do the figures and numbers of stage ${s.name} show (PCA, attention, probes, CKA)? What changed between the backbones, and what does it mean for detection?`} /></div>}
                   {s.result && ["distill", "finetune"].includes(s.type) && (
                     <div className="mt-1 text-xs text-muted">→ <span className="font-mono">{Object.entries(s.result.outputs).map(([k, v]) => `${k}: ${v}`).join(" · ")}</span> · {s.result.seconds}s</div>
                   )}

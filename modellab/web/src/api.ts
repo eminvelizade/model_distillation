@@ -141,6 +141,44 @@ const send = (method: string, url: string, body?: unknown) =>
   fetch(url, { method, headers: body === undefined ? H : { ...H, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
 const post = (url: string, body?: unknown) => send("POST", url, body);
 
+// ---------- Yeti, the assistant (hub) ----------
+export interface YetiSettings {
+  connected: boolean; key_hint: string | null; key_error: string | null; model: string; effort: string;
+  models: { id: string; label: string; note: string }[]; efforts: { id: string; label: string }[];
+  connector: { url: string; apps: { client_id: string; name: string; connected: number; last_used: number | null }[] };
+}
+export interface YetiPage { kind: string; id?: string; items?: string[]; path?: string; focus?: string }
+export type YetiEvent =
+  | { type: "start"; turn: string; note: string | null; model: string; model_label: string }
+  | { type: "text"; text: string }
+  | { type: "rewind"; chars: number }
+  | { type: "note"; text: string }
+  | { type: "tool"; id: string; name: string; label: string }
+  | { type: "tool_done"; id: string; ok: boolean; label: string; href: string | null }
+  | { type: "done"; text: string; usage: { input: number; output: number; cache_read: number; cache_write: number }; model: string; model_label: string; stop: string | null }
+  | { type: "error"; code: string; message: string };
+
+/** POST a chat turn and read the server-sent events as they arrive (EventSource can't POST). */
+export async function streamYeti(body: { messages: { role: string; text: string; note?: string | null }[]; page?: YetiPage | null },
+                                 onEvent: (e: YetiEvent) => void, signal?: AbortSignal): Promise<void> {
+  const r = await fetch("/api/assistant/chat", { method: "POST", headers: { ...H, "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
+  if (!r.ok || !r.body) { await j(r); return; }
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i: number;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, i);
+      buf = buf.slice(i + 2);
+      for (const line of chunk.split("\n")) if (line.startsWith("data: ")) onEvent(JSON.parse(line.slice(6)));
+    }
+  }
+}
+
 export const api = {
   catalog: () => fetch(scoped("/api/catalog")).then(j<Catalog>),
   runs: (status?: string, thisMachine = false) => {
@@ -183,6 +221,12 @@ export const api = {
   removeMachine: (id: string) => send("DELETE", `/api/machines/${id}`).then(j<{ result: string }>),
   command: (id: string, type: string, args: Record<string, unknown> = {}) => post(`/api/machines/${id}/commands`, { type, args }).then(j<Command>),
   browse: (id: string, path: string | null, want: "dir" | "json" = "dir") => post(`/api/machines/${id}/browse`, { path, want }).then(j<Listing>),
+
+  // ---------- Yeti (hub) ----------
+  yeti: () => fetch("/api/assistant").then(j<YetiSettings>),
+  yetiSave: (body: { api_key?: string; model?: string; effort?: string }) => send("PUT", "/api/assistant", body).then(j<YetiSettings>),
+  yetiForgetKey: () => send("DELETE", "/api/assistant/key").then(j<YetiSettings>),
+  yetiDisconnect: (clientId: string) => send("DELETE", `/api/assistant/apps/${clientId}`).then(j<{ apps: YetiSettings["connector"]["apps"] }>),
 
   // ---------- searches + export (hub) ----------
   searches: () => fetch("/api/searches").then(j<SearchSummary[]>),

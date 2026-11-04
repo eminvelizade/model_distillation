@@ -5,6 +5,7 @@ import { api, fmt, RunSummary } from "../api";
 import { machineState } from "../components/Hub";
 import { useSession } from "../session";
 import { Button, Card, cx, Empty, IconButton, LogView, Mascot, PageHeader, ProgressBar, Ring, StatusPill, TermTab, Toast, relTime, useCountUp, usePoll } from "../ui";
+import { useYetiPage } from "../components/yeti/YetiContext";
 
 const STAGE_DOT: Record<string, string> = { distill: "bg-ice-400", finetune: "bg-teal-500", eval: "bg-orange-400", features: "bg-amber-400" };
 
@@ -99,6 +100,7 @@ const FINISHED_ICON: Record<string, React.ReactNode> = {
 };
 
 export default function Queue() {
+  useYetiPage({ kind: "queue" });
   const { hub, machine, machineId } = useSession();
   const q = usePoll(api.queue, 2000, [machineId]);
   const gpu = usePoll(api.gpu, 2000, [machineId]);

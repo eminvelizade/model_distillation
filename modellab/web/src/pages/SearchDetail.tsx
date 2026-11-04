@@ -5,6 +5,8 @@ import { api, fmt, SearchArch, SearchDetail as SD, SearchTrial } from "../api";
 import { Button, Callout, Card, Empty, PageHeader, ProgressBar, StatusPill, Toast, useWidth, usePoll } from "../ui";
 import { FAMILY, niceTicks } from "../components/Scatter";
 import ExportPanel from "../components/Export";
+import ExplainButton from "../components/yeti/ExplainButton";
+import { useYetiPage } from "../components/yeti/YetiContext";
 
 const gpuTime = (sec: number) => (sec >= 3600 ? `${(sec / 3600).toFixed(1)} h` : `${Math.round(sec / 60)} min`);
 const fam = (model: string) => (model.startsWith("ltdetr") ? "ltdetr" : "rfdetr");
@@ -97,6 +99,11 @@ export default function SearchDetail() {
   const { data: s, error, refresh } = usePoll(() => api.search(id), 4000, [id]);
   const [toast, setToast] = useState<string | null>(null);
   const nav = useNavigate();
+  useYetiPage({ kind: "search", id, label: s?.name },
+    s?.status === "done" && s.recommendation
+      ? { text: "I can explain why this model won, and how close the runner-up came.", ask: "Why did this search recommend its model? Walk me through the evidence.", focus: "recommendation", about: "the recommendation" }
+      : s?.status === "failed" ? { text: "This search stopped. Want me to look at why?", ask: "Why did this search stop, and what should I change?", focus: "failure", about: "why it stopped" }
+      : null);
   if (error && !s) return <Card><Empty title="Search not found" mood="sad">{error} · <Link className="text-accent" to="/search">all searches</Link></Empty></Card>;
   if (!s) return <div className="flex items-center justify-center gap-2 py-24 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />loading…</div>;
   const names = s.spec.machine_names ?? {};
@@ -125,6 +132,8 @@ export default function SearchDetail() {
 
       {rec && (
         <Card title={<span className="flex items-center gap-2"><Award className="h-4 w-4 text-emerald-500" />Recommended model</span>}
+          actions={<ExplainButton label="Why this model?" focus="recommendation" about="the recommendation"
+            ask="Why did this search recommend this model? Walk me through the evidence: speed, rounds, seeds and the runner-up." />}
           description={rec.early ? "The search stopped early (GPU-hour cap): this is the best of its last finished round, scored on the validation split only." : "Best mean validation mAP over its full-budget runs; the test mAP is reported, never used to choose."}>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
@@ -151,7 +160,8 @@ export default function SearchDetail() {
         <Card title="Speed vs accuracy" description="Each configuration: latency timed on the target GPU, best validation mAP so far">
           <SpeedChart s={s} />
         </Card>
-        <Card title="Candidates" description={`Timed on ${names[s.spec.target_machine]} before training (median ms, batch 1)`}>
+        <Card title="Candidates" description={`Timed on ${names[s.spec.target_machine]} before training (median ms, batch 1)`}
+          actions={<ExplainButton focus="speed" about="the candidates" ask="Walk me through the timing: which candidates were dropped for the speed budget, by how much, and what does that mean for my choice?" />}>
           <table className="w-full text-xs [&_td]:py-1.5 [&_th]:py-1.5 [&_th]:font-medium [&_tr]:border-t [&_tr]:border-line/70 [&_thead_tr]:border-0">
             <thead className="text-left text-muted"><tr><th>Model @ size</th><th className="text-right">ms</th><th className="text-right">p95</th><th className="text-right">M params</th><th className="text-right" /></tr></thead>
             <tbody>{s.state.archs.map((a) => <ArchRow key={a.key} a={a} budget={s.spec.speed_ms} />)}</tbody>
@@ -160,14 +170,17 @@ export default function SearchDetail() {
         </Card>
       </div>
 
-      {[...rounds].reverse().map((r) => (
+      {[...rounds].reverse().map((r, i) => (
         <Card key={r.index} title={`Round ${r.index + 1} of ${s.spec.rungs}`}
+          actions={i === 0 && rounds.length > 0 ? <ExplainButton label="How did the rounds go?" focus="rounds" about="the rounds"
+            ask="How did the rounds play out? Which configurations moved on, which were dropped and by how much, and did any bigger input size or model stop paying off?" /> : undefined}
           description={`${r.trials.length} configuration${r.trials.length > 1 ? "s" : ""} · ${r.epochs} epoch${r.epochs > 1 ? "s" : ""}${r.final ? " (full budget) · also evaluated on the test split" : ""}`}>
           <TrialTable trials={r.trials} final={r.final} names={names} />
         </Card>
       ))}
       {s.state.seed_trials.length > 0 && (
-        <Card title="Seed repeats" description="The best configurations again with other seeds: how much of the difference is luck">
+        <Card title="Seed repeats" description="The best configurations again with other seeds: how much of the difference is luck"
+          actions={<ExplainButton label="Is it luck?" focus="seeds" about="the seed repeats" ask="Is the winner clearly better than the runner-up, or is the gap within the noise between seeds?" />}>
           <TrialTable trials={s.state.seed_trials} final names={names} />
         </Card>
       )}
