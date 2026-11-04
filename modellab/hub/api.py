@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from modellab import recipe
-from modellab.hub import auth, browse, db, model
+from modellab.hub import auth, browse, db, model, search
 
 router = APIRouter(prefix="/api")
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
@@ -394,6 +394,22 @@ def delete(rid: str, request: Request, delete_files: bool = False, user: dict = 
     return {"result": "deleted", "command_id": cmd}
 
 
+class ExportIn(BaseModel):
+    stage: str
+
+
+@router.post("/runs/{rid}/export")
+def export_run(rid: str, body: ExportIn, request: Request, user: dict = Depends(auth.current_user)):
+    with _engine(request).begin() as c:
+        return model.export_run(c, user, rid, body.stage)
+
+
+@router.get("/runs/{rid}/exports")
+def run_exports(rid: str, request: Request, user: dict = Depends(auth.current_user)):
+    with _engine(request).begin() as c:
+        return model.exports(c, user, rid)
+
+
 @router.get("/runs/{rid}/logs")
 async def logs(rid: str, request: Request, stage: str | None = None, follow: bool = True, lines: int = 400,
                user: dict = Depends(auth.current_user)):
@@ -481,6 +497,48 @@ def results(request: Request, user: dict = Depends(auth.current_user)):
 def compare(items: str, request: Request, user: dict = Depends(auth.current_user)):
     with _engine(request).begin() as c:
         return model.compare(c, user, items)
+
+
+# ---------------------------------------------------------------- searches ("find my best model")
+
+@router.get("/searches")
+def searches(request: Request, user: dict = Depends(auth.current_user)):
+    with _engine(request).begin() as c:
+        search.advance_running(c, user)
+        return search.list_searches(c, user)
+
+
+@router.post("/searches/preview")
+def search_preview(body: dict, request: Request, user: dict = Depends(auth.current_user)):
+    with _engine(request).begin() as c:
+        return search.preview(search.check_spec(c, user, body))
+
+
+@router.post("/searches")
+def create_search(body: dict, request: Request, user: dict = Depends(auth.current_user)):
+    with _engine(request).begin() as c:
+        return search.create(c, user, body)
+
+
+@router.get("/searches/{sid}")
+def get_search(sid: str, request: Request, user: dict = Depends(auth.current_user)):
+    with _engine(request).begin() as c:
+        search.get(c, user, sid)  # 404 before advancing someone else's
+        search.advance_safe(c, sid)
+        return search.get(c, user, sid)
+
+
+@router.post("/searches/{sid}/cancel")
+def cancel_search(sid: str, request: Request, user: dict = Depends(auth.current_user)):
+    with _engine(request).begin() as c:
+        return search.cancel(c, user, sid)
+
+
+@router.delete("/searches/{sid}")
+def delete_search(sid: str, request: Request, user: dict = Depends(auth.current_user)):
+    with _engine(request).begin() as c:
+        search.delete(c, user, sid)
+    return {"result": "deleted"}
 
 
 # ---------------------------------------------------------------- releases

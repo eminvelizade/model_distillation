@@ -133,6 +133,8 @@ Keep sections as direct children of the page root so the entrance stagger works.
 | mascot | `Mascot` (moods: happy / busy / sleepy / sad). Labby appears in empty states, the worker widget, the Queue system card, the preview footer and the hub's sign-in page only |
 | hub pieces | `components/Hub.tsx`: `MachinePicker`, `MachineDot`, `CheckIcon` (ok / warn / fail), `CopyBox` (commands, one-time secrets), `ChangePassword` |
 | a path on a machine | `PathField` (`components/FolderPicker.tsx`): typed path + **Browse**, an inline explorer listing that machine's folders through its agent (`want="json"` picks a file, `expect` marks dataset folders) |
+| export a fine-tuned model | `ExportPanel` (`components/Export.tsx`): Export button, live status of the machine's export command, the model card summary and the folder path |
+| a search's speed vs accuracy | `SpeedChart` in `pages/SearchDetail.tsx`: configurations at their timed latency, the budget as an amber dashed line, the recommendation ringed in emerald |
 
 If a component is almost right, extend it with a prop rather than copying it.
 

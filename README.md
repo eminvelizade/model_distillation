@@ -36,6 +36,15 @@ Current version: **v0.1** (beta).
 - Start from **templates** or write the recipe in YAML.
 - Models today: RF-DETR (Nano → Large) and LT-DETR detectors, with DINOv2 / DINOv3 teachers (ViT-S up to ViT-7B).
 
+**Find my best model**
+- Give ModelLab a dataset, your machines and a speed budget (ms per image on one of your GPUs). It times every
+  candidate model and input size first, trains the ones that fit in rounds (the best move on with more epochs),
+  repeats the best with other seeds, and recommends the most accurate model that fits.
+- Optionally tries learning rates and distilling a DINOv2 / DINOv3 teacher into RF-DETR models. Trials are ordinary
+  runs, spread over every machine that holds the same data.
+- **Export** the winner (or any fine-tuned model): ONNX, a TensorRT FP16 engine when TensorRT is installed on the
+  machine, a model card and a small example script. The files stay on the machine.
+
 **Results**
 - **One evaluation for every model**: same images, same metric code (COCO mAP, per-class AP, latency, VRAM, size).
 - **Leaderboard** with the current best model and a speed-vs-accuracy chart; **Compare** up to 4 runs side by side,
@@ -49,7 +58,8 @@ Current version: **v0.1** (beta).
 - **Hardware page** per machine: GPU, driver, memory, disk and live usage. Anything that would break a run shows in
   red, with the fix.
 - **Datasets** per machine: browse the PC's folders from the web app to add one (Roboflow, COCO or YOLO), and remove
-  it again any time. Files never move.
+  it again any time. Files never move. Every dataset is **checked** when added: missing images, broken boxes, unknown
+  classes, and images that leak between train, valid and test.
 - Live progress and logs; cancel and re-queue. Runs survive a closed browser, and keep training if the hub goes
   down.
 
@@ -67,14 +77,7 @@ Current version: **v0.1** (beta).
 
 ## Roadmap
 
-**Phase 2: the first market release (MVP)** ([plan](docs/PHASE2_PLAN.md))
-- **Find my best model**: give ModelLab a dataset, your machines and a speed budget. It tries models, sizes, input
-  sizes, learning rates and distillation, then recommends the most accurate model that fits.
-- **Export**: ONNX and TensorRT files for the winner, with a model card and an inference example.
-- **Dataset check** before training.
-- **Accounts for teams**: sign-up, organisations and billing.
-
-**After launch: the R&D playground**
+**Next: the rest of the R&D playground** ([plan](docs/PHASE2_PLAN.md))
 - Any vision model from Hugging Face (`transformers`, `timm`), or your own upload.
 - An architecture editor: swap backbones and heads, add or change layers, or build a model from scratch.
 - Hugging Face datasets with a viewer; classification and segmentation.

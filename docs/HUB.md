@@ -135,7 +135,14 @@ path (`~/…` works). Browsing needs the machine online, with an agent from v0.1
 
 The last two are split by `make_splits.py` into `~/.modellab/data/datasets/<name>`. Paths are on that PC, and images
 are not copied. The agent hashes every image and annotation. If a dataset has the same name and the same hash on two
-machines, it holds identical data, and results from those machines are comparable. **Re-hash** after you change files.
+machines, it holds identical data, and results from those machines are comparable. **Re-check** (↻) after you change
+files: it re-hashes and checks the dataset again.
+
+Every add, import and re-check also **checks** the dataset (`modellab.datasets.check`). Problems (red, they block a
+search): missing image files, boxes with no area or entirely outside their image, unknown class ids, and the same image
+in two splits (evaluation would score images the model trained on). Warnings (amber): boxes partly outside their
+image, classes in valid/test that train lacks, very unbalanced classes, tiny valid/test splits, mostly empty training
+images. Datasets added before this check show "not checked yet" until you re-check them.
 
 The trash icon removes a dataset from that machine's list (its files stay). Each machine lists only its own datasets:
 one whose folder was moved or deleted shows as missing until you remove it or add it again.
@@ -152,7 +159,31 @@ flagged when it was measured on different devices.
 A run page lists checkpoints with their path on the PC; they are never uploaded. Deleting a run can also delete its
 files on the machine.
 
-## 7. Updates
+## 7. Find my best model
+
+**Find best model** in the sidebar. Pick a dataset, the machines that train (they must hold the same data: same
+fingerprint), the machine whose GPU sets the speed, a speed budget in ms per image, and the models to try (optionally
+several input sizes, learning rates and distillation teachers). Then:
+
+1. **Timing**: one run on the speed machine times every model at every input size (`speed` stages, no training).
+   Candidates over the budget are dropped.
+2. **Rounds**: every configuration that fits trains briefly and is scored on the validation split; the best third
+   move on with three times the epochs; the last round trains with the full epochs and also evaluates on the test
+   split.
+3. **Seeds**: the best two run again with other seeds.
+4. **Recommendation**: the configuration with the best mean validation mAP. Its test mAP (mean ± spread) is shown,
+   never used to choose.
+
+Trials are ordinary runs tagged `search:<id>`: they show in the queue and on the leaderboard, and spread over the
+search's machines. The search moves on by itself when a trial finishes. A GPU-hour cap stops it before a round that
+wouldn't fit. Cancelling a search cancels its queued runs.
+
+**Export** (on the recommendation, or on any finished fine-tune stage of a run) runs on the machine that trained it and
+writes `runs/<id>/export/<stage>/`: `model.onnx`, `model.engine` (TensorRT FP16, only when `trtexec` is installed on
+that PC; it then also reports the TensorRT latency), `preprocess.json`, `infer_onnx.py` and `model_card.md/json`.
+Nothing is uploaded; the page shows the folder.
+
+## 8. Updates
 
 Each heartbeat tells the agent the hub's current release. When the agent is idle (no run, no command), it:
 1. Downloads the release.
@@ -175,7 +206,8 @@ machine page, and is retried within the hour.
 - **Isolation.** Users only see and command their own machines and runs. A machine token only reaches that machine's
   runs and commands. Pairing codes work once, for 10 minutes. Machine tokens are stored hashed and are revocable.
 - **What the hub can make a PC do.** Run recipes, which the agent re-validates with its own code, and a fixed list of
-  commands with re-checked arguments. Never shell or code.
+  commands with re-checked arguments (export runs ModelLab's own exporter, and `trtexec` if installed). Never shell
+  or code. Searches only queue ordinary recipes.
 - **Folder browsing.** For the dataset picker the agent sends folder names, `.json` file names and an image count;
   never file contents, and no hidden entries unless you type such a path. Each listing is logged in
   `~/.modellab/logs/agent.log`. The agent keeps one long-poll open to the hub for this (no port opens on the PC).
@@ -225,7 +257,15 @@ Tested in a Linux sandbox without GPU:
   dataset whose folder is gone), the old `coco-vehicles` placeholder staying hidden, two users kept apart, and the
   agent's folder browser reconnecting after a hub restart.
 
+- Search, export and dataset check: the search controller with simulated agents on two machines (timing, three
+  rounds, seed repeats, recommendation; mismatched data, dataset problems, cancel, isolation) on SQLite and
+  PostgreSQL; a real search end to end on CPU (real hub, real agent, `speed` stages, two rounds, a seed repeat, then
+  export); ONNX export of both families with the generated `infer_onnx.py` run on a real image; the pages in a
+  browser at 1440 px and 390 px.
+
 Not tested here; check these on the real machines:
+- **TensorRT export.** There is no GPU or `trtexec` here: the engine build and its latency parsing have not run.
+- **Search speed on a GPU.** Timing and trials ran on CPU; GPU latency comes from the same code as the eval stage.
 - **Building the CUDA environment on a GPU PC.** The full lock resolved with `uv pip install --dry-run` (134
   packages, `torch==2.8.0+cu128`), but nothing downloaded or ran it on a GPU.
 - **The systemd user service.** The sandbox has no user systemd. The restart behaviour (exit 75 restarts into a new

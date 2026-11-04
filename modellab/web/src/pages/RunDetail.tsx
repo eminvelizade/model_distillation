@@ -4,6 +4,7 @@ import { ArrowUpRight, Calendar, Check, Copy, CopyPlus, Database, FileText, GitC
 import { api, fmt } from "../api";
 import { Button, Callout, Card, cx, LogView, Modal, PageHeader, ProgressBar, Segmented, sparkleBurst, StatusPill, Switch, Tag, TermTab, Toast, Yaml, inputCls, relTime, usePoll } from "../ui";
 import { useSession } from "../session";
+import ExportPanel from "../components/Export";
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub?: string; hero?: boolean }) {
   return (
@@ -159,10 +160,18 @@ export default function RunDetail() {
                   </div>
                   {s.status === "running" && s.progress && <ProgressBar className="mt-2" value={s.progress.fraction} active />}
                   {s.result?.metrics && s.type === "eval" && <div className="mt-3"><EvalResult m={s.result.metrics} /></div>}
+                  {s.result?.metrics && s.type === "speed" && (s.result.metrics.error
+                    ? <div className="mt-2 text-xs text-rose-600 dark:text-rose-300">could not time {s.result.metrics.label}: {s.result.metrics.error}</div>
+                    : <div className="mt-3 grid max-w-xl grid-cols-3 gap-2">
+                        <Kpi hero label={`Latency @ ${s.result.metrics.input_size}`} value={`${s.result.metrics.latency_ms.toFixed(2)} ms`} sub={`p95 ${s.result.metrics.latency_p95_ms.toFixed(2)}`} />
+                        <Kpi label="Params" value={`${s.result.metrics.params_m.toFixed(1)} M`} />
+                        <Kpi label="Peak VRAM" value={fmt.mb(s.result.metrics.peak_vram_mb)} sub={s.result.metrics.latency_device} />
+                      </div>)}
                   {s.result?.metrics && s.type === "features" && <div className="mt-3"><FeaturesResult m={{ ...s.result.metrics, __stage: s.name }} runId={r.id} outputs={s.result.outputs} /></div>}
                   {s.result && ["distill", "finetune"].includes(s.type) && (
                     <div className="mt-1 text-xs text-muted">→ <span className="font-mono">{Object.entries(s.result.outputs).map(([k, v]) => `${k}: ${v}`).join(" · ")}</span> · {s.result.seconds}s</div>
                   )}
+                  {hub && s.type === "finetune" && s.status === "done" && <ExportPanel className="mt-3" runId={r.id} stage={s.name} machineName={r.machine_name} />}
                   {s.artifacts?.length > 0 && (
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
                       {s.artifacts.filter((a: any) => !a.path.endsWith("progress.json")).map((a: any) => a.stored === false ? (

@@ -38,7 +38,7 @@ def main(run_id: str) -> int:
 
     # Dataset fingerprints at run time (the eval stage hashes its own split again for the result row).
     ds_info = {}
-    for name in sorted({s["dataset"] for s in resolved["stages"]}):
+    for name in sorted({s["dataset"] for s in resolved["stages"] if s.get("dataset")}):
         try:
             ds_info[name] = datasets.info(name)
         except Exception as e:  # noqa: BLE001

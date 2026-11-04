@@ -279,3 +279,33 @@ def test_compat_refuses_when_albumentations_already_imported(lab):
 
     with pytest.raises(RuntimeError, match="rfdetr needs albumentations"):
         compat.use_rfdetr_albumentations()
+
+
+def test_dataset_check_finds_what_breaks_training_or_evaluation(tiny_dataset, tmp_path):
+    import json
+    import shutil
+
+    from modellab import datasets
+
+    ok = datasets.check(tiny_dataset)
+    assert ok["errors"] == [] and ok["splits"]["train"]["images"] > 0 and ok["splits"]["train"]["boxes"] > 0
+    bad = tmp_path / "bad"
+    shutil.copytree(tiny_dataset, bad)
+    tr = json.loads((bad / "train" / "_annotations.coco.json").read_text())
+    im = tr["images"][0]
+    a0, a1, a2 = (dict(tr["annotations"][0]) for _ in range(3))
+    a0["bbox"] = [im["width"] + 5, 0, 10, 10]  # entirely outside
+    a1["bbox"] = [0, 0, 0, 10]  # no area
+    a2["bbox"] = [-20, 0, 50, 10]  # partly outside: warning only
+    tr["annotations"] += [{**a0, "id": 9001}, {**a1, "id": 9002}, {**a2, "id": 9003}, {**a0, "id": 9004, "category_id": 999}]
+    (bad / "train" / "_annotations.coco.json").write_text(json.dumps(tr))
+    va = json.loads((bad / "valid" / "_annotations.coco.json").read_text())
+    shutil.copy(bad / "train" / im["file_name"], bad / "valid" / "leak.jpg")  # a training image in valid
+    va["images"].append({**im, "id": 777, "file_name": "leak.jpg"})
+    va["images"].append({**im, "id": 778, "file_name": "gone.jpg"})
+    (bad / "valid" / "_annotations.coco.json").write_text(json.dumps(va))
+    r = datasets.check(bad)
+    text = " | ".join(r["errors"])
+    assert "entirely outside" in text and "zero width or height" in text and "class id" in text
+    assert "appear in both train and valid" in text and "valid: 1 image file(s) missing" in text
+    assert any("extend more than" in w for w in r["warnings"])

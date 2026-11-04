@@ -63,7 +63,8 @@ def run(ctx):
                                                  "tokens": linear_cka(f[3], feats[other][3])}
     outputs = {}
     if st.get("pca", True):
-        pca_plot(ctx.dir / "pca.png", items, {k: f[4] for k, f in feats.items()}, st["size"])
+        # no input images in the plot: stage artifacts are uploaded to the hub, and dataset images never leave the PC
+        pca_plot(ctx.dir / "pca.png", items, {k: f[4] for k, f in feats.items()}, st["size"], show_images=False)
         outputs["pca"] = "pca.png"
     ctx.log(f"probes: { {k: round(v.get('knn_acc', float('nan')), 3) for k, v in res['probes'].items()} }")
     return outputs, res

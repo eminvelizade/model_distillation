@@ -29,7 +29,12 @@ A recipe is a YAML file with **named stages**. A stage uses an earlier stage's o
 | `distill` | LightlyTrain DistillationV3, teacher held in bf16 → RF-DETR encoder | `init`: RF-DETR checkpoint of the same size; `teacher`: LT-DETR fine-tune with a DINOv3 ViT backbone | RF-DETR checkpoint |
 | `finetune` | RF-DETR: rfdetr trainer; LT-DETR: LightlyTrain `train_object_detection` | `init`: checkpoint of the same model | checkpoint (+ `backbone.pt` for DINOv3-ViT LT-DETRs) |
 | `eval` | identical COCO eval + latency + params + VRAM (below) | any checkpoint, or a model id = stock weights | leaderboard row |
-| `features` | kNN / linear probe on ROI-pooled backbone features, CKA, PCA image | RF-DETR checkpoints / stock ids, optional teacher | probe metrics, `pca.png` |
+| `features` | kNN / linear probe on ROI-pooled backbone features, CKA, PCA image (feature maps only: it is uploaded to the hub, so no dataset images) | RF-DETR checkpoints / stock ids, optional teacher | probe metrics, `pca.png` |
+| `speed` | latency + parameter count of a model at an `image_size`, no training and no dataset needed (RF-DETR from stock weights, LT-DETR built without weights); a model that fails records the error instead of failing the run | a model id | latency metrics |
+
+`finetune` takes `image_size` for both families (a multiple of 32; default: the model's native size). The `eval` of a
+fine-tune runs the model at the size it was trained at. Searches (hub, "Find best model") build their runs from
+`speed`, `distill`, `finetune` and `eval` stages; see [HUB.md](HUB.md).
 
 **Budget**: `{epochs: N}` and/or `{minutes: M}` (a wall-clock cap). How the cap stops each training loop:
 - Lightning (distill): Lightning's `Timer` stops it, then the model is exported as usual.

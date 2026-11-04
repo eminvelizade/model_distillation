@@ -11,7 +11,7 @@ import { Gauge } from "./Queue";
 const CMD_LABEL: Record<string, string> = {
   selfcheck: "Self-check", dataset_add: "Add dataset", dataset_import: "Import dataset", dataset_verify: "Verify dataset",
   dataset_remove: "Remove dataset", weights_fetch: "Download weights", weights_verify: "Verify weights",
-  run_delete_files: "Delete run files", update: "Update",
+  run_delete_files: "Delete run files", update: "Update", export: "Export model",
 };
 const CMD_STATUS: Record<string, string> = { pending: "queued", sent: "queued", running: "running", done: "done", failed: "failed" };
 
@@ -98,18 +98,34 @@ function DatasetModal({ m, onClose, onSend }: { m: MD; onClose: () => void; onSe
 function DatasetRow({ d, verifying, removing, onVerify, onRemove }: { d: DatasetInfo; verifying: boolean; removing: boolean; onVerify: () => void; onRemove: () => void }) {
   const n = (s?: { images: number }) => (s ? s.images.toLocaleString() : "–");
   const missing = d.built === false && !d.error;
+  const [open, setOpen] = useState(false);
+  const chk = d.check;
+  const issues = chk ? [...chk.errors.map((t) => ({ t, bad: true })), ...chk.warnings.map((t) => ({ t, bad: false }))] : [];
   return (
     <li className={cx("group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-3 py-2.5 transition hover:bg-raised/50", removing && "opacity-50")}>
       {/* basis: on a phone the counts and buttons wrap below instead of squeezing the name */}
       <div className="min-w-0 flex-1 basis-56">
         <div className="flex items-center gap-2">
-          {d.error ? <CheckIcon status="fail" /> : missing ? <CheckIcon status="warn" /> : <CheckIcon status="ok" />}
+          {d.error || d.check?.errors.length ? <CheckIcon status="fail" /> : missing || d.check?.warnings.length ? <CheckIcon status="warn" /> : <CheckIcon status="ok" />}
           <span className="truncate font-mono text-[13px] font-medium text-fg">{d.name}</span>
-          {d.classes && <span className="shrink-0 whitespace-nowrap text-2xs text-subtle">{d.classes.length} classes</span>}
+          {d.classes && <span className="shrink-0 whitespace-nowrap text-2xs text-subtle">{d.classes.length} class{d.classes.length === 1 ? "" : "es"}</span>}
         </div>
         <div className="mt-0.5 truncate pl-6 font-mono text-[11px] text-subtle" title={d.path}>{d.path}</div>
         {d.error && <div className="mt-1 pl-6 text-xs text-rose-600 dark:text-rose-300">{d.error}</div>}
         {missing && <div className="mt-0.5 pl-6 text-xs text-amber-700 dark:text-amber-300">folder not found on this machine: moved or deleted? Remove it or add it again.</div>}
+        {!d.error && !missing && (
+          <div className="mt-1 pl-6 text-xs">
+            {!chk ? <span className="text-subtle">not checked yet: use ↻ to check boxes, classes and splits</span>
+              : !issues.length ? <span className="text-emerald-700 dark:text-emerald-300">checked: no problems</span>
+              : <button onClick={() => setOpen(!open)} className={cx("text-left hover:underline", chk.errors.length ? "text-rose-600 dark:text-rose-300" : "text-amber-700 dark:text-amber-300")}>
+                  {chk.errors.length ? `${chk.errors.length} problem${chk.errors.length > 1 ? "s" : ""} to fix before a search` : `${chk.warnings.length} warning${chk.warnings.length > 1 ? "s" : ""}`}
+                  {chk.errors.length > 0 && chk.warnings.length > 0 && `, ${chk.warnings.length} warning${chk.warnings.length > 1 ? "s" : ""}`} · {open ? "hide" : "show"}
+                </button>}
+            {open && <ul className="mt-1.5 space-y-1 animate-fade">{issues.map((x) => (
+              <li key={x.t} className="flex gap-1.5"><CheckIcon status={x.bad ? "fail" : "warn"} /><span className="text-muted">{x.t}</span></li>
+            ))}</ul>}
+          </div>
+        )}
       </div>
       {!d.error && !missing && (
         <div className="flex items-center gap-4 pl-6 font-mono text-[11.5px] tabular-nums text-muted sm:pl-0">
@@ -119,7 +135,7 @@ function DatasetRow({ d, verifying, removing, onVerify, onRemove }: { d: Dataset
         </div>
       )}
       <div className="ml-auto flex items-center gap-1">
-        {!d.error && !missing && <IconButton title="Re-hash every image (detects changed files)" onClick={onVerify} disabled={verifying || removing}>{verifying ? <Loader2 className="animate-spin" /> : <RefreshCw />}</IconButton>}
+        {!d.error && !missing && <IconButton title="Check again: re-hash every image (detects changed files) and check boxes, classes and splits" onClick={onVerify} disabled={verifying || removing}>{verifying ? <Loader2 className="animate-spin" /> : <RefreshCw />}</IconButton>}
         <IconButton title="Remove from this machine (files stay)" onClick={onRemove} disabled={removing} className="hover:!bg-rose-500/10 hover:!text-rose-600">{removing ? <Loader2 className="animate-spin" /> : <Trash2 />}</IconButton>
       </div>
     </li>
