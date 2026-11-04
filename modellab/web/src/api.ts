@@ -27,6 +27,9 @@ export interface DatasetInfo {
   name: string; path?: string; built?: boolean; description?: string; error?: string; classes?: string[];
   train?: { images: number; boxes: number }; valid?: { images: number; boxes: number }; test?: { images: number; boxes: number };
   hash?: Record<string, string> | null; hash_time?: number | null;
+  /** modellab.datasets.check: errors block a search, warnings are shown with it */
+  check?: { errors: string[]; warnings: string[]; classes: string[];
+    splits: Record<string, { images: number; boxes: number; empty_images: number; per_class: Record<string, number> }> } | null;
 }
 export interface Catalog {
   detectors: { id: string; family: string; label: string; resolution: number; backbone: string; teacher_capable: boolean; hidden?: boolean }[];
@@ -77,6 +80,39 @@ export interface Listing {
   path: string; parent: string | null; entries: FolderEntry[]; images: number; truncated: boolean; layout: string | null;
   places: { label: string; path: string }[];
 }
+// ---------- searches ("find my best model") ----------
+export interface SearchSpec {
+  name: string; dataset: string; machines: string[]; target_machine: string; speed_ms: number; models: string[];
+  image_sizes: Record<string, number[]>; lrs: number[]; teachers: string[]; epochs: number; distill_epochs: number;
+  rungs: number; eta: number; seeds: number; seed: number; batch_size: number | null; gpu_hours: number | null;
+  machine_names?: Record<string, string>;
+}
+export interface SearchArch {
+  key: string; model: string; size: number; stage: string; latency_ms?: number; latency_p95_ms?: number; latency_device?: string;
+  params_m?: number; error?: string; fits?: boolean;
+}
+export interface SearchTrial {
+  config: string; seed: number; run_id: string | null; machine_id: string | null; status: string; error?: string | null;
+  map_valid?: number | null; map_test?: number | null; latency_test_ms?: number | null; seconds?: number;
+}
+export interface SearchRound { index: number; final: boolean; epochs: number; distill_epochs: number; configs: string[]; trials: SearchTrial[] }
+export interface Recommendation {
+  config: string; model: string; image_size: number; lr: number | null; teacher: string | null; latency_ms: number | null;
+  latency_device: string | null; params_m: number | null; map_valid_mean: number; map_test_mean: number | null;
+  map_test_std: number | null; runs: number; run_ids: string[]; best_run_id: string; stage: string; early: boolean;
+}
+export interface SearchSummary {
+  id: string; name: string; status: "running" | "done" | "failed" | "cancelled"; phase: string; message: string | null;
+  created: number; updated: number; finished: number | null; spec: SearchSpec; recommendation: Recommendation | null;
+  trials: { total: number; done: number; failed: number }; spent_s: number;
+}
+export interface SearchPreview { archs: number; configs: number; rounds: { epochs: number; distill_epochs: number }[]; max_trials: number }
+export interface SearchDetail extends SearchSummary {
+  state: { speed_run: string; archs: SearchArch[]; configs: { key: string; model: string; size: number; lr: number | null; teacher: string | null }[];
+    rounds: SearchRound[]; seed_trials: SearchTrial[]; spent_s: number };
+  preview: SearchPreview;
+}
+
 export interface TeamUser extends User { disabled: boolean; created: number; last_login: number | null; machines: number }
 
 const UNAUTHORIZED = "modellab:unauthorized";
@@ -147,6 +183,16 @@ export const api = {
   removeMachine: (id: string) => send("DELETE", `/api/machines/${id}`).then(j<{ result: string }>),
   command: (id: string, type: string, args: Record<string, unknown> = {}) => post(`/api/machines/${id}/commands`, { type, args }).then(j<Command>),
   browse: (id: string, path: string | null, want: "dir" | "json" = "dir") => post(`/api/machines/${id}/browse`, { path, want }).then(j<Listing>),
+
+  // ---------- searches + export (hub) ----------
+  searches: () => fetch("/api/searches").then(j<SearchSummary[]>),
+  search: (id: string) => fetch(`/api/searches/${id}`).then(j<SearchDetail>),
+  searchPreview: (body: Partial<SearchSpec>) => post("/api/searches/preview", body).then(j<SearchPreview>),
+  createSearch: (body: Partial<SearchSpec>) => post("/api/searches", body).then(j<SearchDetail>),
+  cancelSearch: (id: string) => post(`/api/searches/${id}/cancel`).then(j<SearchDetail>),
+  deleteSearch: (id: string) => send("DELETE", `/api/searches/${id}`).then(j<{ result: string }>),
+  exportRun: (runId: string, stage: string) => post(`/api/runs/${runId}/export`, { stage }).then(j<Command>),
+  exports: (runId: string) => fetch(`/api/runs/${runId}/exports`).then(j<Command[]>),
 };
 
 export const fmt = {

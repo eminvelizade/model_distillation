@@ -34,11 +34,13 @@ def _rfdetr(ctx, det):
 
     st, ds = ctx.st, ctx.dataset()
     init = ctx.input(st["init"])["checkpoint"] if isinstance(st["init"], dict) else ctx.stock_weights(det.id)
-    rf = getattr(rfdetr, det.rfdetr_class)(pretrain_weights=str(init), device=ctx.device)
+    size = st.get("image_size")  # None: the model's native resolution
+    rf = getattr(rfdetr, det.rfdetr_class)(pretrain_weights=str(init), device=ctx.device,
+                                           **({"resolution": int(size)} if size else {}))
     n = _n_train(ds)
     bs, accum, epochs = int(st["batch_size"]), int(st.get("grad_accum", 1)), st["budget"]["epochs"]
     hooks.rfdetr_callbacks(rf, ctx.progress, epochs, math.ceil(n / bs))
-    ctx.log(f"{det.id} init={init} train_images={n} epochs={epochs} batch={bs}x{accum}")
+    ctx.log(f"{det.id} init={init} train_images={n} epochs={epochs} batch={bs}x{accum} resolution={rf.model.resolution}")
     out = ctx.dir / "rfdetr"
     kw = dict(dataset_dir=str(ds), output_dir=str(out), epochs=epochs, batch_size=bs, grad_accum_steps=accum,
               num_workers=ctx.num_workers(), seed=st["seed"], device=ctx.device, run_test=False, tensorboard=False,
@@ -56,7 +58,7 @@ def _rfdetr(ctx, det):
     from modellab import evaluate
 
     (ctx.dir / "classes.json").write_text(json.dumps(evaluate.label_names(ds / "train" / "_annotations.coco.json")))
-    return ({"checkpoint": "checkpoint.pth", "model": det.id, "classes": "classes.json"},
+    return ({"checkpoint": "checkpoint.pth", "model": det.id, "classes": "classes.json", "image_size": rf.model.resolution},
             {"train_images": n, "stopped_by_time_budget": ctx.progress.expired()})
 
 
@@ -94,7 +96,7 @@ def _ltdetr(ctx, det):
     exp = out / "exported_models"
     src = exp / "exported_best.pt" if (exp / "exported_best.pt").is_file() else exp / "exported_last.pt"
     shutil.move(src, ctx.dir / "checkpoint.pt")
-    outputs = {"checkpoint": "checkpoint.pt", "model": det.id}
+    outputs = {"checkpoint": "checkpoint.pt", "model": det.id, "image_size": st["image_size"]}
     if det.dinov3_arch:
         m = lightly_train.load_model(str(ctx.dir / "checkpoint.pt"), device="cpu")
         vit = m.backbone._model_wrapper.get_model()

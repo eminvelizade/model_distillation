@@ -82,13 +82,14 @@ def seed_everything(seed: int) -> None:
 
 
 def main(run_id: str, stage: str) -> int:
-    from modellab.stages import distill, evaluation, features, finetune
+    from modellab.stages import distill, evaluation, features, finetune, speed
 
     ctx = Ctx(run_id, stage)
     seed_everything(ctx.st["seed"])
     ctx.log(f"type={ctx.st['type']} device={ctx.device} seed={ctx.st['seed']}")
     ctx.log(ctx.fd_sharing)
-    fn = {"distill": distill.run, "finetune": finetune.run, "eval": evaluation.run, "features": features.run}[ctx.st["type"]]
+    fn = {"distill": distill.run, "finetune": finetune.run, "eval": evaluation.run, "features": features.run,
+          "speed": speed.run}[ctx.st["type"]]
     t0 = time.time()
     try:
         outputs, metrics = fn(ctx)

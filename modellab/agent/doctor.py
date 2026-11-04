@@ -230,9 +230,10 @@ def _save_hashes(reg: dict) -> None:
     p.write_text(json.dumps(reg, indent=1))
 
 
-def remember_hash(name: str, info: dict) -> None:
+def remember_hash(name: str, info: dict, check: dict | None = None) -> None:
     reg = dataset_hashes()
-    reg[name] = {"hash": info.get("hash"), "path": info.get("path"), "time": time.time()}
+    reg[name] = {"hash": info.get("hash"), "path": info.get("path"), "time": time.time(),
+                 **({"check": check} if check is not None else {})}
     _save_hashes(reg)
 
 
@@ -249,6 +250,8 @@ def dataset_list() -> list[dict]:
         h = known.get(d["name"])
         if h and h.get("path") == d.get("path"):
             d["hash"], d["hash_time"] = h.get("hash"), h.get("time")
+            if h.get("check"):
+                d["check"] = h["check"]
         out.append(d)
     return out
 

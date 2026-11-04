@@ -103,6 +103,7 @@ export default function Leaderboard() {
   const res = usePoll(api.results, 10000);
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "map", desc: true });
   const [dataset, setDataset] = useState<string>("");
+  const [split, setSplit] = useState<string>("");
   const [q, setQ] = useState("");
   const [family, setFamily] = useState<"" | "rfdetr" | "ltdetr">("");
   const [onlyComparable, setOnlyComparable] = useState(false);
@@ -118,7 +119,10 @@ export default function Leaderboard() {
   const comp = useMemo(() => comparability(rows, res.data?.current_eval_version ?? ""), [rows, res.data]);
 
   // Rank = position by mAP among comparable results on this dataset (stable while filtering / re-sorting).
-  const dsRows = useMemo(() => rows.filter((r) => r.dataset === ds), [rows, ds]);
+  // one split at a time: test by default (searches also log validation scores, which must not rank against test ones)
+  const splits = useMemo(() => [...new Set(rows.filter((r) => r.dataset === ds).map((r) => r.split))].sort().reverse(), [rows, ds]);
+  const sp = splits.includes(split) ? split : splits.includes("test") ? "test" : splits[0] ?? "";
+  const dsRows = useMemo(() => rows.filter((r) => r.dataset === ds && r.split === sp), [rows, ds, sp]);
   const ranked = useMemo(() => dsRows.filter((r) => !comp.reason(r) && r.map !== null).sort((a, b) => b.map! - a.map!), [dsRows, comp]);
   const rank = useMemo(() => new Map(ranked.map((r, i) => [rk(r), i + 1])), [ranked]);
   const maxMap = ranked[0]?.map ?? 1;
@@ -175,6 +179,7 @@ export default function Leaderboard() {
               </select>
             </div>
           )}
+          {splits.length > 1 && <Segmented value={sp} onChange={setSplit} options={splits.map((x) => ({ value: x, label: x }))} />}
           <Button variant="brand" disabled={sel.size < 2} onClick={() => nav(`/compare?items=${[...sel].join(",")}`)}><GitCompareArrows />Compare{sel.size ? ` · ${sel.size}` : ""}</Button>
         </>} />
 

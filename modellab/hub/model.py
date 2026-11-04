@@ -259,6 +259,11 @@ def validate_command(ctype: str, args: dict) -> dict:
         except KeyError as e:
             raise HTTPException(422, str(e)) from e
         return {"ids": ids}
+    if ctype == "export":
+        rid, stage = _str(args, "run_id", maxlen=80), _str(args, "stage", maxlen=41)
+        if not db.RUN_ID_RE.match(rid) or not recipe.NAME_RE.match(stage):
+            raise HTTPException(422, "bad run id or stage")
+        return {"run_id": rid, "stage": stage}
     if ctype == "run_delete_files":
         rid = _str(args, "run_id", maxlen=80)
         if not db.RUN_ID_RE.match(rid):
@@ -543,6 +548,29 @@ def requeue_run(c: sa.Connection, user: dict, rid: str) -> None:
               .values(status="pending", error=None))
 
 
+def export_run(c: sa.Connection, user: dict, rid: str, stage: str) -> dict:
+    """Ask the machine that trained a run to export one of its fine-tune stages (ONNX, TensorRT, model card)."""
+    r = get_run(c, user, rid)
+    st = next((s for s in _stage_rows(c, rid) if s["name"] == stage), None)
+    if st is None or st["type"] != "finetune":
+        raise HTTPException(422, "only fine-tune stages produce a detector to export")
+    if st["status"] != "done":
+        raise HTTPException(409, "this stage hasn't finished")
+    m = c.execute(sa.select(db.machines).where(db.machines.c.id == r["machine_id"], db.machines.c.revoked.is_(False))
+                  ).mappings().first()
+    if m is None:
+        raise HTTPException(409, "the machine that trained this run was removed: its files are gone with it")
+    return create_command(c, user, dict(m), "export", {"run_id": rid, "stage": stage})
+
+
+def exports(c: sa.Connection, user: dict, rid: str) -> list[dict]:
+    """Export commands for a run, newest first (their results carry the model card)."""
+    r = get_run(c, user, rid)
+    ids = c.execute(sa.select(db.commands.c.id).where(db.commands.c.machine_id == r["machine_id"], db.commands.c.type == "export")
+                    .order_by(db.commands.c.created.desc()).limit(50)).scalars().all()
+    return [x for x in (command_row(c, i) for i in ids) if x["args"].get("run_id") == rid]
+
+
 def delete_run(c: sa.Connection, user: dict, rid: str) -> dict:
     r = get_run(c, user, rid)
     if r["status"] == "running":
@@ -639,6 +667,10 @@ def apply_events(c: sa.Connection, m: dict, rid: str, body: dict) -> dict:
     for chunk in body.get("logs") or []:
         append_log(c, rid, str(chunk["stream"])[:64], int(chunk["offset"]), str(chunk["text"]))
     r2 = _agent_run(c, m, rid)
+    if r2["status"] in FINAL and r["status"] != r2["status"]:
+        from modellab.hub import search  # a search's trial finished: its next round may start now
+
+        search.on_run_final(c, db.loads(r2["tags"], []))
     return {"status": r2["status"], "cancel_requested": bool(r2["cancel_requested"])}
 
 

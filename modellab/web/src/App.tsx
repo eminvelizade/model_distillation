@@ -16,6 +16,8 @@ import Login from "./pages/Login";
 import Machines from "./pages/Machines";
 import MachineDetail from "./pages/MachineDetail";
 import Team from "./pages/Team";
+import SearchPage from "./pages/Search";
+import SearchDetail from "./pages/SearchDetail";
 
 function ThemeSwitch() {
   const { dark, set } = useTheme();
@@ -152,7 +154,8 @@ function Shell() {
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
   useEffect(() => {
-    const page = loc.pathname.startsWith("/runs/") ? "Run" : loc.pathname.startsWith("/machines/") ? "Machine" : NAV.find((n) => n.to === loc.pathname)?.label;
+    const page = loc.pathname.startsWith("/runs/") ? "Run" : loc.pathname.startsWith("/machines/") ? "Machine"
+      : loc.pathname.startsWith("/search/") ? "Search" : NAV.find((n) => n.to === loc.pathname)?.label;
     document.title = page ? `${page} · ModelLab` : "ModelLab";
   }, [loc.pathname]);
 
@@ -216,6 +219,8 @@ function Shell() {
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/runs/:id" element={<RunDetail />} />
+            {hub && <Route path="/search" element={<SearchPage />} />}
+            {hub && <Route path="/search/:id" element={<SearchDetail />} />}
             {hub && <Route path="/machines" element={<Machines />} />}
             {hub && <Route path="/machines/:id" element={<MachineDetail />} />}
             {hub && me?.user?.is_admin && <Route path="/team" element={<Team />} />}

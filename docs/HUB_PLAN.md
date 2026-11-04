@@ -23,7 +23,7 @@ The local mode (`python app.py`, used on the offline PC) keeps working unchanged
 |---|---|
 | Platform | Linux x86_64 only (glibc ≥ 2.28, as the PyTorch wheels need). Other platforms may come later. |
 | Accounts | Pre-registered only. An admin creates users (Team page or CLI); there is no sign-up. The first admin comes from Railway env vars. |
-| Machines | Each user pairs their own PCs and only runs on their own machines. Sharing machines (clusters by invitation) is phase 2; the data model keeps `owner_id` per machine so an access table can be added. |
+| Machines | Each user pairs their own PCs and only runs on their own machines. Sharing machines (clusters by invitation) is planned for phase 3 ([PHASE2_PLAN.md](PHASE2_PLAN.md#phase-3-and-later)); the data model keeps `owner_id` per machine so an access table can be added. |
 | Datasets | Registered per machine: a name and a path on that PC. The content hash shows whether two machines hold identical data. |
 | Checkpoints | Stay on the PC. The UI lists them (stage, file, size, path on the PC); they are never uploaded. |
 | Results | Private to their owner in phase 1 (each user sees their own runs and leaderboard). Sharing is a small change if wanted. |

@@ -3,26 +3,26 @@ absl-py==2.5.1 \
     --hash=sha256:286e71c82c1a38e75bbcf185f9b37d0305ad7786535107cb49bf4df9ff2e1f95 \
     --hash=sha256:721200f2f0e9960f2ca9dc3a2a706b201f5f75d812c158f059cbbe29eeafbdb8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   tensorboard
 accelerate==1.15.0 \
     --hash=sha256:5654f8c5eaa0d4fa68b33e287a97765da6849bf6d51dcac874e73fbbddfb6134 \
     --hash=sha256:97eacca0b73e45cb867dbf8c5d5d4dc32219544300e0c8992c7334dc2ef33cec
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   peft
 aenum==3.1.17 \
     --hash=sha256:0dad0421b2fbe30e3fb623b2a0a23eff823407df53829d6a72595e7f76f3d872 \
     --hash=sha256:8b883a37a04e74cc838ac442bdd28c266eae5bbf13e1342c7ef123ed25230139 \
     --hash=sha256:a969a4516b194895de72c875ece355f17c0d272146f7fda346ef74f93cf4d5ba
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly
 aiohappyeyeballs==2.7.1 \
     --hash=sha256:065665c041c42a5938ed220bdcd7230f22527fbec085e1853d2402c8a3615d9d \
     --hash=sha256:9243213661e29250eb41368e5daa826fc017156c3b8a11440826b2e3ed376472
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   aiohttp
 aiohttp==3.14.5 \
     --hash=sha256:0133c3c3b54a0bf1e71fa5c1ad95c93f07fd54e24ef1fe182f5122e1573d2bf1 \
@@ -187,52 +187,52 @@ aiohttp==3.14.5 \
     --hash=sha256:fce9523df31cea6284f3e2c479876750d7687cf671d7b25d32b19effc0e86441 \
     --hash=sha256:ff75a7537413a86e7cafe98e0e1d6e3dc4b15c6349896e7d5c6b881bfdb6d550
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   fsspec
 aiosignal==1.4.0 \
     --hash=sha256:053243f8b92b990551949e63930a839ff0cf0b0ebbe0597b0f3fb19e1a0fe82e \
     --hash=sha256:f47eecd9468083c2029cc99945502cb7708b082c232f9aca65da147157b251c7
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   aiohttp
 albumentations==1.3.1 \
     --hash=sha256:6b641d13733181d9ecdc29550e6ad580d1bfa9d25e2213a66940062f25e291bd \
     --hash=sha256:a6a38388fe546c568071e8c82f414498e86c9ed03c08b58e7a88b31cf7a244c6
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
     #   rfdetr
 annotated-doc==0.0.5 \
     --hash=sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101 \
     --hash=sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   fastapi
     #   typer
 annotated-types==0.8.0 \
     --hash=sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7 \
     --hash=sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   pydantic
 antlr4-python3-runtime==4.9.3 \
     --hash=sha256:f224469b4168294902bb1efa80a8bf7855f24c99aef99cbefc1bcd3cce77881b
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   hydra-core
     #   omegaconf
 anyio==4.15.1 \
     --hash=sha256:6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101 \
     --hash=sha256:9f28306018cbd6d329e64a36d58256edff76dd996fe423bc957326e578b82a94
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   httpx
     #   starlette
 attrs==26.1.0 \
     --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309 \
     --hash=sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   aiohttp
 av==18.1.0 \
     --hash=sha256:025f84494cb23278498f03b0d8117d3e47a1cbc9c44b97eb31875cf02251e46b \
@@ -255,13 +255,13 @@ av==18.1.0 \
     --hash=sha256:e7ea063f6690193ea335a1d592d6e0274350d45e2ed6af83ee107cb90cbfd84f \
     --hash=sha256:ea1480b7a8d5405cb5f382b344731bf125fd2c1c6fae3964f6c48595628387ff
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   supervision
 certifi==2026.7.22 \
     --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775 \
     --hash=sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   httpcore
     #   httpx
     #   lightly
@@ -543,13 +543,13 @@ charset-normalizer==3.5.2 \
     --hash=sha256:fd1fbe0f116b6e55da77aca2c6ddcddcfac2186cbf78bdebf40fc156efca389d \
     --hash=sha256:fe9753dfee015c570d73df76f899f18444d41388bffcde097deba51c4fadbb9f
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   requests
 click==8.5.0 \
     --hash=sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360 \
     --hash=sha256:ba0d2089de75ea0310e2dde03160e6ca10009947fb95a182f9b54021bb272e34
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   roboflow
     #   typer
     #   uvicorn
@@ -557,8 +557,11 @@ cloudpickle==3.1.2 \
     --hash=sha256:7fda9eb655c9c230dab534f1983763de5835249750e85fbcef43aaa30a9a2414 \
     --hash=sha256:9acb47f6afd73f60dc1df93bb801b472f05ff42fa6c84167d25cb206be1fbf4a
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   joblib
+colorama==0.4.6 \
+    --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
+    # via onnxslim
 contourpy==1.3.3 \
     --hash=sha256:023b44101dfe49d7d53932be418477dba359649246075c996866106da069af69 \
     --hash=sha256:07ce5ed73ecdc4a03ffe3e1b3e3c1166db35ae7584be76f65dbbe28a7791b0cc \
@@ -633,7 +636,7 @@ contourpy==1.3.3 \
     --hash=sha256:fd914713266421b7536de2bfa8181aa8c699432b6763a0ea64195ebe28bff6a9 \
     --hash=sha256:fde6c716d51c04b1c25d0b90364d0be954624a0ee9d60e23e850e8d48353d07a
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   matplotlib
 cryptography==50.0.2 \
     --hash=sha256:0ddc924c04591c2811ca024d62ecad4f7f6f08af8939c211438f48a16bd23602 \
@@ -695,35 +698,35 @@ cryptography==50.0.2 \
     --hash=sha256:f9f6143a8c75945eb960d9eb98905a441394abfa24afaae239d514ffb2586480 \
     --hash=sha256:fa8f5efb344d6908a1ce62f4a24e2e5780f825d6f53f5f50ec5ffacac72936cb \
     --hash=sha256:fdd28f912fccfec1846a94e2e1e8f9b0012f557f0c46fe4f3eb0d7a87afcf90b
-    # via -r /tmp/tmp.bbtWTHclmG/pins.in
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
 cycler==0.12.1 \
     --hash=sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30 \
     --hash=sha256:88bb128f02ba341da8ef447245a9e138fae777f6a23943da4540077d3601eb1c
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   matplotlib
     #   roboflow
 defusedxml==0.7.1 \
     --hash=sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69 \
     --hash=sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   supervision
 eval-type-backport==0.4.0 \
     --hash=sha256:8397d25e6524c2e67b9576bb0636be27dea2192017711220c534ec2de921e9b0 \
     --hash=sha256:ad5e2a8db71b6696a56eafb938b0f5a337d3217f256b8e158b469422b4772b20
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
 fastapi==0.162.0 \
     --hash=sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c \
     --hash=sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f
-    # via -r /tmp/tmp.bbtWTHclmG/pins.in
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
 filelock==4.2.0 \
     --hash=sha256:2ff5690882e8cdb00ef31fb3d01a3094c29f30985426c59495afb1733f3b7238 \
     --hash=sha256:7a60906c75227cf04d0c273afadc8219400f11aeb13cc69591d4f6cdc6c8036e
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   huggingface-hub
     #   lightly-train
     #   torch
@@ -732,12 +735,12 @@ filetype==1.2.0 \
     --hash=sha256:66b56cd6474bf41d8c54660347d37afcc3f7d1970648de365c102ef77548aadb \
     --hash=sha256:7ce71b6880181241cf7ac8697a2f1eb6a8bd9b429f7ad6d27b8db9ba5f1c2d25
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   roboflow
 flatbuffers==25.12.19 \
     --hash=sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   onnxruntime
 fonttools==4.67.0 \
     --hash=sha256:0781fe22583529e1e98bb8a3a33040632e202a4c427ed7e65412c41a21b8ebcb \
@@ -799,7 +802,7 @@ fonttools==4.67.0 \
     --hash=sha256:fcb9743140419410161acfe7ec205fb0a8a703acfccb85b586becb5a97c047c9 \
     --hash=sha256:fd79e36c2968e9fc3e1b082f2ba7dc63ae88a161a3d8ceaa0746b906455f3617
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   matplotlib
 frozenlist==1.8.0 \
     --hash=sha256:0325024fe97f94c41c08872db482cf8ac4800d80e79222c6b0b7b162d5b13686 \
@@ -933,14 +936,14 @@ frozenlist==1.8.0 \
     --hash=sha256:fb30f9626572a76dfe4293c7194a09fb1fe93ba94c7d4f720dfae3b646b45027 \
     --hash=sha256:fe3c58d2f5db5fbd18c2987cba06d51b0529f52bc3a6cdc33d3f4eab725104bd
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   aiohttp
     #   aiosignal
 fsspec==2026.9.0 \
     --hash=sha256:0f08147951c8cb31d844c3547d631053b127863b60be04cf06e121333ee0e2fe \
     --hash=sha256:8dd6e646e99ea382bd85f97a45e6b526a442d79423a7dc673f1e2756d05fcb5f
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   huggingface-hub
     #   lightly-train
     #   pytorch-lightning
@@ -1008,13 +1011,13 @@ grpcio==1.84.0 \
     --hash=sha256:fc66cb50c93554b86db0b6625ab5c6e9051dbf8847c08d93c84918e02e413fb7 \
     --hash=sha256:fff5ef3fe1bba7d6147e5f19e01e5e122ac2c076486887ddcb8d42e663400fbe
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   tensorboard
 h11==0.16.0 \
     --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
     --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   httpcore
     #   uvicorn
 hf-xet==1.7.0 \
@@ -1036,23 +1039,23 @@ hf-xet==1.7.0 \
     --hash=sha256:fa029678be1ba7f953c409b0b27bf15cc69cd1c9b3a674fbd78856ebefca1052 \
     --hash=sha256:fcfd6c22418e57dd5b3aea649e813b2e2cfb2aebf317b210d90f1fe4b3018b52
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   huggingface-hub
 httpcore==1.0.9 \
     --hash=sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55 \
     --hash=sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   httpx
 httpx==0.28.1 \
     --hash=sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc \
     --hash=sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
-    # via -r /tmp/tmp.bbtWTHclmG/pins.in
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
 huggingface-hub==0.36.2 \
     --hash=sha256:1934304d2fb224f8afa3b87007d58501acfda9215b334eed53072dd5e815ff7a \
     --hash=sha256:48f0c8eac16145dfce371e9d2d7772854a4f591bcb56c9cf548accf531d54270
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   accelerate
     #   peft
     #   tokenizers
@@ -1061,13 +1064,13 @@ hydra-core==1.3.7 \
     --hash=sha256:83606c4a05c770f1e026e0489875f28989829d151799eabd8cfa8cbe82164515 \
     --hash=sha256:d4ff629c7e23b64a9db5fe5b027cf7c55b633b737f03be51ef41b77ed016f75e
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly
 idna==3.20 \
     --hash=sha256:a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44 \
     --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   anyio
     #   httpx
     #   requests
@@ -1077,24 +1080,24 @@ imageio==2.38.1 \
     --hash=sha256:36d23eb7423d2fb63f637098758edb3d2df3687f7125e0a5ce8596572022dcf9 \
     --hash=sha256:6769f1f01c4dd46448307863a787c9a22fa4dbe11c0c88f525c6e410fdfd7983
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   scikit-image
 iniconfig==2.3.1 \
     --hash=sha256:67f4b9c50da0dedf52af349e7749a80a9057a5031199791b906c3bb3ae878960 \
     --hash=sha256:9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   pytest
 jinja2==3.1.6 \
     --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 joblib==1.6.0 \
     --hash=sha256:2ccc96785b12046c08fd6d55839c12857831b54a3c1673ffadd2f04bfc4eda03 \
     --hash=sha256:3dbbf9f6e4b592a2357b854608e980fe6390d131d7a82f011a377ef2ebef7aba
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   scikit-learn
 kiwisolver==1.5.1 \
     --hash=sha256:007a5553dfc4f4e8d184f588a0200e2cd4b63a59cc8796df3c39909e679dc7a0 \
@@ -1239,49 +1242,49 @@ kiwisolver==1.5.1 \
     --hash=sha256:fc271a6f0a2126958f4090e5507b9da5848927dae331f8f763bd4aa642b3d2cd \
     --hash=sha256:febcce10f2bcdbb80b4ea919238a6a4ac13dbc4c7cadbe8d5d75c3682f8b5404
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   matplotlib
     #   roboflow
 lazy-loader==0.6 \
     --hash=sha256:2f4b7824d6401958639008a0cae20c776b61dff619accd6890693e2de8260167 \
     --hash=sha256:77253be3391b06124a0e16105bd663b6c54470af1a9ca8e1cf026f38d58ed056
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   scikit-image
 lightly==1.5.26 \
     --hash=sha256:0c3daa74bda643f4212de1dea6d8e39cd78b6a47bf154bc6b3e9e2baad59eb09 \
     --hash=sha256:6ffc121af5b73093579941d44234523babea1046725c1826f8675ba57ecc58f7
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
 lightly-train==0.17.0 \
     --hash=sha256:30d60278d244069195afdf4b082018dffb52b4a8dbdaf4bb7ca26f01fdc02aad \
     --hash=sha256:8c01250ebdb07c61beb226e24036c891285c69aefeb6bf324940fe40464b3334
-    # via -r /tmp/tmp.bbtWTHclmG/pins.in
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
 lightly-utils==0.0.2 \
     --hash=sha256:57eaa99044bbdab428cc67cd336491096cd406c21b50f15ce51150c1a10843e9 \
     --hash=sha256:a351f3d600f0ab08d12f294725c6457ae000645cb0a1083d0845cb196ccfe698
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly
 lightning-utilities==0.15.3 \
     --hash=sha256:6c55f1bee70084a1cbeaa41ada96e4b3a0fea5909e844dd335bd80f5a73c5f91 \
     --hash=sha256:792ae0204c79f6859721ac7f386c237a33b0ed06ba775009cb894e010a842033
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   pytorch-lightning
     #   torchmetrics
 markdown==3.11.1 \
     --hash=sha256:496f4f80f9ebd3395a04c8ec9595c40bbe8ec19e9c67d21fe071a1643e876606 \
     --hash=sha256:f1fa378ba5d682900c9ecb55ccceacca936016dda7c3b27097e8ae03ff78feb5
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   tensorboard
 markdown-it-py==4.2.0 \
     --hash=sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49 \
     --hash=sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   rich
 markupsafe==3.0.4 \
     --hash=sha256:007e1ffd9bf65bb6ee96df7b258fc632a4868dd5566037986c64781f35a36e98 \
@@ -1436,7 +1439,7 @@ markupsafe==3.0.4 \
     --hash=sha256:fd9f8797427910198f95bced71ddfed61130d7e349213bfb8466c9c99e2c46a8 \
     --hash=sha256:fdb4ca07ab75ffadab4a8b135ad59cdbb3156b99310f3d565370da74a15d6bd3
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   jinja2
     #   werkzeug
 matplotlib==3.11.2 \
@@ -1494,7 +1497,7 @@ matplotlib==3.11.2 \
     --hash=sha256:f2ac30cf5eb5dff1b584627ae0b0e1186551a4f69ae3c75073911da497a29170 \
     --hash=sha256:fea03cf56568cc1cba08b470be6a0559e71c3a5b688d54b7179bb35ba23d0821
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
     #   rfdetr
     #   roboflow
@@ -1503,13 +1506,59 @@ mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
     --hash=sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   markdown-it-py
+ml-dtypes==0.6.0 \
+    --hash=sha256:008382aeab529df5d3f00501ad9a7dcd64494d4b5b1971fc4c79019e6c1f5010 \
+    --hash=sha256:03ce583adfce34ad33aa9e1fc7a8344dcf90ea776cc4ef0e5a48d4eae84e5d20 \
+    --hash=sha256:084dfe51a7ad58b171f05115f8226ed4233a454a1611371947e806e76f0c638d \
+    --hash=sha256:26b1f1fa4f0435a2946859823f6e2bf06796f1e9f10f5a05b08a5e3c8f46ff69 \
+    --hash=sha256:28d676428b104bb9717b0928bc5c5129f2d6b51b6727587cc4289e7bf8713cb5 \
+    --hash=sha256:2a3e9d53925597fbffafd2a37048dadeddd0bdaba58058f6ae0869ed709a184d \
+    --hash=sha256:3035518e3e19add1a4cac9236ab22888b208a4074912514313ccb2d6d242cde8 \
+    --hash=sha256:317be9967fb84b0ce4e80e6b1bf71213d21971621cf6f1e501a63602a95297bf \
+    --hash=sha256:31f1ce979d31a357e95aa81812f20412c8c954fa43c44ee3ead1e1c8a78575ef \
+    --hash=sha256:37da32aa97749251025666d62372775019594577b9c9e9cfda83bed48d778fdb \
+    --hash=sha256:3b4a480aa8fd54a1805b8ac10f3f91763926a74f73c0c364c10f9231854f4170 \
+    --hash=sha256:3be9911d953f97cddded4b9961d7b650473b7e55806d20f6176f8356dfe7b38e \
+    --hash=sha256:3e169214e0d80ff1c038e1b3017e33c23e43bdf948d42d31de8283111c7e2fa3 \
+    --hash=sha256:488c99ab181a2f59d9ec3b12c5fa11ec904e92be2c4ba18cded54dd7501208fe \
+    --hash=sha256:5359c588cc62de6f78d7430f06b65853d884955494d86d6ad90b6dd64a3f3a08 \
+    --hash=sha256:573b11f3c327e17ef3826d266e676cf1149a1f3016f822a05f2306c55d8246bf \
+    --hash=sha256:57ed0d6b4ac5e7868361303a9c57fbcf63b768236ee14456f585dfcf260d0292 \
+    --hash=sha256:5a519c9e95a216fbcb8e759793ef7fb40793fc803ed839142d6dc5be9be5bc89 \
+    --hash=sha256:5e60251d32ced5598972e4d5e06a2f044341f9291402551a3f6f0ec44f9299b0 \
+    --hash=sha256:6c8e39b53e90afda8ce52859c93de4dba3e02b76d85dcf091cc469f9184c6dae \
+    --hash=sha256:6eaed129a4afe90694b8685e2f9b6294849f5eda4af9a15be83a4326eeebd775 \
+    --hash=sha256:6ec0d244a5bba12239025389ad88bbfb45f9f10e25ab4f678e9a4768ebd47532 \
+    --hash=sha256:7728c0420ec1c338564fc8b01015ff2d58567e70f17fedce5a0a7c0308c0d5b9 \
+    --hash=sha256:84fa136b8602c8c39e3b6cb24918960cd6f36cade7a70376f56770729cd56510 \
+    --hash=sha256:8f490c003369ce60e514a0c3b12374f05274c101fee1bead6740ec8a564032b0 \
+    --hash=sha256:9c6ad60af4102789a5c09824004beade2f7f28cd1cd581ee5c170d9dc2fbb00e \
+    --hash=sha256:b1b503864fada3f74fabf8d9fee7b4c1cbe956301e6fdece975d5f77c2fce958 \
+    --hash=sha256:b76fa1d3f92967d58289ac47ab7458ede66e6f3527fff3e59142aee57d9307cd \
+    --hash=sha256:bad8d1dd5bed060a29332b99d63d0e5c2969081e1c6ea54adfbccfdfa783be44 \
+    --hash=sha256:ce7563e0b1a4482cbc1b4a6272145e54e4489e54fe7428f94908c3d87103abfa \
+    --hash=sha256:d4f1b9329a251e4affe3bb58f4d3e2db22a714396fd7ffb40d0b5db423c24d17 \
+    --hash=sha256:d574c2b28921dc72e869df248f1a278f6eee176a1f237c8642e1a71eb15f3977 \
+    --hash=sha256:de9d14748dbf3968951436ef514a29c9d1fe438aa680d110134ee2f7a9f9df18 \
+    --hash=sha256:e25bb3b0ad1217b60626e4ed45b10ca170c41d99fbe44a12bebc1e07ec4aad55 \
+    --hash=sha256:e2d6149f3a57f405bcad5fb41e03218b8373936253f23e1ca84c0108abbc3392 \
+    --hash=sha256:e74266ca8e97874a937b7646378c178025650a236584f7474d10d8086a6edea3 \
+    --hash=sha256:f4adb4af61516510d786cf8c01851a66f6d3ddfa79e1144deaa5b40d8507231e \
+    --hash=sha256:f4f59f83c82ab480e924b988e7b1b4eb4de836dfcf5390c6f59148d1a00e1d02 \
+    --hash=sha256:f6cb525101b6b903779188c1e9e9490c343b455ab822883e02cf01e5547338d2 \
+    --hash=sha256:fb87f46b4f7ad7b5d3ad8f4b452b024bd4229d44c8ff934798c1fe656210387a
+    # via
+    #   onnx
+    #   onnx-ir
+    #   onnxscript
+    #   onnxslim
 mpmath==1.3.0 \
     --hash=sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f \
     --hash=sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   sympy
 multidict==7.1.0 \
     --hash=sha256:0179698c3c913eb64f32397083747fad20ed0f0a2b7469a08cd1a8a95d14d90e \
@@ -1684,20 +1733,20 @@ multidict==7.1.0 \
     --hash=sha256:fed6b7705d49dd07e5e0dd5f5c873fc44047e92d714299b13245b5fecac49d01 \
     --hash=sha256:ff15531a376dc6f35984443fd1429e4b150c36ce27633e7cc52a9e5318546e20
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   aiohttp
     #   yarl
 narwhals==2.27.1 \
     --hash=sha256:aed93076a3ea42d9c32c88e4eb5ea422a21937011cbe1f480f9572a523c82094 \
     --hash=sha256:d057df13f5852b8e157596e82eb5e955fad267425df5e420e0ee9863da483b31
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   scikit-learn
 networkx==3.6.1 \
     --hash=sha256:26b7c357accc0c8cde558ad486283728b65b6a95d85ee1cd66bafab4c8168509 \
     --hash=sha256:d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   scikit-image
     #   torch
 numpy==2.4.6 \
@@ -1774,7 +1823,7 @@ numpy==2.4.6 \
     --hash=sha256:f407cb6b8e9d6d8c626bc73c945db1706035af8fd632295547bf1c9e46d092d6 \
     --hash=sha256:f74a575920ab21fe304421a3fc28793d82e299cae9eccb37084e9fc7f3617c20
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   accelerate
     #   albumentations
     #   contourpy
@@ -1782,7 +1831,11 @@ numpy==2.4.6 \
     #   lightly
     #   lightly-utils
     #   matplotlib
+    #   ml-dtypes
+    #   onnx
+    #   onnx-ir
     #   onnxruntime
+    #   onnxscript
     #   opencv-python-headless
     #   peft
     #   pycocotools
@@ -1802,7 +1855,7 @@ nvidia-cublas-cu12==12.8.4.1 \
     --hash=sha256:8ac4e771d5a348c551b2a426eda6193c19aa630236b418086020df5ba9667142 \
     --hash=sha256:b86f6dd8935884615a0683b663891d43781b819ac4f2ba2b0c9604676af346d0
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   nvidia-cudnn-cu12
     #   nvidia-cusolver-cu12
     #   torch
@@ -1811,62 +1864,62 @@ nvidia-cuda-cupti-cu12==12.8.90 \
     --hash=sha256:bb479dcdf7e6d4f8b0b01b115260399bf34154a1a2e9fe11c85c517d87efd98e \
     --hash=sha256:ea0cb07ebda26bb9b29ba82cda34849e73c166c18162d3913575b0c9db9a6182
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-cuda-nvrtc-cu12==12.8.93 \
     --hash=sha256:7a4b6b2904850fe78e0bd179c4b655c404d4bb799ef03ddc60804247099ae909 \
     --hash=sha256:a7756528852ef889772a84c6cd89d41dfa74667e24cca16bb31f8f061e3e9994 \
     --hash=sha256:fc1fec1e1637854b4c0a65fb9a8346b51dd9ee69e61ebaccc82058441f15bce8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-cuda-runtime-cu12==12.8.90 \
     --hash=sha256:52bf7bbee900262ffefe5e9d5a2a69a30d97e2bc5bb6cc866688caa976966e3d \
     --hash=sha256:adade8dcbd0edf427b7204d480d6066d33902cab2a4707dcfc48a2d0fd44ab90 \
     --hash=sha256:c0c6027f01505bfed6c3b21ec546f69c687689aad5f1a377554bc6ca4aa993a8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-cudnn-cu12==9.10.2.21 \
     --hash=sha256:949452be657fa16687d0930933f032835951ef0892b37d2d53824d1a84dc97a8 \
     --hash=sha256:c6288de7d63e6cf62988f0923f96dc339cea362decb1bf5b3141883392a7d65e \
     --hash=sha256:c9132cc3f8958447b4910a1720036d9eff5928cc3179b0a51fb6d167c6cc87d8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-cufft-cu12==11.3.3.83 \
     --hash=sha256:4d2dd21ec0b88cf61b62e6b43564355e5222e4a3fb394cac0db101f2dd0d4f74 \
     --hash=sha256:7a64a98ef2a7c47f905aaf8931b69a3a43f27c55530c698bb2ed7c75c0b42cb7 \
     --hash=sha256:848ef7224d6305cdb2a4df928759dca7b1201874787083b6e7550dd6765ce69a
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-cufile-cu12==1.13.1.3 \
     --hash=sha256:1d069003be650e131b21c932ec3d8969c1715379251f8d23a1860554b1cb24fc \
     --hash=sha256:4beb6d4cce47c1a0f1013d72e02b0994730359e17801d395bdcbf20cfb3bb00a
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-curand-cu12==10.3.9.90 \
     --hash=sha256:b32331d4f4df5d6eefa0554c565b626c7216f87a06a4f56fab27c3b68a830ec9 \
     --hash=sha256:dfab99248034673b779bc6decafdc3404a8a6f502462201f2f31f11354204acd \
     --hash=sha256:f149a8ca457277da854f89cf282d6ef43176861926c7ac85b2a0fbd237c587ec
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-cusolver-cu12==11.7.3.90 \
     --hash=sha256:4376c11ad263152bd50ea295c05370360776f8c3427b30991df774f9fb26c450 \
     --hash=sha256:4a550db115fcabc4d495eb7d39ac8b58d4ab5d8e63274d3754df1c0ad6a22d34 \
     --hash=sha256:db9ed69dbef9715071232caa9b69c52ac7de3a95773c2db65bdba85916e4e5c0
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-cusparse-cu12==12.5.8.93 \
     --hash=sha256:1ec05d76bbbd8b61b06a80e1eaf8cf4959c3d4ce8e711b65ebd0443bb0ebb13b \
     --hash=sha256:9a33604331cb2cac199f2e7f5104dfbb8a5a898c367a53dfda9ff2acb6b6b4dd \
     --hash=sha256:9b6c161cb130be1a07a27ea6923df8141f3c295852f4b260c65f18f3e0a091dc
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   nvidia-cusolver-cu12
     #   torch
 nvidia-cusparselt-cu12==0.7.1 \
@@ -1874,26 +1927,26 @@ nvidia-cusparselt-cu12==0.7.1 \
     --hash=sha256:f1bb701d6b930d5a7cea44c19ceb973311500847f81b634d802b7b539dc55623 \
     --hash=sha256:f67fbb5831940ec829c9117b7f33807db9f9678dc2a617fbe781cac17b4e1075
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-ml-py==13.615.71 \
     --hash=sha256:959bf4adf6fe1308e4bd739e722236b0d1ec8392e2cefad33ff70c311380b9b6 \
     --hash=sha256:bebe4e48f51b1dc75028c0815cb7bfa14a31a5bb80be70c9d980c6036953fc3d
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
 nvidia-nccl-cu12==2.27.3 \
     --hash=sha256:9ddf1a245abc36c550870f26d537a9b6087fb2e2e3d6e0ef03374c6fd19d984f \
     --hash=sha256:adf27ccf4238253e0b826bce3ff5fa532d65fc42322c8bfdfaf28024c0fbe039
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 nvidia-nvjitlink-cu12==12.8.93 \
     --hash=sha256:81ff63371a7ebd6e6451970684f916be2eab07321b73c9d244dc2b4da7f73b88 \
     --hash=sha256:adccd7161ace7261e01bb91e44e88da350895c270d23f744f0820c818b7229e7 \
     --hash=sha256:bd93fbeeee850917903583587f4fc3a4eafa022e34572251368238ab5e6bd67f
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   nvidia-cufft-cu12
     #   nvidia-cusolver-cu12
     #   nvidia-cusparse-cu12
@@ -1903,15 +1956,49 @@ nvidia-nvtx-cu12==12.8.90 \
     --hash=sha256:619c8304aedc69f02ea82dd244541a83c3d9d40993381b3b590f1adaed3db41e \
     --hash=sha256:d7ad891da111ebafbf7e015d34879f7112832fc239ff0d7d776b6cb685274615
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 omegaconf==2.3.1 \
     --hash=sha256:3d701d14e9a8828f1edd28bb70b725908b34277cdd72cf7d6a83f94dadc6b6a0 \
     --hash=sha256:e5e7de64aeebeddaf8e6d3f7a783b32ac2a01c0fbd9c878012caecb891a1f42a
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   hydra-core
     #   lightly-train
+onnx==1.23.2 \
+    --hash=sha256:008cb0467b2bbee41448acc7da8b6f4e704624cb0d327a2d5adafc7ce19bc5b8 \
+    --hash=sha256:0100e6c3f30db8ff10876d8cfd0cb27296166d5a612ab37c3998e07e83b3fde8 \
+    --hash=sha256:03334d6c834767c7acd37c7db51c98e98c8ceb61a964f6df96386e13272d2870 \
+    --hash=sha256:16ef247e51dbf42e32bd92f47ad772d17dda77f64c4017e0ded9725ff9ab3922 \
+    --hash=sha256:1b8680ce1e6a9a4736374a9dce4de14ea8ee05e0dccf0784a78a6e5646bdc1f6 \
+    --hash=sha256:1e6cbca3d808f811141ed0a0939e71b3a6c9fdefb2435f4a862ec776336718fe \
+    --hash=sha256:32fd9c92244c2aea2b2c9e0e7b18fedcf6000434124ab6fc8796e22baa602d30 \
+    --hash=sha256:419bbbe3fbdf45a7658ee0aa1a54cd170ea15f3e5a60ace6e8d94f1577b3674b \
+    --hash=sha256:612f5dccea6d53c5517309c52496b6dae1115757e3b79f31be24d4c40fa45ca3 \
+    --hash=sha256:77674dc4fda2bde9a13aee67fb9ff658080159eb516d3a5b3fb2418d44dc70be \
+    --hash=sha256:7abf381d278f31ac62487fddedc9dd42da842dce94d5d43536836ee3efdf4a2b \
+    --hash=sha256:80cef0fad59524d02c21ec93f4fbccdcc6223f1c33339d597519a2d27cac19a7 \
+    --hash=sha256:83b3fc8321303c9da62824730457ba2f7ae0970f0e2f7fc0117912df7f8a4826 \
+    --hash=sha256:9b382ba898a7c142a0801d03cf04ecabced96c1543c7b643a86f0928143802de \
+    --hash=sha256:a203efdbaabbbe8f25e854e2b2921382d6fcf4c67895656f939044b0632974e8 \
+    --hash=sha256:a2b88d7e3634662f8d030117a7b02d864cfc965800547089ba62d3a9ceab3564 \
+    --hash=sha256:a40265d62b7a614041593e11370d316880f9628eb5a0d49d9028c9c0e7f1cc08 \
+    --hash=sha256:b0b8dae0d33dd8606370bc264b0b1d6e64cfdf8b83d7c676fab8eff6b88ca409 \
+    --hash=sha256:b2c07abb24f1c2c50ff5996c567eb9757470827f6d55b7f0af9d62c8e658bd7f \
+    --hash=sha256:c03ecf6b835d136108eeaeeafbd0026fc7b3cf98661409fbc6b63d5a29361348 \
+    --hash=sha256:e79e35e152d3095c6910ae81013bbc68679e32bfc0ca76f840968d4b6fdfb864 \
+    --hash=sha256:f8b9a5e25a390cc291600e5fd619f4b79708287a6bbc41a37209f364e08a63da \
+    --hash=sha256:fb3e892f19f3a793b9722587349941b074f74091ad33e794a7798fe03fdc0c9c \
+    --hash=sha256:fcbbd53e3482434dbf2c27f4a8727ad4865e21bbc0b5530e7557669f8d8f587b
+    # via
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
+    #   onnx-ir
+    #   onnxscript
+    #   onnxslim
+onnx-ir==1.1.0 \
+    --hash=sha256:76cc313a788c073b75271c1b6abb172aaf90fcc6335ed40f9f3238b2064a2fa3 \
+    --hash=sha256:b72176de575d820ec26864d17270d58ef886a7cf64db7649d15fcc3d5ae2a8ee
+    # via onnxscript
 onnxruntime==1.31.0 \
     --hash=sha256:09d56445c1753e66e0912de69d3f0184016ad9a191dcd6925bf5dd570d2bfbe5 \
     --hash=sha256:0ba02a44acb6203040354d9a1f160e3f37a43feac7bb05caa3e0ea545efed505 \
@@ -1937,7 +2024,15 @@ onnxruntime==1.31.0 \
     --hash=sha256:e51d10d2e2e1e5bbf9b126a0cd9853d3e6c4e21424518dd50160b91471be33dc \
     --hash=sha256:e85c1632c0a8cf488bd8f1039f5320877b864c8f9ebd4122fb8bb909f83b7096 \
     --hash=sha256:e93d7c5fad20afa697ac16f376fd0306ed180f9a376e86106cc0b7d84f53ef87
-    # via -r /tmp/tmp.bbtWTHclmG/pins.in
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
+onnxscript==0.7.2 \
+    --hash=sha256:2c664f6383d10f332a4d47b2876dcab16dba84909fe703656b19abc281fda165 \
+    --hash=sha256:d0e7121c6a1eefd608058928e111cbdb76709f70d269ff0d07aee493bd1d13c9
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
+onnxslim==0.1.99 \
+    --hash=sha256:6c6a3ddbbb7c5426f8f9c38ed1917bb4ab6335919c7d973328ba520faca469e4 \
+    --hash=sha256:d662d6a6c384b64fe7464527a5865020c4335f8619a4a1272512ca0cc266867c
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
 opencv-python-headless==5.0.0.93 \
     --hash=sha256:030ca5e0837a2963ab36ef896baa9767eb8d2b83353fb28af5a521e40dd8756f \
     --hash=sha256:09a872a157c1376ab922a69bbf22f9a95bcc7b658a9d8b436a60212b02b2eeb4 \
@@ -1949,7 +2044,7 @@ opencv-python-headless==5.0.0.93 \
     --hash=sha256:c6bcd96b185975ea240d22cfdb15a1f6d080cc95264cfbe2621f21bb144d89b9 \
     --hash=sha256:ed709fdf9aa0bd1f2ed8549e71d19449b03a675bb581eb292285f6861953be37
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   albumentations
     #   qudida
     #   roboflow
@@ -1957,20 +2052,23 @@ opentelemetry-api==1.45.1 \
     --hash=sha256:aa38ed19bcc084ba42782a73255b3582283eced7ad6dddbd6695189e69adfb75 \
     --hash=sha256:b31553efa588ae44bc306f863c785c5333a9ecc091248c6ee68b4b6c87fdedfb
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   fastapi
 packaging==26.3 \
     --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
     --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   accelerate
     #   huggingface-hub
     #   hydra-core
     #   lazy-loader
     #   lightning-utilities
     #   matplotlib
+    #   onnx-ir
     #   onnxruntime
+    #   onnxscript
+    #   onnxslim
     #   peft
     #   pytest
     #   pytorch-lightning
@@ -1982,7 +2080,7 @@ peft==0.21.2 \
     --hash=sha256:106ab6077ff72c54d21577f9af5970e34bac7582cb14209f7b2b511e322a4eae \
     --hash=sha256:b803ccfb3f3f316004d850284306687833a2235ea278fb56abc856203456142e
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   rfdetr
 pillow==13.0.0 \
     --hash=sha256:02464da86f561f410e13b061ec37c3068a9cb557a095494157742d07b3c24a27 \
@@ -2069,7 +2167,7 @@ pillow==13.0.0 \
     --hash=sha256:ff3fe9eb621fbb9db4c4be33ab946f6bac5f98ab50ca8d3260503653656c961b \
     --hash=sha256:ffea6b2986a797c84b6d1d27d4f43e0b83c73fc16281a930891cd237cf0d08fe
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   imageio
     #   lightly-utils
     #   matplotlib
@@ -2163,13 +2261,13 @@ pillow-avif-plugin==1.6.0 \
     --hash=sha256:fe1069154eb0da97f54cb6c95fa25c083c988cbf7f953d8712b67cb0cd8a0b6c \
     --hash=sha256:ff0ca8c6009786d71e2e8c8bc7fa7910c4138ee9a5c5769434601be83d2c230c
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   roboflow
 pluggy==1.7.0 \
     --hash=sha256:7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec \
     --hash=sha256:d1eaa46ebb595891b860ab086b4d09c8588af65ebd4361b8e8f4bb8920b90ba8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   pytest
 propcache==0.5.4 \
     --hash=sha256:004e685b315646c410771836e72a44f143bbe624f29653a42687815069a303d5 \
@@ -2311,7 +2409,7 @@ propcache==0.5.4 \
     --hash=sha256:fc2461ecc45f17893f8207e73b46ea8ba93e33630e51cf4af3fbc21d47462b1a \
     --hash=sha256:ff6b113f50bc066a698db5d944d2c6dc7507168dd3341e255a8892fd0715a558
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   aiohttp
     #   yarl
 protobuf==7.36.2 \
@@ -2324,7 +2422,8 @@ protobuf==7.36.2 \
     --hash=sha256:e11e1f0180583a2af89db6a2ecd9e8dc40aa6d2988ca175bfd0e6d12ea72d74e \
     --hash=sha256:f4fee11ec330d238b34a05c9b675f693c20415d1c5bd7d5320cc2f8a798eb9cf
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
+    #   onnx
     #   onnxruntime
     #   tensorboard
 psutil==7.2.2 \
@@ -2350,7 +2449,7 @@ psutil==7.2.2 \
     --hash=sha256:eed63d3b4d62449571547b60578c5b2c4bcccc5387148db46e0c2313dad0ee00 \
     --hash=sha256:fd04ef36b4a6d599bbdb225dd1d3f51e00105f6d48a28f006da7f9822f2606d8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   accelerate
     #   lightly-train
     #   peft
@@ -2406,7 +2505,7 @@ pyarrow==26.0.0 \
     --hash=sha256:fcdd1e04982637c6042337d3e24d472f938f01fdc502e2b994844b726d12c3f4 \
     --hash=sha256:ff1e816af7abff71f289242e109217036723ce36aca74ad6691e52d964a74afa
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
 pycocotools==2.0.11 \
     --hash=sha256:04480330df5013f6edd94891a0ee8294274185f1b5093d1b0f23d51778f0c0e9 \
@@ -2453,7 +2552,7 @@ pycocotools==2.0.11 \
     --hash=sha256:fd72b9734e6084b217c1fc3945bfd4ec05bdc75a44e4f0c461a91442bb804973 \
     --hash=sha256:ffe806ce535f5996445188f9a35643791dc54beabc61bd81e2b03367356d604f
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
     #   rfdetr
     #   torchmetrics
@@ -2465,7 +2564,7 @@ pydantic==2.14.1 \
     --hash=sha256:9195d967ec791692a04438115466764fb8b9a27b31f14a760437694f40d6b454 \
     --hash=sha256:94f478203dd03404682a1ada216965651dd74b1d2d5ffd62e00e0837caab5c26
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   fastapi
     #   lightly
     #   rfdetr
@@ -2608,36 +2707,36 @@ pydantic-core==2.50.1 \
     --hash=sha256:f77ac30b19221cd9bd3fcfa3d4614eff93140d0572ab730cded17b64adca05f3 \
     --hash=sha256:fe90228920fd8ff2be62622b6bb8a2b11acd65046d50c6b130614b5879605a20
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   pydantic
 pydeprecate==0.13.0 \
     --hash=sha256:9d5549757d3d8180bba24196f9e1b05720f6dc5eeb4e5c707a15e58b61c0a646 \
     --hash=sha256:b9210b5e36ea38a3c89aaa9579507ef676bfd147ad89184a06e1fd252f34d36c
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   supervision
 pygments==2.21.0 \
     --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9 \
     --hash=sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   pytest
     #   rich
 pyparsing==3.3.3 \
     --hash=sha256:928ae7e20211f3b6f3915a72f06a0cfd29ab9d24279dd6346b6b1a7146397d36 \
     --hash=sha256:ece8c00a69cf01b45d0b1dedabb469c90d8caf996d4fda40f147627a122849a4
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   matplotlib
 pytest==9.1.1 \
     --hash=sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313 \
     --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
-    # via -r /tmp/tmp.bbtWTHclmG/pins.in
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly
     #   matplotlib
     #   roboflow
@@ -2645,13 +2744,13 @@ python-dotenv==1.2.4 \
     --hash=sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc \
     --hash=sha256:f0d53e69935a851c0dcc78f3ab7aaccd8cabef0b92382b576b824212902873c0
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   roboflow
 pytorch-lightning==2.6.6 \
     --hash=sha256:52c52b20522dd3d3feb3bb3aae2dbe3f291e8e836d4111a74cfd72e9df018834 \
     --hash=sha256:71f95c7b22f25c4f91cc659e1734bcdc6c69c8b66543f2ed2d78dbe29ce2f167
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly
     #   lightly-train
 pyyaml==6.0.3 \
@@ -2729,7 +2828,7 @@ pyyaml==6.0.3 \
     --hash=sha256:fa160448684b4e94d80416c0fa4aac48967a969efe22931448d853ada8baf926 \
     --hash=sha256:fc09d0aa354569bc501d4e787133afc08552722d3ab34836a80547331bb5d4a0
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   accelerate
     #   albumentations
     #   huggingface-hub
@@ -2743,7 +2842,7 @@ qudida==0.0.4 \
     --hash=sha256:4519714c40cd0f2e6c51e1735edae8f8b19f4efe1f33be13e9d644ca5f736dd6 \
     --hash=sha256:db198e2887ab0c9aa0023e565afbff41dfb76b361f85fd5e13f780d75ba18cc8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   albumentations
 regex==2026.9.29 \
     --hash=sha256:01000ddf0e3ffef97f2413ceb514f6313040106b6d18a03ee00a4fe35c1eb1db \
@@ -2877,13 +2976,13 @@ regex==2026.9.29 \
     --hash=sha256:fdd88ed5e20b1bcdd234421e454962c971aa44b653bdb7f1ea9ef683e90fb649 \
     --hash=sha256:fe3fa1dd453ed5c7f5ea23a26218329790ed7197a99b90e94330e313959a7f52
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   transformers
 requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   huggingface-hub
     #   lightly
     #   requests-toolbelt
@@ -2895,30 +2994,30 @@ requests-toolbelt==1.0.0 \
     --hash=sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6 \
     --hash=sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   roboflow
 rf100vl==1.1.2 \
     --hash=sha256:a541b1b4b7c8b6fae174d23d3c6e533a55f97e9bee1cba0866c3708da3a9444d \
     --hash=sha256:bb6a7f14c2aab5c3bba5773d0658ca00f8b12665d2daafd801a6b0fc58dc0bdd
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   rfdetr
 rfdetr==1.5.2 \
     --hash=sha256:5ae9ffda55e444fd7306d5729cabe13c613507c8b55ff6699eaa561f98da4333 \
     --hash=sha256:e8862957297d7f5b0c1bf4fe84718ddb916e5280a9807777c8444b653a56c09e
-    # via -r /tmp/tmp.bbtWTHclmG/pins.in
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
 rich==15.0.0 \
     --hash=sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb \
     --hash=sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
     #   typer
 roboflow==1.7.1 \
     --hash=sha256:886edbc9660104ffec8b79a1b3fdeca0d4a51cdad9db2b0db597e5a456fae741 \
     --hash=sha256:ba31e2103968285b83406eaaf1bf4a043a63cedc716723f48671e3fe86b76256
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   rf100vl
     #   rfdetr
 safetensors==0.8.0 \
@@ -2940,7 +3039,7 @@ safetensors==0.8.0 \
     --hash=sha256:fcdd41ec4628fee5799f807c73c353629130fbd942aa23d83c623dd6c9d52d78 \
     --hash=sha256:fd6f3f93c9a0a7cc2788ee63fb763353d4bd2e89b0751bc78fcf7dda00bea774
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   accelerate
     #   peft
     #   transformers
@@ -2995,7 +3094,7 @@ scikit-image==0.26.0 \
     --hash=sha256:f775f0e420faac9c2aa6757135f4eb468fb7b70e0b67fa77a5e79be3c30ee331 \
     --hash=sha256:fac96a1f9b06cd771cbbb3cd96c5332f36d4efd839b1d8b053f79e5887acde62
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   albumentations
 scikit-learn==1.9.1 \
     --hash=sha256:09f4d73049cd63575157f6b1060e06a8c83a4bd3488dbfaeedf35ccba7aad712 \
@@ -3042,7 +3141,7 @@ scikit-learn==1.9.1 \
     --hash=sha256:e5d7b18a5b9dca241a74695f3275fa4c895a9dadc72b3d8df5fa9d1083c9b83e \
     --hash=sha256:ffbcbbbb44202fbe9bc64bced25a145759adb9ef010b3d37a8064958ac13df2a
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   qudida
 scipy==1.17.1 \
     --hash=sha256:010f4333c96c9bb1a4516269e33cb5917b08ef2166d5556ca2fd9f082a9e6ea0 \
@@ -3107,7 +3206,7 @@ scipy==1.17.1 \
     --hash=sha256:f8885db0bc2bffa59d5c1b72fad7a6a92d3e80e7257f967dd81abb553a90d293 \
     --hash=sha256:fcb310ddb270a06114bb64bbe53c94926b943f5b7f0842194d585c65eb4edd76
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   albumentations
     #   rfdetr
     #   scikit-image
@@ -3117,20 +3216,20 @@ setuptools==84.0.0 \
     --hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670 \
     --hash=sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   tensorboard
     #   triton
 shellingham==1.5.4 \
     --hash=sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686 \
     --hash=sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   typer
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly
     #   python-dateutil
     #   roboflow
@@ -3138,43 +3237,45 @@ starlette==1.10.0 \
     --hash=sha256:478c0ab3b4ced6e82719849c118fa406f0278a3499c1a898cd15cd31bdc38ce4 \
     --hash=sha256:b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   fastapi
 supervision==0.31.0 \
     --hash=sha256:6e0306b85056c86a256e0ded4f756d4856b7f213b1bd80554d42f50042b219f4 \
     --hash=sha256:c961f5135407be9056454ac2293bd3316559e71599c1c0e31fb16ca9d9f73416
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   rfdetr
 sympy==1.14.0 \
     --hash=sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517 \
     --hash=sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
+    #   onnx-ir
+    #   onnxslim
     #   torch
 tensorboard==2.21.0 \
     --hash=sha256:7279316dcb6bd5bc391d623dea841531299cde1887310e8133bc34a996d32255
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
 tensorboard-data-server==0.7.2 \
     --hash=sha256:7e0610d205889588983836ec05dc098e80f97b7e7bbff7e994ebb78f578d0ddb \
     --hash=sha256:9fe5d24221b29625dbc7328b0436ca7fc1c23de4acf4d272f1180856e32f9f60 \
     --hash=sha256:ef687163c24185ae9754ed5650eb5bc4d84ff257aabdc33f0cc6f74d8ba54530
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   tensorboard
 threadpoolctl==3.7.0 \
     --hash=sha256:61348cfb77d53b9242e0017029244b559b810c142ced65b4e21eeca1843959a7 \
     --hash=sha256:cd8b60b5641b45c67bbf73c64c843235fc2d8a480c87389f52f5dbee893b86be
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   scikit-learn
 tifffile==2026.3.3 \
     --hash=sha256:d9a1266bed6f2ee1dd0abde2018a38b4f8b2935cb843df381d70ac4eac5458b7 \
     --hash=sha256:e8be15c94273113d31ecb7aa3a39822189dd11c4967e3cc88c178f1ad2fd1170
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   scikit-image
 tokenizers==0.22.2 \
     --hash=sha256:143b999bdc46d10febb15cbffb4207ddd1f410e2c755857b5a0797961bbdc113 \
@@ -3202,7 +3303,7 @@ tokenizers==0.22.2 \
     --hash=sha256:e10bf9113d209be7cd046d40fbabbaf3278ff6d18eb4da4c500443185dc1896c \
     --hash=sha256:f01a9c019878532f98927d2bacb79bbb404b43d3437455522a00a30718cdedb5
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   transformers
 torch==2.8.0+cu128 \
     --hash=sha256:039b9dcdd6bdbaa10a8a5cd6be22c4cb3e3589a341e5f904cbb571ca28f55bed \
@@ -3218,7 +3319,7 @@ torch==2.8.0+cu128 \
     --hash=sha256:b9357a87595a3d7b2a565ba602b97392a37c56f0b85698f0ccf0a2c58fbef5ec \
     --hash=sha256:fca71fd04bf524a54370386b85e2e89840c2bbc86dc2a8df2aadedd3bba5645f
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   accelerate
     #   lightly
     #   lightly-train
@@ -3231,7 +3332,7 @@ torchmetrics==1.9.0 \
     --hash=sha256:a488609948600df52d3db4fcdab02e62aab2a85ef34da67037dc3e65b8512faa \
     --hash=sha256:bfdcbff3dd1d96b3374bb2496eb39f23c4b28b8a845b6a18c313688e0d2d9ca1
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
     #   pytorch-lightning
 torchvision==0.23.0+cu128 \
@@ -3248,7 +3349,7 @@ torchvision==0.23.0+cu128 \
     --hash=sha256:c63982f1973ba677b37e6663df0e07cb5381459b6f0572c2ca95eebd8dfeb742 \
     --hash=sha256:f69174bc69474bd4d1405bac3ebd35bb39c8267ce6b8a406070cb3149c72e3b8
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly
     #   lightly-train
     #   rfdetr
@@ -3257,7 +3358,7 @@ tqdm==4.70.1 \
     --hash=sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73 \
     --hash=sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   huggingface-hub
     #   lightly
     #   lightly-train
@@ -3271,7 +3372,7 @@ transformers==4.57.6 \
     --hash=sha256:4c9e9de11333ddfe5114bc872c9f370509198acf0b87a832a0ab9458e2bd0550 \
     --hash=sha256:55e44126ece9dc0a291521b7e5492b572e6ef2766338a610b9ab5afbb70689d3
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly-train
     #   peft
     #   rfdetr
@@ -3289,19 +3390,19 @@ triton==3.4.0 \
     --hash=sha256:dd8d32d337f58124fe254043d282a4bc133c2aca7989bc6358b2c546d2121513 \
     --hash=sha256:e2b0afe420d202d96f50b847d744a487b780567975455e56f64b061152ee9554
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   torch
 typer==0.25.1 \
     --hash=sha256:75caa44ed46a03fb2dab8808753ffacdbfea88495e74c85a28c5eefcf5f39c89 \
     --hash=sha256:9616eb8853a09ffeabab1698952f33c6f29ffdbceb4eaeecf571880e8d7664cc
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   roboflow
 typing-extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   aiohttp
     #   aiosignal
     #   anyio
@@ -3309,6 +3410,9 @@ typing-extensions==4.16.0 \
     #   grpcio
     #   huggingface-hub
     #   lightning-utilities
+    #   onnx
+    #   onnx-ir
+    #   onnxscript
     #   opentelemetry-api
     #   pydantic
     #   pydantic-core
@@ -3321,26 +3425,26 @@ typing-inspection==0.4.4 \
     --hash=sha256:547274fa6b0a561ccf549cc9524b999a578e737d015d8709d021f9d0d13bea47 \
     --hash=sha256:65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   fastapi
     #   pydantic
 urllib3==2.8.0 \
     --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3 \
     --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   lightly
     #   requests
     #   roboflow
 uvicorn==0.54.0 \
     --hash=sha256:505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf \
     --hash=sha256:a2e33cbfaa0306f8e6b0c13e0cb89d7d7a2da3e62b90c66e18c33d9807b28620
-    # via -r /tmp/tmp.bbtWTHclmG/pins.in
+    # via -r /tmp/tmp.0UIMnxbQGU/pins.in
 werkzeug==3.1.9 \
     --hash=sha256:55ca7c70a75689be937aa27f8ff4b018f06ff4838fc73045560bf0f5a1291060 \
     --hash=sha256:6392e50c78460ba618e5b21f08a71f59c99ce99cdc6cf6e3dd7e6ccca8754fab
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   tensorboard
 yarl==1.25.1 \
     --hash=sha256:0136d640dfa9b0523853e411430a99f8a91eca85774c6420285a33b755bc6de3 \
@@ -3482,5 +3586,5 @@ yarl==1.25.1 \
     --hash=sha256:f61964f235a43738bfac50da46fc4254943a7eea3051aeb0b6fc7c992c29fadc \
     --hash=sha256:fe01645169a2112aa1d4ebc3e4c5f029c5c8f97adfc32e5d37c993b39a994d75
     # via
-    #   -r /tmp/tmp.bbtWTHclmG/pins.in
+    #   -r /tmp/tmp.0UIMnxbQGU/pins.in
     #   aiohttp

@@ -104,3 +104,34 @@ def test_hub_agent_end_to_end(stack):
     _wait(lambda: web.get(f"/api/runs/{slow}").json()["current_stage"] == "finetune", 120, "the re-queued run to start")
     web.post(f"/api/runs/{slow}/cancel")
     assert _wait(lambda: web.get(f"/api/runs/{slow}").json()["status"] == "cancelled", 60, "the second cancel")
+
+
+def test_search_and_export_end_to_end(stack):
+    """A real search on CPU: dataset check -> timing -> two rounds -> a seed repeat -> recommendation -> export."""
+    web, data, tmp = stack
+    m = _wait(lambda: next((x for x in web.get("/api/machines").json() if x["online"]), None), 60, "the agent to come online")
+    cmd = web.post(f"/api/machines/{m['id']}/commands", json={"type": "dataset_add", "args": {"name": "tiny", "path": str(data)}}).json()
+    done = _wait(lambda: next((c for c in web.get(f"/api/machines/{m['id']}/commands").json()
+                               if c["id"] == cmd["id"] and c["status"] in ("done", "failed")), None), 180, "dataset_add")
+    assert done["status"] == "done", done
+    assert done["result"]["check"]["errors"] == []  # the dataset check ran with the add
+    _wait(lambda: any(d["name"] == "tiny" and d.get("check") for d in web.get(f"/api/machines/{m['id']}").json()["report"].get("datasets", [])),
+          60, "the check in the machine report")
+    body = {"name": "e2e", "dataset": "tiny", "machines": [m["id"]], "speed_ms": 100000, "batch_size": 2,
+            "models": ["rfdetr/nano", "ltdetr/dinov3-vitt16-test"], "image_sizes": {"rfdetr/nano": [320], "ltdetr/dinov3-vitt16-test": [256]},
+            "epochs": 2, "rungs": 2, "eta": 2, "seeds": 1}
+    r = web.post("/api/searches", json=body)
+    assert r.status_code == 200, r.text
+    sid = r.json()["id"]
+    s = _wait(lambda: (lambda x: x if x["status"] != "running" else None)(web.get(f"/api/searches/{sid}").json()), 2400, "the search")
+    assert s["status"] == "done", s["message"]
+    assert all(a.get("latency_ms") and a["fits"] for a in s["state"]["archs"]), s["state"]["archs"]
+    assert [len(x["trials"]) for x in s["state"]["rounds"]] == [2, 1] and len(s["state"]["seed_trials"]) == 1
+    rec = s["recommendation"]
+    assert rec["runs"] == 2 and rec["map_test_mean"] is not None
+    ex = web.post(f"/api/runs/{rec['best_run_id']}/export", json={"stage": rec["stage"]})
+    assert ex.status_code == 200, ex.text
+    c = _wait(lambda: next((x for x in web.get(f"/api/runs/{rec['best_run_id']}/exports").json() if x["status"] in ("done", "failed")), None),
+              900, "the export")
+    assert c["status"] == "done", c["error"]
+    assert c["result"]["input_size"] in (320, 256) and "model.onnx" in c["result"]["files"]

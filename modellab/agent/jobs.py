@@ -6,19 +6,25 @@ Commands are a fixed list; arguments are re-checked here. Nothing from the hub i
 
 from __future__ import annotations
 
+import json
+import os
 import queue
 import re
+import subprocess
+import sys
 import threading
 import time
 import traceback
 from pathlib import Path
 
-from modellab import catalog, datasets, recipe, store, weights
+from modellab import ROOT, catalog, datasets, recipe, store, weights
 from modellab.agent import doctor, log
 from modellab.agent.client import HubClient, HubError, Revoked
 
 RUN_ID_RE = re.compile(r"^[0-9]{8}-[0-9]{6}-[a-z0-9-]{1,40}-[0-9a-f]{4,6}$")
 DATASET_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,63}$")
+STAGE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
+EXPORT_TIMEOUT_S = 2 * 3600
 
 
 class Cancelled(Exception):
@@ -54,7 +60,21 @@ def _name(args: dict) -> str:
 
 
 def _ds_summary(info: dict) -> dict:
-    return {k: info.get(k) for k in ("name", "path", "train", "valid", "test", "classes", "hash")}
+    return {k: info.get(k) for k in ("name", "path", "train", "valid", "test", "classes", "hash", "check")}
+
+
+def _checked(name: str, info: dict, say) -> dict:
+    """Run the dataset check (modellab.datasets.check), remember it with the hash, and say what it found."""
+    say("checking boxes, classes and splits ...")
+    chk = datasets.check(datasets.path_of(name))
+    for e in chk["errors"]:
+        say(f"problem: {e}")
+    for w in chk["warnings"]:
+        say(f"warning: {w}")
+    if not chk["errors"] and not chk["warnings"]:
+        say("no problems found")
+    doctor.remember_hash(name, info, chk)
+    return {**info, "check": chk}
 
 
 class Jobs(threading.Thread):
@@ -142,8 +162,7 @@ class Jobs(threading.Thread):
             name, path = _name(a), _path(a, "path")
             say(f"checking {path} and hashing every image (can take a while for big datasets) ...")
             info = datasets.add(name, path, str(a.get("description") or ""))
-            doctor.remember_hash(name, info)
-            return _ds_summary(info)
+            return _ds_summary(_checked(name, info, say))
         if ctype == "dataset_import":
             name = _name(a)
             if a.get("format") == "coco":
@@ -156,17 +175,15 @@ class Jobs(threading.Thread):
                                             description=str(a.get("description") or ""))
             else:
                 raise ValueError("format must be coco or yolo")
-            doctor.remember_hash(name, info)
-            return _ds_summary(info)
+            return _ds_summary(_checked(name, info, say))
         if ctype == "dataset_verify":
             name = _name(a)
             before = (doctor.dataset_hashes().get(name) or {}).get("hash")
             say("re-reading every image and annotation ...")
             info = datasets.info(name, with_hash=True, fresh=True)
-            doctor.remember_hash(name, info)
             changed = bool(before) and before.get("all") != info["hash"]["all"]
             say("unchanged" if before and not changed else "changed since the last check" if changed else "hashed")
-            return {**_ds_summary(info), "changed": changed, "previous": before}
+            return {**_ds_summary(_checked(name, info, say)), "changed": changed, "previous": before}
         if ctype == "dataset_remove":
             name = _name(a)
             try:
@@ -197,10 +214,37 @@ class Jobs(threading.Thread):
                 raise ValueError("the run is still active on this machine")
             store.delete_run(rid)
             return {"deleted": rid}
+        if ctype == "export":
+            return self._export(a, say)
         if ctype == "update":
             self.agent.update_now = True
             return {"result": "update check scheduled"}
         raise ValueError(f"unknown command {ctype!r}")
+
+    def _export(self, a: dict, say) -> dict:
+        """ONNX (+ TensorRT engine if trtexec is installed) + model card of a finished fine-tune stage, in its own
+        process (modellab.export: torch and the model libraries stay out of the agent process)."""
+        rid, stage = a.get("run_id"), a.get("stage")
+        if not isinstance(rid, str) or not RUN_ID_RE.match(rid) or not isinstance(stage, str) or not STAGE_RE.match(stage):
+            raise ValueError("bad run id or stage")
+        if store.get_run(rid) is None:
+            raise ValueError("this run's files are not on this machine")
+        say(f"exporting {rid} / {stage} ...")
+        env = dict(os.environ, PYTHONPATH=str(ROOT), PYTHONUNBUFFERED="1")
+        p = subprocess.run([sys.executable, "-m", "modellab.export", rid, stage], cwd=ROOT, env=env, capture_output=True,
+                           text=True, timeout=EXPORT_TIMEOUT_S)
+        result, error = None, None
+        for line in (p.stdout + "\n" + p.stderr).splitlines():
+            if line.startswith("EXPORT_RESULT "):
+                result = json.loads(line.removeprefix("EXPORT_RESULT "))
+            elif line.startswith("EXPORT_ERROR "):
+                error = json.loads(line.removeprefix("EXPORT_ERROR "))["error"]
+            elif line.startswith("[export"):
+                say(line)
+        if result is None:
+            tail = "\n".join((p.stderr or p.stdout).strip().splitlines()[-12:])
+            raise RuntimeError(error or f"export failed (exit {p.returncode}):\n{tail}")
+        return result
 
     # ------------------------------------------------------------ runs
 
@@ -233,7 +277,7 @@ class Jobs(threading.Thread):
         if errors or len(plans) != 1:
             raise ValueError("recipe rejected by this machine: " + ("; ".join(errors) or f"{len(plans)} runs, expected 1"))
         p = plans[0]
-        for ds in sorted({s["dataset"] for s in p.stages}):
+        for ds in sorted({s["dataset"] for s in p.stages if s.get("dataset")}):
             try:
                 datasets.validate_layout(datasets.path_of(ds))
             except Exception as e:  # noqa: BLE001

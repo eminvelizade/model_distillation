@@ -148,7 +148,9 @@ def probes(x, y, groups, k: int, seed: int) -> dict:
     return out
 
 
-def pca_plot(path: Path, items, maps: dict, size: int) -> None:
+def pca_plot(path: Path, items, maps: dict, size: int, show_images: bool = True) -> None:
+    """One row per image, one column per model (first 3 PCA components as RGB). `show_images` adds the input images
+    as a first column; ModelLab's features stage leaves them out, since its plot is uploaded to the hub."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -156,8 +158,9 @@ def pca_plot(path: Path, items, maps: dict, size: int) -> None:
     from PIL import Image
 
     n = len(next(iter(maps.values())))
-    fig, axes = plt.subplots(n, 1 + len(maps), figsize=(3 * (1 + len(maps)), 3 * n), squeeze=False)
-    for col, (name, fm) in enumerate(maps.items(), start=1):
+    first = 1 if show_images else 0
+    fig, axes = plt.subplots(n, first + len(maps), figsize=(3 * (first + len(maps)), 3 * n), squeeze=False)
+    for col, (name, fm) in enumerate(maps.items(), start=first):
         x = np.concatenate([f.flatten(1).T.numpy() for f in fm])  # joint PCA over shown images
         x = x - x.mean(0)
         _, _, vt = np.linalg.svd(x, full_matrices=False)
@@ -167,7 +170,7 @@ def pca_plot(path: Path, items, maps: dict, size: int) -> None:
         for r in range(n):
             axes[r, col].imshow(proj[r * hw:(r + 1) * hw].reshape(fm[0].shape[1], fm[0].shape[2], 3), interpolation="nearest")
             axes[r, col].set_title(name if r == 0 else "")
-    for r in range(n):
+    for r in range(n if show_images else 0):
         with Image.open(items[r][0]) as im:
             axes[r, 0].imshow(im.convert("RGB").resize((size, size)))
     for ax in axes.flat:

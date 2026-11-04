@@ -134,6 +134,17 @@ releases = sa.Table(
     Column("created", Float), Column("published_by", String(64)),
 )
 
+searches = sa.Table(
+    "searches", md,
+    Column("id", String(32), primary_key=True),
+    Column("owner_id", String(32), nullable=False, index=True),
+    Column("name", Text), Column("status", String(16), nullable=False),  # running | done | failed | cancelled
+    Column("phase", String(16)),  # speed | rungs | seeds | done
+    Column("spec", Text), Column("state", Text), Column("recommendation", Text), Column("message", Text),
+    Column("rev", Integer, nullable=False, default=0),  # optimistic lock: advance() only writes on the rev it read
+    Column("created", Float), Column("updated", Float), Column("finished", Float),
+)
+
 settings = sa.Table(
     "settings", md,
     Column("key", String(64), primary_key=True), Column("value", Text),

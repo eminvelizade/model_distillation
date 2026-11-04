@@ -181,3 +181,103 @@ def remove(name: str) -> None:
         raise KeyError(f"unknown dataset {name!r}")
     del reg[name]
     _save(reg)
+
+
+# ---------------------------------------------------------------- dataset check
+
+CHECK_VERSION = 1
+EDGE_TOLERANCE_PX = 2.0
+
+
+def _split_md5s(path: Path, split: str) -> list[str]:
+    """MD5 of every image of a split, cached next to the dataset (keyed by the annotation file's size and mtime)."""
+    ann = path / split / "_annotations.coco.json"
+    st = ann.stat()
+    key = f"{split}:{st.st_size}:{st.st_mtime_ns}"
+    cache_f = path / ".modellab_md5.json"
+    try:
+        cache = json.loads(cache_f.read_text())
+    except (OSError, ValueError):
+        cache = {}
+    if key in cache:
+        return cache[key]
+    d = json.loads(ann.read_text())
+    out = [_md5(path / split / im["file_name"]) for im in d["images"] if (path / split / im["file_name"]).is_file()]
+    cache = {k: v for k, v in cache.items() if not k.startswith(f"{split}:")}
+    cache[key] = out
+    try:
+        cache_f.write_text(json.dumps(cache))
+    except OSError:
+        pass
+    return out
+
+
+def check(path: Path) -> dict:
+    """Problems that make training or evaluation wrong, before any GPU time is spent.
+
+    errors (block a search): missing image files, boxes with no area, boxes entirely outside their image, unknown class
+    ids, the same image in two splits (it would leak training data into the evaluation).
+    warnings: boxes partly outside their image (training clips them), classes in valid/test that train doesn't have,
+    strong class imbalance, very small valid/test splits, mostly empty training images.
+    """
+    path = Path(path)
+    errors: list[str] = []
+    warnings: list[str] = []
+    splits: dict[str, dict] = {}
+    names: dict[str, set[str]] = {}
+    for s in SPLITS:
+        d = json.loads((path / s / "_annotations.coco.json").read_text())
+        cats = {c["id"]: c["name"] for c in d["categories"]}
+        ims = {im["id"]: im for im in d["images"]}
+        missing = [im["file_name"] for im in d["images"] if not (path / s / im["file_name"]).is_file()]
+        per_class: dict[str, int] = {}
+        no_area = outside = partly = unknown = 0
+        with_boxes = set()
+        for a in d["annotations"]:
+            if a.get("category_id") not in cats:
+                unknown += 1
+                continue
+            per_class[cats[a["category_id"]]] = per_class.get(cats[a["category_id"]], 0) + 1
+            with_boxes.add(a.get("image_id"))
+            x, y, w, h = (float(v) for v in a["bbox"])
+            im = ims.get(a.get("image_id"))
+            if w <= 0 or h <= 0:
+                no_area += 1
+            elif im and im.get("width") and im.get("height"):
+                W, H, t = float(im["width"]), float(im["height"]), EDGE_TOLERANCE_PX
+                if x >= W or y >= H or x + w <= 0 or y + h <= 0:
+                    outside += 1
+                elif x < -t or y < -t or x + w > W + t or y + h > H + t:
+                    partly += 1
+        empty = len(ims) - len(with_boxes & set(ims))
+        splits[s] = {"images": len(ims), "boxes": sum(per_class.values()), "empty_images": empty, "per_class": per_class}
+        names[s] = set(per_class)
+        if missing:
+            errors.append(f"{s}: {len(missing)} image file(s) missing, e.g. {missing[0]}")
+        if no_area:
+            errors.append(f"{s}: {no_area} box(es) with zero width or height")
+        if outside:
+            errors.append(f"{s}: {outside} box(es) entirely outside their image")
+        if unknown:
+            errors.append(f"{s}: {unknown} box(es) with a class id that isn't in the categories")
+        if partly:
+            warnings.append(f"{s}: {partly} box(es) extend more than {EDGE_TOLERANCE_PX:g} px outside their image (training clips them)")
+    md5s = {s: set(_split_md5s(path, s)) for s in SPLITS}
+    for a, b in (("train", "valid"), ("train", "test"), ("valid", "test")):
+        dup = len(md5s[a] & md5s[b])
+        if dup:
+            errors.append(f"{dup} image(s) appear in both {a} and {b}: evaluation would score images the model trained on")
+    for s in ("valid", "test"):
+        extra = sorted(names[s] - names["train"])
+        if extra:
+            warnings.append(f"{s} has class(es) that train doesn't: {', '.join(extra[:5])}")
+        if splits[s]["images"] < 20:
+            warnings.append(f"{s} has only {splits[s]['images']} image(s): its mAP will be noisy")
+    counts = sorted(splits["train"]["per_class"].values())
+    if len(counts) > 1 and counts[0] and counts[-1] / counts[0] > 20:
+        rare = min(splits["train"]["per_class"], key=splits["train"]["per_class"].get)
+        warnings.append(f"classes are very unbalanced in train: {rare!r} has {counts[0]} box(es), the largest class {counts[-1]}")
+    if splits["train"]["images"] and splits["train"]["empty_images"] > splits["train"]["images"] / 2:
+        warnings.append(f"{splits['train']['empty_images']} of {splits['train']['images']} training images have no boxes")
+    return {"version": CHECK_VERSION, "splits": splits, "classes": sorted(set().union(*names.values())),
+            "errors": errors, "warnings": warnings}

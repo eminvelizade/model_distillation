@@ -16,9 +16,12 @@ Stage types and their fields (defaults in brackets):
   distill   student (rfdetr/*), init [stock] | {from}, teacher (teacher id | {from: <ltdetr finetune>}),
             image_size [student native; 448/672 for DINOv2 teachers], batch_size [32], lr, budget
   finetune  model (detector id), init [stock] | {from}, batch_size [8], lr, lr_encoder (rfdetr), grad_accum [1],
-            image_size (ltdetr only [384]), budget
+            image_size [the model's native size; RF-DETR and LT-DETR: a multiple of 32], budget
   eval      model (detector id = stock weights | {from}), split [test], label, latency [true], max_images
   features  models (list of rfdetr ids | {from}), teacher (optional), split [valid], size [384], pca [true], max_images
+  speed     model (detector id), image_size [native]: latency + parameter count of the architecture alone (no training,
+            no dataset needed), measured the same way as eval's latency. Used by searches to drop models that are too
+            slow before training them. A model that fails to build records the error instead of failing the run.
 Budget: {epochs: N} and/or {minutes: M}. Minutes is a wall-clock cap; without epochs a nominal epoch count is used
 for the LR schedule (distill 30, finetune 20) and training stops at the cap.
 """
@@ -35,7 +38,7 @@ import yaml
 
 from modellab import ROOT, catalog
 
-STAGE_TYPES = ("distill", "finetune", "eval", "features")
+STAGE_TYPES = ("distill", "finetune", "eval", "features", "speed")
 DEFAULT_EPOCHS = {"distill": 30, "finetune": 20}
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 VAR_RE = re.compile(r"\$\{(\w+)\}")
@@ -110,6 +113,12 @@ def _budget(st: dict, errs: list[str]) -> dict:
     return out
 
 
+def _image_size(st: dict, det: catalog.Detector, errs: list[str]) -> None:
+    size = st["image_size"]
+    if not isinstance(size, int) or isinstance(size, bool) or size % det.divisor or not 64 <= size <= 2048:
+        errs.append(f"{st['name']}: image_size must be a multiple of {det.divisor} between 64 and 2048, got {size!r}")
+
+
 def validate(recipe: dict, known_datasets: set[str] | None = None) -> tuple[list[dict], list[str], list[str]]:
     """-> (resolved stages, errors, warnings). Resolved stages carry defaults and producer info."""
     errs: list[str] = []
@@ -141,9 +150,9 @@ def validate(recipe: dict, known_datasets: set[str] | None = None) -> tuple[list
             errs.append(f"{name}: type must be one of {STAGE_TYPES}")
             continue
         st["dataset"] = st.get("dataset") or default_ds
-        if not st["dataset"]:
+        if not st["dataset"] and typ != "speed":
             errs.append(f"{name}: no dataset (set recipe.dataset or stage.dataset)")
-        elif known_datasets is not None and st["dataset"] not in known_datasets:
+        elif st["dataset"] and known_datasets is not None and st["dataset"] not in known_datasets:
             errs.append(f"{name}: unknown dataset {st['dataset']!r}")
         st["seed"] = seed
         before = len(errs)
@@ -214,10 +223,8 @@ def validate(recipe: dict, known_datasets: set[str] | None = None) -> tuple[list
                 errs.append(f"{name}.init must be 'stock' or {{from: <stage>}}")
             if det and det.family == "ltdetr":
                 st["image_size"] = st.get("image_size") or det.resolution
-                if st["image_size"] % 32:
-                    errs.append(f"{name}: image_size must be a multiple of 32")
-            elif "image_size" in st:
-                warns.append(f"{name}: image_size is ignored for RF-DETR (fine-tunes at its native {det.resolution if det else '?'})")
+            if det and st.get("image_size") is not None:
+                _image_size(st, det, errs)
             st.setdefault("batch_size", 8)
             st.setdefault("grad_accum", 1)
             st["budget"] = _budget(st, errs)
@@ -238,6 +245,15 @@ def validate(recipe: dict, known_datasets: set[str] | None = None) -> tuple[list
             st.setdefault("latency", True)
             st.setdefault("label", (m["from"] if _ref(m) else f"stock {m}") if m else name)
             produced[name] = {"kind": "metrics", "model": st.get("model_id")}
+        elif typ == "speed":
+            m = st.get("model")
+            det = catalog.DETECTORS.get(m) if isinstance(m, str) else None
+            if not det:
+                errs.append(f"{name}.model must be a detector id, got {m!r}")
+            else:
+                st["image_size"] = st.get("image_size") or det.resolution
+                _image_size(st, det, errs)
+            produced[name] = {"kind": "metrics"}
         elif typ == "features":
             models = st.get("models")
             if not isinstance(models, list) or not models:
