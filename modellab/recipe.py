@@ -18,7 +18,8 @@ Stage types and their fields (defaults in brackets):
   finetune  model (detector id), init [stock] | {from}, batch_size [8], lr, lr_encoder (rfdetr), grad_accum [1],
             image_size [the model's native size; RF-DETR and LT-DETR: a multiple of 32], budget
   eval      model (detector id = stock weights | {from}), split [test], label, latency [true], max_images
-  features  models (list of rfdetr ids | {from}), teacher (optional), split [valid], size [384], pca [true], max_images
+  features  models (list of rfdetr ids | {from}), teacher (optional), split [valid], size [384], pca [true], max_images,
+            attention [true] + attention_images [16] (attention maps of the last global layer: modellab/attention.py)
   speed     model (detector id), image_size [native]: latency + parameter count of the architecture alone (no training,
             no dataset needed), measured the same way as eval's latency. Used by searches to drop models that are too
             slow before training them. A model that fails to build records the error instead of failing the run.
@@ -274,6 +275,10 @@ def validate(recipe: dict, known_datasets: set[str] | None = None) -> tuple[list
                 errs.append(f"{name}.teacher: unknown teacher {t!r}")
             st.setdefault("split", "valid")
             st.setdefault("pca", True)
+            st.setdefault("attention", True)
+            n_att = st.setdefault("attention_images", 16)
+            if isinstance(n_att, bool) or not isinstance(n_att, int) or not 1 <= n_att <= 256:
+                errs.append(f"{name}.attention_images must be an integer between 1 and 256")
             patch14 = t is not None and catalog.TEACHERS.get(t) and catalog.TEACHERS[t].patch == 14
             st.setdefault("size", 448 if patch14 else 384)
             if st["size"] % (224 if patch14 else 32):

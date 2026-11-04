@@ -3,7 +3,6 @@ encrypted key, and the MCP server behind OAuth."""
 
 import base64
 import hashlib
-import io
 import json
 import secrets
 import time
@@ -11,7 +10,6 @@ from urllib.parse import parse_qs, urlsplit
 
 import anthropic
 import httpx2
-import pytest
 import sqlalchemy as sa
 from conftest import H, RECIPE, client, hub, login, pair, report  # noqa: F401
 from test_search import play, report as search_report
@@ -71,7 +69,9 @@ def finished_run(app, u, agent, with_figure=True):
            "params_m": 30.5, "per_class": {"car": 0.5, "bus": 0.3245}, "input_size": 384, "images": 50}
     feats = {"split": "valid", "images": 20, "objects": 80, "size": 384, "classes": {"car": 50, "bus": 30},
              "probes": {"stock rfdetr/nano": {"knn_acc": 0.7, "linear_acc": 0.75}, "f": {"knn_acc": 0.8, "linear_acc": 0.83}},
-             "cka": {"f vs stock rfdetr/nano": {"objects": 0.61, "tokens": 0.55}}}
+             "cka": {"f vs stock rfdetr/nano": {"objects": 0.61, "tokens": 0.55}},
+             "attention": {"f": {"images": 16, "object_focus": 0.62, "box_area": 0.2, "lift": 3.1, "cls_object_focus": 0.5,
+                                 "entropy": 0.81, "similarity_to_teacher": 0.7}}}
     stages = [{"name": "f", "status": "done", "result": {"metrics": {"train_images": 100}}},
               {"name": "e", "status": "done", "result": {"metrics": {"map": 0.4123}}},
               {"name": "feat", "status": "done", "result": {"metrics": feats},
@@ -130,6 +130,8 @@ def test_run_tools_figures_logs_and_scoping(hub):  # noqa: F811
     res = run.data["results"][0]
     assert res["map"] == 41.23 and res["per_class"] == {"car": 50.0, "bus": 32.45} and res["standing"]["rank"] == 1
     assert run.data["features"]["feat"]["probes"]["f"]["knn_acc"] == 80.0
+    att = run.data["features"]["feat"]["attention"]["f"]
+    assert att["object_focus_pct"] == 62.0 and att["box_area_pct"] == 20.0 and att["lift"] == 3.1 and att["similarity_to_teacher"] == 0.7
     figs = yeti_tools.call(eng, me, "view_figures", {"run_id": rid})
     assert not figs.error and len(figs.images) == 1 and figs.images[0][0].startswith(b"\x89PNG")
     assert figs.data["figures_shown_in_order"][0]["figure"] == "stages/feat/pca.png" and "PCA" in figs.label

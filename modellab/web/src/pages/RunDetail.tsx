@@ -71,9 +71,28 @@ function FeaturesResult({ m, runId, outputs }: { m: any; runId: string; outputs:
             <tr key={k}><td className="text-fg">{k}</td><td className="text-right font-mono tabular-nums">{fmt.num(v.objects, 3)}</td><td className="text-right font-mono tabular-nums">{fmt.num(v.tokens, 3)}</td></tr>
           ))}</tbody>
         </table>
+        {m.attention && Object.keys(m.attention).length > 0 && (
+          <table className={tbl}>
+            <thead className="text-left text-muted"><tr><th>Attention</th><th className="text-right" title="share of attention inside ground-truth boxes">on objects</th>
+              <th className="text-right" title="on-objects share divided by the boxes' share of the image (1x = no preference)">lift</th>
+              <th className="text-right" title="correlation with the teacher's attention map">vs teacher</th></tr></thead>
+            <tbody>{Object.entries(m.attention).map(([k, v]: [string, any]) => (
+              <tr key={k}><td className="text-fg">{k}</td><td className="text-right font-mono tabular-nums">{fmt.pct(v.object_focus)}</td>
+                <td className="text-right font-mono tabular-nums">{v.lift != null ? `${fmt.num(v.lift, 2)}×` : "–"}</td>
+                <td className="text-right font-mono tabular-nums">{v.similarity_to_teacher != null ? fmt.num(v.similarity_to_teacher, 2) : "–"}</td></tr>
+            ))}</tbody>
+          </table>
+        )}
         <div className="text-2xs text-subtle">{m.images} images · {m.objects} objects · size {m.size} · split {m.split}</div>
       </div>
-      {outputs?.pca && <img src={api.fileUrl(runId, `stages/${m.__stage}/${outputs.pca}`)} alt="PCA" className="w-full rounded-xl border border-line bg-white" />}
+      {(outputs?.pca || outputs?.attention) && (
+        <div className="space-y-3">
+          {outputs?.pca && <figure><img src={api.fileUrl(runId, `stages/${m.__stage}/${outputs.pca}`)} alt="PCA of each backbone's features" className="w-full rounded-xl border border-line bg-white" />
+            <figcaption className="mt-1 text-2xs text-subtle">PCA of the feature maps (3 components as colour), one row per image</figcaption></figure>}
+          {outputs?.attention && <figure><img src={api.fileUrl(runId, `stages/${m.__stage}/${outputs.attention}`)} alt="Attention of each backbone" className="w-full rounded-xl border border-line bg-white" />
+            <figcaption className="mt-1 text-2xs text-subtle">Where the last global attention layer looks (darker = more attention received)</figcaption></figure>}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 # Phase 2: the core of the R&D playground, then the rest of it
 
-> Status: in progress. The core (search, export, dataset check, privacy fix) is built, see "The core" below.
+> Status: in progress. The core (search, export, dataset check, privacy fix) and Yeti, the assistant, are built, see
+> "The core" below.
 > Phase 1 (v0.1): [HUB_PLAN.md](HUB_PLAN.md), [HUB.md](HUB.md).
 
 The long-term goal is a playground for deep-learning R&D on vision models: bring any model, change its architecture,
@@ -23,7 +24,7 @@ your machines.
 | Models | Every model in the catalog (RF-DETR, LT-DETR; DINOv2 and DINOv3 teachers). Any Hugging Face model or custom code comes later, with a sandbox. |
 | Data | Stays on your machines. The hub receives metrics, logs, names and fingerprints, but never images, annotations or weights. |
 | Compute | Your own Linux GPU machines, as in v0.1. Cloud GPUs and clusters are phase 3. |
-| AI assistant | You connect ModelLab to your own Claude account through MCP (later; read-only first). ModelLab holds no Anthropic key. |
+| AI assistant | Yeti, on each user's own Claude account: an API key from their Claude Console account (stored encrypted on the hub) for the in-app chat, or a Claude app connected to ModelLab's MCP server with OAuth. Read-only first. |
 | Hosting | One hub instance on Railway (it keeps some state in memory). |
 | Offline | Not part of phase 2. The offline PC stays on v0.1; a lighter offline edition will be planned separately. |
 | Comparability | As in v0.1. Search trials are ordinary runs, so every result carries the same fingerprints and "not comparable" flags. |
@@ -115,6 +116,8 @@ Errors block a search. Warnings are shown alongside it.
   - the names, sizes and paths of checkpoints and exported files.
 
   Images, annotations, weights and checkpoints never reach it.
+- **Yeti** sends Claude only what its tools return when the user asks (names, settings, metrics, log tails, the PCA
+  and attention figures above), with the user's own Claude account. Never datasets, images or checkpoints.
 
 
 ### How it was built
@@ -130,25 +133,33 @@ Errors block a search. Warnings are shown alongside it.
   gained `onnx`, `onnxscript` and `onnxslim`, which LightlyTrain's exporter needs.
 - **Dataset check** (`modellab.datasets.check`): runs with every dataset add, import and re-check on the machine.
 
-### Optional: Claude, read-only
+### 5. Yeti, the assistant (built)
 
-- A read-only MCP server at `/mcp` that can read runs, logs, results, comparisons and searches.
-- Each user connects it to their own Claude account with a personal access token, for example in Claude Code.
-  Sign-in from claude.ai (OAuth) comes later.
-- Because it only reads, it can't change anything.
-- It is a thin layer over the existing API and makes a good demo. It ships if there is time.
+A cute ice-blue yeti in the corner of every page: help with ModelLab, and explanations of results (explainable AI).
 
+- **Help**: how pages, stages, searches, datasets, machines and export work, from a guide built into the system prompt
+  (`modellab/hub/yeti_guide.md`) and the user's own data.
+- **Explanations**: Claude reads deterministic evidence instead of computing it: why a search recommended its model
+  (speed headroom, round rankings and cutoffs, marginal gain per model and input size, distillation and learning-rate
+  effects, seed noise, margin over the runner-up, caveats), runs (results against comparable ones, per-class
+  strengths, failures and logs), comparisons, the leaderboard, and feature figures (PCA and attention images are sent
+  as images).
+- **Attention maps** (`modellab/attention.py`): the features stage now also records where each backbone's last global
+  self-attention layer looks, how much of it lands on objects, and how close it is to the teacher's.
+- **Suggestions**: pages with something to explain make Yeti wave once with an offer; "Explain" buttons sit next to
+  recommendations, results, figures, failures and checks.
+- **Claude**: the in-app chat uses the user's Claude Console API key (encrypted at rest); Claude apps connect to the
+  MCP server at `/mcp` with OAuth (claude.ai, Desktop, mobile, Claude Code). Same read-only tools either way.
 
 ### Next
 
-1. The read-only Claude connection (MCP), at any point.
-2. Then the rest of the playground below.
+1. The rest of the playground below, starting with Yeti's write tools (with approval).
 
 ## Next: the rest of the R&D playground
 
 Updates in whatever order is most useful. The default order is:
 
-1. **Claude through MCP, full:** sign-in from claude.ai (OAuth), plus tools that change things (draft recipes,
+1. **Yeti beyond reading:** tools that change things (draft recipes,
    queue runs, start searches, edit models). Claude asks the user before using them, and the hub logs each change as
    "via Claude". Users use it to debug failed runs, plan experiments, find papers and released weights, write custom
    modules and drive the architecture editor.

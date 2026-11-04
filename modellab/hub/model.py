@@ -781,7 +781,7 @@ def compare(c: sa.Connection, user: dict, items: str) -> dict:
                                                   "gpu": (env.get("gpu") or {}).get("devices"),
                                                   "machine": r.get("machine_name")}}))
             pcas[rid] = sorted(p for (p,) in c.execute(sa.select(db.files.c.path).where(db.files.c.run_id == rid))
-                               if re.match(r"^stages/[^/]+/pca\.png$", p))
+                               if re.match(r"^stages/[^/]+/(pca|attention)\.png$", p))  # feature figures
     run_ids = list(configs)
     all_keys = sorted(set().union(*(cf.keys() for cf in configs.values())))
     diff = [{"key": k, "values": {rid: configs[rid].get(k) for rid in run_ids}} for k in all_keys

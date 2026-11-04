@@ -24,6 +24,8 @@ Current version: **v0.1** (beta).
 - **The hub** is the web app your team signs into. It keeps accounts, queues, results and logs.
 - **The agent** runs on each Linux GPU PC. It trains and evaluates there. Datasets, weights and checkpoints never
   leave the PC.
+- **Yeti** is the assistant in the web app. It runs on Claude with your own Claude account and reads (never changes)
+  your ModelLab data to answer.
 - **Offline mode**: the same app also runs on a single PC without internet (`python app.py`), for air-gapped
   machines.
 
@@ -44,6 +46,19 @@ Current version: **v0.1** (beta).
   runs, spread over every machine that holds the same data.
 - **Export** the winner (or any fine-tuned model): ONNX, a TensorRT FP16 engine when TensorRT is installed on the
   machine, a model card and a small example script. The files stay on the machine.
+
+**Yeti, the assistant**
+- A small ice-blue yeti in the bottom-right corner answers questions about ModelLab ("how do I add a machine?") and
+  **explains your results**: why a search picked its model (speed headroom, how each round ranked, where a bigger
+  model or input size stopped paying off, whether the winner beat the runner-up by more than the seed noise), why a
+  run scored what it did or failed, what the PCA and attention figures show, how two runs differ.
+- Where there's something to explain, Yeti waves and offers it, and "Explain" buttons sit next to recommendations,
+  results, figures, failures and machine checks.
+- It runs on Claude, on your own account: paste an API key from your Claude Console account, or add ModelLab as a
+  connector in Claude (claude.ai, Claude Desktop, mobile, Claude Code) and use your Claude subscription. Read-only:
+  it never changes anything, and never sees datasets, images or checkpoints.
+
+![Yeti explaining a search](docs/screenshots/hub_10_yeti_explains.png)
 
 **Results**
 - **One evaluation for every model**: same images, same metric code (COCO mAP, per-class AP, latency, VRAM, size).
@@ -81,7 +96,7 @@ Current version: **v0.1** (beta).
 - Any vision model from Hugging Face (`transformers`, `timm`), or your own upload.
 - An architecture editor: swap backbones and heads, add or change layers, or build a model from scratch.
 - Hugging Face datasets with a viewer; classification and segmentation.
-- Claude through MCP, on your own Claude account: debug runs, plan experiments, find papers, edit architectures.
+- Yeti beyond reading: draft recipes, queue runs and start searches when you approve, find papers, help in the architecture editor.
 
 **Phase 3**: cloud GPUs, and clusters (sharing machines with teammates by invitation).
 
@@ -90,7 +105,7 @@ Current version: **v0.1** (beta).
 | path | what |
 |---|---|
 | `modellab/` | the engine: recipes, stages, evaluation, datasets, run store |
-| `modellab/hub/` | the hosted web app (API, accounts, machines, installer) |
+| `modellab/hub/` | the hosted web app (API, accounts, machines, installer, searches, Yeti + MCP server) |
 | `modellab/agent/` | the agent on each GPU PC |
 | `modellab/web/` | the web UI (React) |
 | `recipes/` | experiment templates |

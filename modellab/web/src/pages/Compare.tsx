@@ -193,11 +193,11 @@ export default function Compare() {
       </Card>
 
       {Object.values(data.pca as Record<string, string[]>).some((l) => l.length) && (
-        <Card title="Feature PCA">
+        <Card title="Feature figures" description="PCA of each backbone's features, and where its last global attention layer looks">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {runIds.flatMap((rid) => (data.pca[rid] as string[]).map((p) => (
               <figure key={rid + p} className="overflow-hidden rounded-xl border border-line bg-raised/40">
-                <img src={api.fileUrl(rid, p)} alt="PCA" className="w-full" />
+                <img src={api.fileUrl(rid, p)} alt={p.endsWith("attention.png") ? "attention" : "PCA"} className="w-full" />
                 <figcaption className="px-3 py-2 text-[11.5px] text-muted">{rows.find((r) => r.run_id === rid)?.run_name} · <span className="font-mono">{p}</span></figcaption>
               </figure>
             )))}

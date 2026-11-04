@@ -484,7 +484,12 @@ def features_evidence(m: dict) -> dict:
         out["cka"] = {k: {"objects": r2(v.get("objects")), "tokens": r2(v.get("tokens"))} for k, v in cka.items() if isinstance(v, dict)}
     att = m.get("attention") or {}
     if att:
-        out["attention"] = att
+        out["attention"] = {k: _drop_none({
+            "images": v.get("images"), "object_focus_pct": pct(v.get("object_focus")), "box_area_pct": pct(v.get("box_area")),
+            "lift": v.get("lift"), "cls_object_focus_pct": pct(v.get("cls_object_focus")), "entropy": v.get("entropy"),
+            "similarity_to_teacher": v.get("similarity_to_teacher")}) for k, v in att.items() if isinstance(v, dict)}
+    if m.get("attention_errors"):
+        out["attention_errors"] = m["attention_errors"]
     out["how_to_read"] = {
         "probes": ("Accuracy (%) of predicting each object's class from the backbone's pooled features inside its box, "
                    "with a k-nearest-neighbour vote and with a linear classifier (cross-validated, grouped by image). Higher "
@@ -497,11 +502,13 @@ def features_evidence(m: dict) -> dict:
                 "components of that model's feature map (PCA fitted jointly over the shown images). Coherent, object-shaped "
                 "regions with consistent colours across images mean semantic features; speckled or grid-like colours mean "
                 "local texture. No input images are shown, by design (they never leave the PC)."),
-        "attention": ("attention.png and attention metrics, when present: where the backbone's last global self-attention "
-                      "layer looks. object_focus = share of attention landing inside ground-truth boxes; lift = that share "
-                      "divided by the boxes' share of the image (1 = no preference, 2 = twice as concentrated on objects); "
-                      "entropy (0..1) = how spread out it is; similarity_to_teacher = correlation of the attention maps "
-                      "with the teacher's."),
+        "attention": ("attention.png and the attention numbers: where the backbone's last global self-attention layer "
+                      "looks (the attention each patch receives from all patches, averaged over heads). object_focus_pct = "
+                      "share of that attention inside ground-truth boxes; box_area_pct = the boxes' share of the image; lift = "
+                      "their ratio (1 = no preference for objects, 3 = three times as concentrated on objects); "
+                      "cls_object_focus_pct = the same for the class token's attention; entropy (0..1) = how spread out it "
+                      "is; similarity_to_teacher = correlation of the attention maps with the teacher's (-1..1). The figure "
+                      "shows no input images, by design."),
     }
     return out
 
