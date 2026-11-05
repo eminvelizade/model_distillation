@@ -48,7 +48,7 @@ Current version: **v0.1** (beta).
   machine, a model card and a small example script. The files stay on the machine.
 
 **Yeti, the assistant**
-- A small ice-blue yeti in the bottom-right corner answers questions about ModelLab ("how do I add a machine?") and
+- Yeti, a fluffy ice-blue plush in the bottom-right corner, answers questions about ModelLab ("how do I add a machine?") and
   **explains your results**: why a search picked its model (speed headroom, how each round ranked, where a bigger
   model or input size stopped paying off, whether the winner beat the runner-up by more than the seed noise), why a
   run scored what it did or failed, what the PCA and attention figures show, how two runs differ.
@@ -109,5 +109,6 @@ Current version: **v0.1** (beta).
 | `modellab/agent/` | the agent on each GPU PC |
 | `modellab/web/` | the web UI (React) |
 | `recipes/` | experiment templates |
+| `tools/mascot/` | how Yeti's art is made: cut-out, layers, clips ([guide](tools/mascot/README.md)) |
 | `docs/` | guides and design notes |
 | `tests/` | tests (`python -m pytest tests/modellab tests/hub -q`) |

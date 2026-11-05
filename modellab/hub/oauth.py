@@ -21,6 +21,7 @@ import html
 import json
 import secrets
 import time
+from pathlib import Path
 from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
 import sqlalchemy as sa
@@ -270,7 +271,7 @@ def authorize(request: Request):
     name = html.escape(client["name"] or "an MCP client")
     who = html.escape(user["display_name"] or user["username"])
     body = f"""
-<div class=yeti>{YETI_SVG}</div>
+<div class=yeti>{YETI_IMG}</div>
 <h1>Connect <b>{name}</b> to ModelLab?</h1>
 <p class=muted>Signed in as <b>{who}</b>. You'll go back to <b>{html.escape(host)}</b>.</p>
 <ul>
@@ -478,7 +479,9 @@ def disconnect(client_id: str, request: Request, user: dict = Depends(auth.curre
 
 # ---------------------------------------------------------------- the consent page
 
-YETI_SVG = """<svg width="84" height="84" viewBox="0 0 120 120" aria-hidden="true"><defs><clipPath id="yc"><circle cx="60" cy="68" r="48"></circle></clipPath></defs><circle cx="60" cy="68" r="48" fill="#c7e3f7"></circle><path d="M24 58A38 38 0 0 1 52 31" stroke="#e2f1fd" stroke-width="4.5" stroke-linecap="round" fill="none"></path><g clip-path="url(#yc)"><path d="M21 124C19 95 36 77 60 77C84 77 101 95 99 124Z" fill="#f7fbff"></path><path d="M83 81C95 89 101 103 99 124H89C91 105 89 92 83 81Z" fill="#e2f0fb"></path><ellipse cx="60" cy="107" rx="16" ry="13.5" fill="#eaf5fd"></ellipse><path d="M30 86C21 93 20 107 27 114C33 117 38 108 37 97Z" fill="#ebf5fd"></path><path d="M90 86C99 93 100 107 93 114C87 117 82 108 83 97Z" fill="#ebf5fd"></path></g><circle cx="60" cy="68" r="47.3" fill="none" stroke="#a3cbec" stroke-width="1.4"></circle><g><g fill="none" stroke="#9cc5e7" stroke-width="3.6" stroke-linejoin="round"><path d="M38 28C31.5 23 28.5 15 31.5 7.5C36.5 11.5 41.5 17.5 45 24Z"></path><path d="M82 28C88.5 23 91.5 15 88.5 7.5C83.5 11.5 78.5 17.5 75 24Z"></path><path d="M27 47C27 25 41 15 60 15C79 15 93 25 93 47C93 65 79 76 60 76C41 76 27 65 27 47Z"></path><path d="M47.5 19C48 11.5 54.5 7.5 60 11C65.5 7.5 72 11.5 72.5 19Z"></path></g><path d="M38 28C31.5 23 28.5 15 31.5 7.5C36.5 11.5 41.5 17.5 45 24Z" fill="#b4d8f2"></path><path d="M82 28C88.5 23 91.5 15 88.5 7.5C83.5 11.5 78.5 17.5 75 24Z" fill="#b4d8f2"></path><path d="M27 47C27 25 41 15 60 15C79 15 93 25 93 47C93 65 79 76 60 76C41 76 27 65 27 47Z" fill="#f7fbff"></path><path d="M47.5 19C48 11.5 54.5 7.5 60 11C65.5 7.5 72 11.5 72.5 19Z" fill="#f7fbff"></path><path d="M80 24C89 30 93 39 93 47C93 62 84 72.5 71 75.5C81.5 68.5 87 58.5 87 47C87 38.5 85 30.5 80 24Z" fill="#e2f0fb"></path><path d="M37 47C37 36 47 31 60 31C73 31 83 36 83 47V51C83 62 73 68.5 60 68.5C47 68.5 37 62 37 51Z" fill="#a9d6f0"></path><path d="M35 44C35 33 46 27.5 60 27.5C74 27.5 85 33 85 44C81 39.5 76.5 39 72.5 41.5C69.5 37 63.5 36.5 60 40C56.5 36.5 50.5 37 47.5 41.5C43.5 39 39 39.5 35 44Z" fill="#f7fbff"></path><g><ellipse cx="50" cy="48" rx="4.3" ry="5" fill="#12324a"></ellipse><ellipse cx="70" cy="48" rx="4.3" ry="5" fill="#12324a"></ellipse><circle cx="51.7" cy="46.1" r="1.7" fill="#fff"></circle><circle cx="71.7" cy="46.1" r="1.7" fill="#fff"></circle><circle cx="48.7" cy="50.3" r=".75" fill="#fff"></circle><circle cx="68.7" cy="50.3" r=".75" fill="#fff"></circle></g><ellipse cx="42.8" cy="56.6" rx="4.3" ry="2.5" fill="#78b6e0" opacity=".5"></ellipse><ellipse cx="77.2" cy="56.6" rx="4.3" ry="2.5" fill="#78b6e0" opacity=".5"></ellipse><path d="M56.6 53.8Q60 52.1 63.4 53.8Q62.6 56.7 60 57.3Q57.4 56.7 56.6 53.8Z" fill="#3b77a6"></path><path d="M55.4 59.2Q60 63.6 64.6 59.2" stroke="#12324a" stroke-width="2" fill="none" stroke-linecap="round"></path></g><g><path d="M86 84L101 54" stroke="#9cc5e7" stroke-width="16" stroke-linecap="round"></path><circle cx="102.5" cy="48.5" r="9.8" fill="#9cc5e7"></circle><circle cx="96.6" cy="42" r="4.5" fill="#9cc5e7"></circle><circle cx="102.3" cy="39.6" r="4.5" fill="#9cc5e7"></circle><circle cx="108" cy="42.2" r="4.5" fill="#9cc5e7"></circle><path d="M86 84L101 54" stroke="#f7fbff" stroke-width="12.5" stroke-linecap="round"></path><circle cx="102.5" cy="48.5" r="8" fill="#a9d6f0"></circle><circle cx="96.6" cy="42" r="2.7" fill="#a9d6f0"></circle><circle cx="102.3" cy="39.6" r="2.7" fill="#a9d6f0"></circle><circle cx="108" cy="42.2" r="2.7" fill="#a9d6f0"></circle><ellipse cx="102.5" cy="49.6" rx="3.6" ry="3.2" fill="#c9e7f7"></ellipse></g></svg>"""
+# Yeti, the plush mascot (tools/mascot/export.py writes this 160 px copy next to this file)
+YETI_IMG = ('<img src="data:image/webp;base64,' + base64.b64encode(Path(__file__).with_name("yeti.webp").read_bytes()).decode()
+            + '" width="84" height="84" alt="">')
 
 PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, \
 initial-scale=1"><title>{{TITLE}} · ModelLab</title><style>

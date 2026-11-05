@@ -54,9 +54,7 @@ export default function YetiDock() {
         aria-expanded={y.open}
         className={cx("group fixed bottom-3 right-3 z-40 rounded-full transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:bottom-5 sm:right-5",
           y.open && "max-sm:hidden")}>
-        <span className="block [filter:drop-shadow(0_8px_14px_rgb(16_40_72/.26))] dark:[filter:drop-shadow(0_8px_18px_rgb(0_0_0/.6))]">
-          <Yeti size={64} pose={y.busy ? "think" : pose} />
-        </span>
+        <Yeti size={68} pose={y.busy ? "think" : pose} className="block" />
       </button>
     </>
   );

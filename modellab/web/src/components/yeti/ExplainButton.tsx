@@ -14,7 +14,7 @@ export default function ExplainButton({ ask, focus, about, label = "Explain", cl
     <button onClick={() => y.ask(ask, focus, about)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onFocus={() => setHover(true)} onBlur={() => setHover(false)} title="Ask Yeti to explain this"
       className={cx("inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-accent-soft py-0 pl-0.5 pr-2.5 text-xs font-medium text-accent ring-1 ring-inset ring-accent/10 transition duration-200 hover:-translate-y-px hover:shadow-soft", className)}>
-      <Yeti size={26} badge={false} pose={hover ? "wave" : "idle"} />{label}
+      <Yeti size={26} pose={hover ? "wave" : "idle"} />{label}
     </button>
   );
 }
