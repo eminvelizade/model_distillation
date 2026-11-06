@@ -219,6 +219,9 @@ What Claude sees: only what the tools return when you ask (run, search and machi
 tails, PCA and attention figures). Never datasets, images, annotations or checkpoints. Yeti can't start, change or
 delete anything.
 
+Next, Yeti goes hands-on: it highlights what to click, acts when you approve, fixes failed runs and finds datasets and
+models online. Plan: [AGENTS_PLAN.md](AGENTS_PLAN.md).
+
 ## 9. Updates
 
 Each heartbeat tells the agent the hub's current release. When the agent is idle (no run, no command), it:

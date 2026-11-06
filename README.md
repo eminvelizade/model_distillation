@@ -6,6 +6,13 @@ You describe an experiment in the web app: fine-tune a detector, distill a large
 them on your data. It runs on one of your GPU machines, and the results come back to one place where you can rank
 and compare them.
 
+ModelLab has three parts:
+- **Agents** help you develop: Yeti, the assistant.
+- **The harness** is the tools to build and improve models: the engine, your machines, datasets, one evaluation.
+- **Loops** run dozens of experiments to find the next breakthrough: Find my best model, for now.
+
+How they fit together: [docs/PLATFORM.md](docs/PLATFORM.md).
+
 Current version: **v0.1** (beta).
 
 ![Machine page](docs/screenshots/hub_3_machine_detail.png)
@@ -22,8 +29,8 @@ Current version: **v0.1** (beta).
 ```
 
 - **The hub** is the web app your team signs into. It keeps accounts, queues, results and logs.
-- **The agent** runs on each Linux GPU PC. It trains and evaluates there. Datasets, weights and checkpoints never
-  leave the PC.
+- **The machine agent** runs on each Linux GPU PC. It trains and evaluates there. Datasets, weights and checkpoints
+  never leave the PC.
 - **Yeti** is the assistant in the web app. It runs on Claude with your own Claude account and reads (never changes)
   your ModelLab data to answer.
 - **Offline mode**: the same app also runs on a single PC without internet (`python app.py`), for air-gapped
@@ -89,14 +96,26 @@ Current version: **v0.1** (beta).
 | Deploy the hub and add my GPU PCs | [docs/HUB.md](docs/HUB.md) |
 | Write experiments: recipes, stages, evaluation details | [docs/MODELLAB.md](docs/MODELLAB.md) |
 | Run everything on one offline PC | [docs/MODELLAB.md](docs/MODELLAB.md) and [docs/OFFLINE_PIPELINE.md](docs/OFFLINE_PIPELINE.md) |
+| See where ModelLab is going: agents, harness and loops | [docs/PLATFORM.md](docs/PLATFORM.md) |
 
 ## Roadmap
 
-**Next: the rest of the R&D playground** ([plan](docs/PHASE2_PLAN.md))
+By part ([how they fit together](docs/PLATFORM.md)):
+
+**Agents: Yeti, hands-on** ([plan](docs/AGENTS_PLAN.md))
+- One sentence is enough: a fast System One model picks the component and the action, ModelLab highlights it and
+  fills it in, and nothing runs without your approval. Claude plans anything bigger.
+- Yeti guides you by highlighting what to click, fixes failed runs, turns your ideas into experiments and searches,
+  and finds datasets and models online.
+
+**Harness: the rest of the R&D playground** ([plan](docs/PHASE2_PLAN.md))
 - Any vision model from Hugging Face (`transformers`, `timm`), or your own upload.
 - An architecture editor: swap backbones and heads, add or change layers, or build a model from scratch.
 - Hugging Face datasets with a viewer; classification and segmentation.
-- Yeti beyond reading: draft recipes, queue runs and start searches when you approve, find papers, help in the architecture editor.
+
+**Loops**
+- Faster and wider searches, failed trials that fix themselves, and research loops where the agent picks the next
+  experiments from the last results.
 
 **Phase 3**: cloud GPUs, and clusters (sharing machines with teammates by invitation).
 
@@ -106,7 +125,7 @@ Current version: **v0.1** (beta).
 |---|---|
 | `modellab/` | the engine: recipes, stages, evaluation, datasets, run store |
 | `modellab/hub/` | the hosted web app (API, accounts, machines, installer, searches, Yeti + MCP server) |
-| `modellab/agent/` | the agent on each GPU PC |
+| `modellab/agent/` | the machine agent on each GPU PC |
 | `modellab/web/` | the web UI (React) |
 | `recipes/` | experiment templates |
 | `tools/mascot/` | the 3D mascots (five plush, one snow golem): how they're drawn and how to add one ([guide](tools/mascot/README.md)) |
