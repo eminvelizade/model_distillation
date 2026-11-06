@@ -18,7 +18,7 @@ export const MASCOT_LIST: { kind: MascotKind; name: string; tagline: string }[] 
   { kind: "bop", name: "Bop", tagline: "always vibing, always on it" },
   { kind: "twinkle", name: "Twinkle", tagline: "a star who cheers every finished run" },
   { kind: "pip", name: "Pip", tagline: "small, quick and curious" },
-  { kind: "rime", name: "Rime", tagline: "a quiet snow golem who notices everything" },
+  { kind: "rime", name: "Rime", tagline: "a tall, quiet snow golem who notices everything" },
 ];
 export const MASCOT_NAMES = Object.fromEntries(MASCOT_LIST.map((m) => [m.kind, m.name])) as Record<MascotKind, string>;
 

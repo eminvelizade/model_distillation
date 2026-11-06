@@ -18,9 +18,13 @@ type Spec = {
   nose: [number, number, number, number]; mouth: [number, number, number, number]; blush: [number, number, number, number];
   rest: number; prop: string; exposure: number; colors: { main: string; accent: string; blush: string; extra: string };
   ears?: boolean; petals?: boolean; bubbles?: boolean; arm?: Arm;
-  stoic?: boolean;          // never smiles (Rime): no happy eyes, a slow, stiff wave
+  stoic?: boolean;          // his face never changes (Rime): no smile, no blinking, no closed eyes; a slow, stiff wave
   frost?: boolean;          // has frost drifting round it (uFrost*)
   flake?: "snow";           // thinks in snowflakes (else sparkles)
+  props?: false;            // no snowflake, sparkle or z's at all
+  head?: boolean;           // turns its own head (uHead) to watch, nod and bow; the body turns less
+  motion?: Partial<{ breathe: number; hop: number; squash: number; tilt: number }>;   // scales the usual motion
+  portrait?: [number, number, number, number];   // the camera for small views: head and shoulders
 };
 
 // Shapes, faces and palette colours (ModelLab's ice scale and the Tailwind palette). Positions are in each mascot's
@@ -59,11 +63,13 @@ const SPECS: Record<MascotKind, Spec> = {
     colors: { main: "#a3e635", accent: "#f97316", blush: "#facc15", extra: "#a3e635" },   // lime-400, orange-500, yellow-400
   },
   rime: {
-    glsl: RIME, box: [-1.36, -0.1, -1.36, 1.36, 2.45, 1.36], cam: [2.3, 9.9, 1.02, 15.5], top: 1.7, shadow: [2.0, 1.4],
-    eye: { x: 0.17, y: 1.32, rx: 0.048, ry: 0.056 }, eyeZ: 0.455, faceR: 3.0, nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0],
-    blush: [0.3, 1.2, 0.45, 0], rest: 0, prop: "#7eb0ee", exposure: 1.04, stoic: true, frost: true, flake: "snow",
-    arm: { shoulder: [0.4, 0.84, 0.03], len: 0.52, rest: Math.PI + 0.24, hide: false, raise: -0.9, fwd: 0.12 },   // hangs; waves out to the side
-    colors: { main: "#f3f7fc", accent: "#713f12", blush: "#22c55e", extra: "#7eb0ee" },   // snow, yellow-900 (twigs), green-500 (sprout), ice-400
+    glsl: RIME, box: [-1.15, -0.1, -1.15, 1.15, 3.25, 1.15], cam: [2.2, 10.5, 1.5, 19.5], portrait: [2.75, 10.5, 2.42, 7.5],
+    top: 2.9, shadow: [0.95, 0.6],
+    eye: { x: 0.105, y: 0.02, rx: 0.019, ry: 0.019 }, eyeZ: 0.178, faceR: 0.21, nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0],
+    blush: [0, 0, 0, 0], rest: 0, prop: "#7eb0ee", exposure: 1.1, stoic: true, frost: true, props: false, head: true,
+    motion: { breathe: 0.25, hop: 0, squash: 0.15, tilt: 0.5 },   // tall and made of snow: he barely bends
+    arm: { shoulder: [0.215, 1.97, 0.0], len: 1.105, rest: Math.PI + 0.082, hide: false, raise: -0.85, fwd: 0.12 },
+    colors: { main: "#f6f9fc", accent: "#7eb0ee", blush: "#7eb0ee", extra: "#7eb0ee" },   // snow; ice-400 for the frost
   },
 };
 
@@ -143,7 +149,7 @@ function loop(now: number) {
 }
 
 // ---------------------------------------------------------------- one mascot
-export type ViewOptions = { kind: MascotKind; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number };
+export type ViewOptions = { kind: MascotKind; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number; portrait?: boolean };
 
 export class View {
   private K: Spec;
@@ -170,9 +176,10 @@ export class View {
   private st = {
     pose: "idle" as MascotPose, poseT: 0, t: Math.random() * 10, blinkIn: 1.6 + Math.random() * 2, blinkT: -1,
     look: new THREE.Vector2(), lookV: new THREE.Vector2(), poke: -1, tilt: 0, tiltV: 0, flake: 0, zz: 0, bub: 0,
-    frost: Math.random() * 40,
+    frost: Math.random() * 40, bow: 0, roll: 0,
   };
   private earM = new THREE.Matrix4(); private earE = new THREE.Euler(); private v3 = new THREE.Vector3();
+  private headM = new THREE.Matrix4(); private headE = new THREE.Euler();
   private q = new THREE.Quaternion(); private qi = new THREE.Quaternion();
   private KEY = new THREE.Vector3(-0.42, 0.78, 0.5).normalize();    // big softbox, in front and above
   private FILL = new THREE.Vector3(0.85, 0.15, 0.5).normalize();    // fill from the other side
@@ -187,7 +194,7 @@ export class View {
     const ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("no 2D canvas");
     this.ctx = ctx;
-    const [camY, camZ, target, fov] = K.cam;
+    const [camY, camZ, target, fov] = (o.portrait && K.portrait) || K.cam;   // small views: head and shoulders
     this.fov = fov / (o.zoom ?? 1);
     this.camera = new THREE.PerspectiveCamera(this.fov, 1, 0.1, 60);
     this.camera.position.set(0, camY, camZ);
@@ -213,7 +220,7 @@ export class View {
       uArmA: { value: new THREE.Vector3() }, uArmB: { value: new THREE.Vector3() }, uArmOn: { value: 0 },
       uPetal: { value: [0, 1, 2].map(() => new THREE.Vector4()) }, uCurl: { value: [0, 1, 2].map(() => new THREE.Vector3()) },
       uPetalRoot: { value: new THREE.Vector3(0, 1.49, 0.1) }, uSway: { value: 0 },
-      uFrostT: { value: 0 }, uFrostR: { value: 1 }, uFrostC: { value: C("#3d82dc") },
+      uFrostT: { value: 0 }, uFrostR: { value: 1 }, uFrostC: { value: C("#3d82dc") }, uHead: { value: new THREE.Matrix3() },
     };
     const box = new THREE.BoxGeometry(boxMax.x - boxMin.x, boxMax.y - boxMin.y, boxMax.z - boxMin.z);
     box.translate((boxMax.x + boxMin.x) / 2, (boxMax.y + boxMin.y) / 2, (boxMax.z + boxMin.z) / 2);
@@ -373,6 +380,7 @@ export class View {
 
   private update(dt: number) {
     const st = this.st, K = this.K, U = this.uniforms, reduce = reduceMotion();
+    const MO = { breathe: 1, hop: 1, squash: 1, tilt: 1, ...K.motion };
     st.t += dt;
     st.poseT += dt;
     const t = st.t, P = st.pose, pt = st.poseT;
@@ -389,20 +397,21 @@ export class View {
         Math.max(-1, Math.min(1, (r.top + r.height * 0.45 - pointer.y) / (window.innerHeight * 0.45))));
     } else look.set(Math.sin(t * 0.31) * 0.15, Math.sin(t * 0.23) * 0.08);
     if (dt === 0) { st.look.copy(look); } else {
-      [st.look.x, st.lookV.x] = spring(st.look.x, st.lookV.x, look.x, 38, 10);
-      [st.look.y, st.lookV.y] = spring(st.look.y, st.lookV.y, look.y, 38, 10);
+      const [k, d] = K.stoic ? [16, 7] : [38, 10];   // (Rime turns slowly)
+      [st.look.x, st.lookV.x] = spring(st.look.x, st.lookV.x, look.x, k, d);
+      [st.look.y, st.lookV.y] = spring(st.look.y, st.lookV.y, look.y, k, d);
     }
-    this.root.rotation.y = st.look.x * 0.5;
-    this.root.rotation.x = -st.look.y * 0.16;
+    this.root.rotation.y = st.look.x * 0.5 * (K.head ? 0.25 : 1);   // (with a head of its own to turn, the body turns less)
+    this.root.rotation.x = -st.look.y * 0.16 * (K.head ? 0.15 : 1);
 
     // tilt: thinking leans in, waving leans away (or, without an arm, wiggles hello)
     let tilt = P === "think" ? 0.07 + Math.sin(t * 1.4) * 0.035 : P === "wave" && pt < 1.7 ? 0.05 : P === "sleep" ? 0.05 : 0;
     if (P === "wave" && !K.arm && pt < 1.6) tilt = 0.13 * Math.sin(pt * 9) * (1 - ease(pt / 1.6));
     if (dt === 0) st.tilt = tilt; else [st.tilt, st.tiltV] = spring(st.tilt, st.tiltV, tilt, 30, 8);
-    this.root.rotation.z = st.tilt;
+    this.root.rotation.z = st.tilt * MO.tilt;
 
     // breathing, squash, hop
-    const breathe = reduce ? 0 : (P === "sleep" ? 0.02 * Math.sin(t * 1.25) : 0.012 * Math.sin(t * 1.9));
+    const breathe = (reduce ? 0 : (P === "sleep" ? 0.02 * Math.sin(t * 1.25) : 0.012 * Math.sin(t * 1.9))) * MO.breathe;
     let hop = 0, sq = 0;
     if (P === "happy" && !reduce) {
       const h = pt / 0.9;
@@ -416,6 +425,7 @@ export class View {
       st.poke += dt;
       if (st.poke < 0.5) sq += -0.14 * Math.sin(Math.min(1, st.poke / 0.5) * Math.PI) * Math.exp(-st.poke * 3); else st.poke = -1;
     }
+    hop *= MO.hop; sq *= MO.squash;
     this.root.position.y = hop;
     const s = 1 + breathe + sq;
     this.squash.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s));
@@ -424,7 +434,8 @@ export class View {
 
     // eyes: blink, expressions, and a glance toward the target
     let mode = K.rest, open = 1;
-    if ((P === "wave" || P === "happy") && !K.stoic) mode = 1;   // (Rime never smiles)
+    if (K.stoic) { /* Rime's face never changes: no smile, no closed eyes, no blinking */ }
+    else if (P === "wave" || P === "happy") mode = 1;
     else if (P === "sleep") mode = 2;
     else if (mode === 0 && !reduce) {
       st.blinkIn -= dt;
@@ -434,7 +445,7 @@ export class View {
     if ((P === "wave" && pt > 1.9) || (P === "happy" && pt > 1.4) || (reduce && (P === "wave" || P === "happy"))) {
       st.pose = "idle"; st.poseT = 0;
     }
-    const E = K.eye, gx = st.look.x * 0.04, gy = st.look.y * 0.03;
+    const E = K.eye, gx = K.stoic ? 0 : st.look.x * 0.04, gy = K.stoic ? 0 : st.look.y * 0.03;   // (pebble eyes don't glance)
     (U.uEye.value as THREE.Vector4[])[0].set(-E.x + gx, E.y + gy, E.rx, E.ry);
     (U.uEye.value as THREE.Vector4[])[1].set(E.x + gx, E.y + gy, E.rx, E.ry);
     U.uEyeMode.value = mode;
@@ -469,6 +480,15 @@ export class View {
       (U.uArmA.value as THREE.Vector3).set(sx, sy, sz);
       (U.uArmB.value as THREE.Vector3).set(sx - Math.sin(a) * L, sy + Math.cos(a) * L, sz + (K.arm.fwd ?? 0.04) * up);
     }
+    if (K.head) {    // he turns his head to watch, nods (happy), tilts it while thinking and bows it asleep
+      const towards = dt === 0 ? 1 : 1 - Math.exp(-dt * 3);
+      st.bow += ((P === "sleep" ? 0.38 : 0) - st.bow) * towards;
+      st.roll += ((P === "think" ? 0.13 : 0) - st.roll) * towards;
+      const nod = P === "happy" && !reduce ? 0.3 * Math.sin(Math.PI * Math.min(1, pt / 1.1)) : 0;
+      this.headE.set(-st.look.y * 0.4 + nod + st.bow, st.look.x * 0.65, st.roll, "YXZ");
+      this.headM.makeRotationFromEuler(this.headE);
+      (U.uHead.value as THREE.Matrix3).setFromMatrix4(this.headM).transpose();
+    }
     if (K.frost) {   // the frost drifts faster while thinking, slower asleep, and puffs out on a hop
       st.frost += reduce ? 0 : dt * (P === "think" ? 2.6 : P === "sleep" ? 0.35 : 1);
       U.uFrostT.value = st.frost;
@@ -478,7 +498,7 @@ export class View {
     // props
     const H = K.top, bx = K.box[3];
     st.flake += ((P === "think" ? 1 : 0) - st.flake) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 6));
-    this.flake.visible = st.flake > 0.01 && !K.bubbles;
+    this.flake.visible = st.flake > 0.01 && !K.bubbles && K.props !== false;
     this.flake.material.opacity = st.flake;
     this.flake.material.rotation = reduce ? 0 : (K.ears || K.flake ? t * 0.8 : Math.sin(t * 2.0) * 0.25);
     this.flake.scale.setScalar(0.3 * (0.5 + 0.5 * st.flake));
@@ -494,7 +514,7 @@ export class View {
     st.zz += ((P === "sleep" ? 1 : 0) - st.zz) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 4));
     this.zs.forEach((z, i) => {
       const k = reduce ? 0.5 + i * 0.25 : (t * 0.42 + i * 0.5) % 1;
-      z.visible = st.zz > 0.01;
+      z.visible = st.zz > 0.01 && K.props !== false;
       z.position.set(bx * 0.62 + k * 0.32, H * 0.95 + k * 0.5, 0.3);
       z.material.opacity = st.zz * Math.sin(Math.PI * k);
       z.scale.setScalar((0.15 + 0.12 * k) * (i ? 0.85 : 1));

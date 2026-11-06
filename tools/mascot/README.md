@@ -48,30 +48,34 @@ are no images or 3D model files, except the small still pictures described below
 
 ## Rime, the snow golem
 
-Rime is the one mascot that isn't plush. He's packed snow with a crown of twigs round his face, two glossy pebble
-eyes and a small wavy mouth, and he never smiles: his eyes don't change when he waves or hops (`stoic` in his spec),
-and he waves slowly, out to the side. His GLSL starts with `#define SNOW`, which switches `RENDER` to the snow shading
-and the frost; the other mascots never compile any of it.
+Rime is the one mascot that isn't plush, and he isn't meant to look like the others. He's a tall, slender figure of
+packed snow, about five heads tall, with long arms that hang to his knees, long thin legs and a slight stoop. His face
+is a smooth, blank egg with two tiny dark pebbles for eyes, set far apart, and only a faint line pressed in for a
+mouth. His expression never changes (`stoic` in his spec): no smile, no blinking, no closed eyes. His head turns on
+its own (`head`: the `uHead` uniform turns it about his neck) to watch the pointer, nods when he's pleased, tilts while
+he thinks and bows when he sleeps; the body barely moves (`motion`), and he waves slowly with a bent elbow. He has no
+cartoon props (`props: false`). Below 48 px he's framed head and shoulders (`portrait`), so his face still reads.
+His GLSL starts with `#define SNOW`, which switches `RENDER` to the snow shading and the frost; the other mascots never
+compile any of it.
 
 - **Snow.** Light goes a long way into snow before it comes back out, so the shadow line is very soft (a wide wrap),
   and the light that wrapped furthest comes back blue, since ice absorbs a little red over a long path. Shadows and
   creases fill with the sky's cool light. Thin parts like the arms glow when the rim light is behind them, after
   Barré-Brisebois & Bouchard's fast translucency (GDC 2011), with the thickness read from the distance field.
-- **Grain.** The surface is clumps of grains: a soft bump round each jittered point of a cell grid (Worley 1996),
-  with bluer gaps between them. Single grains flash like tiny mirrors when they reflect the key light or the bright
-  sky into the eye, with a small cross of flare. Their seeds sit on a jittered 3D grid, as in Wang & Bowles' sparkle
-  effect (EGSR 2016). Grain and glints fade out where they'd be smaller than a couple of pixels, so nothing shimmers.
-  The lit snow sits a little under pure white so the flashes can show.
-- **Shape.** Soft lumps of packed snow everywhere but his face, made from sines. The 3D noise texture is filtered
-  in 8 bits, which shows as terraces when it shapes a surface; it's fine for colour.
-- **The crown.** Four twigs wind round it at different rates, with ends and forks sticking out, frost on their
-  upper sides and a green sprout. Its shadow on his face comes from a smooth ring as thick as the twigs, because the
-  soft shadow needs an exact distance: a cheap bound there makes banding.
-- **Frost.** 28 ice crystals drift round him, slowly falling and turning, each twinkling now and then. They're drawn
-  in the same shader, hidden where they're behind him. A crystal is a tiny six-pointed star when it's big enough to
-  see; smaller, it's a soft dot with its brightness scaled to its true size. The frost drifts faster while he thinks,
-  slower while he sleeps, and puffs out when he hops. It's deeper blue on a light page and pale on a dark one, and
-  it stops with "reduce motion".
+- **Real snow, not plush.** More contrast than the plush studio look, as snow has in daylight: near-white where
+  the key light falls, blue-grey in shadow. No fuzzy edge: snow's outline is crisp.
+- **Grain.** Three levels, each drawn only where it's bigger than a pixel: shallow scoops where the snow was pressed
+  together, then grains, then finer grains standing up (soft bumps round jittered points of cell grids, Worley 1996),
+  with bluer gaps and the odd tiny hole. Single grains flash like tiny mirrors when they reflect the key light or the
+  bright sky into the eye; their seeds sit on a jittered 3D grid, as in Wang & Bowles' sparkle effect (EGSR 2016).
+- **Shape.** Soft lumps of hand-packed snow everywhere but his face, made from sines. The 3D noise texture is
+  filtered in 8 bits, which shows as terraces when it shapes a surface; it's fine for colour. The joints are blended
+  only a little, because a wide blend swells them like knuckles.
+- **Frost.** Diamond dust: 28 tiny ice crystals drift round him, slowly falling and turning. Most of the time a
+  crystal is a faint speck; when it turns to mirror the light it flashes, with a small four-point flare like a camera
+  sees. They're drawn in the same shader, hidden where they're behind him, and one smaller than a pixel keeps its
+  true brightness instead of swelling. The frost drifts faster while he thinks, slower while he sleeps, and puffs
+  out when he nods. It's deeper blue on a light page and pale on a dark one, and it stops with "reduce motion".
 
 ## Changing a mascot or adding one
 
