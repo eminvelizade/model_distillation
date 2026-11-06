@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { api, streamYeti, YetiEvent, YetiPage, YetiSettings } from "../../api";
+import { currentMascot } from "./mascots";
 import { useSession } from "../../session";
 
 export interface YetiTool { id: string; label: string; href?: string | null; ok?: boolean; done: boolean }
@@ -115,7 +116,7 @@ export function YetiProvider({ children }: { children: ReactNode }) {
       else if (e.type === "error") patch(aid, (m) => ({ ...m, streaming: false, status: null, error: { code: e.code, message: e.message } }));
     };
     try {
-      await streamYeti({ messages: history.filter((m) => m.text.trim() || m.role === "user").map((m) => ({ role: m.role, text: m.text, note: m.role === "user" ? m.note ?? null : null })), page: pageCtx },
+      await streamYeti({ messages: history.filter((m) => m.text.trim() || m.role === "user").map((m) => ({ role: m.role, text: m.text, note: m.role === "user" ? m.note ?? null : null })), page: pageCtx, mascot: currentMascot() },
         onEvent, ctrl.signal);
       patch(aid, (m) => (m.streaming ? { ...m, streaming: false, error: m.text ? null : { code: "cut", message: "The answer stopped early. Try again." } } : m));
     } catch (err) {

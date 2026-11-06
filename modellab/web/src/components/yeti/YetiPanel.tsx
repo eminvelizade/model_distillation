@@ -5,6 +5,7 @@ import { api, YetiSettings } from "../../api";
 import { Button, Callout, cx, IconButton, inputCls, relTime, Segmented, sparkleBurst } from "../../ui";
 import { CopyBox } from "../Hub";
 import Markdown from "./Markdown";
+import { MASCOT_LIST, setMascot, useMascot } from "./mascots";
 import Yeti from "./Yeti";
 import { useYeti, YetiMsg } from "./YetiContext";
 
@@ -22,6 +23,7 @@ function pageLabel(p: { kind: string; label?: string } | null): string | null {
 /** The chat window: header, then the conversation, the connect screen or the settings. */
 export default function YetiPanel() {
   const y = useYeti();
+  const { name } = useMascot();
   const connected = !!y.settings?.connected;
   const model = y.settings?.models.find((m) => m.id === y.settings?.model)?.label;
   useEffect(() => {
@@ -30,12 +32,12 @@ export default function YetiPanel() {
     return () => window.removeEventListener("keydown", k);
   }, [y]);
   return (
-    <div role="dialog" aria-label="Yeti, the ModelLab assistant"
+    <div role="dialog" aria-label={`${name}, the ModelLab assistant`}
       className="fixed inset-0 z-50 flex origin-bottom-right animate-pop flex-col overflow-hidden bg-surface sm:inset-auto sm:bottom-[92px] sm:right-5 sm:h-[min(680px,calc(100vh-116px))] sm:w-[412px] sm:rounded-2xl sm:border sm:border-line sm:shadow-lift">
       <div className="flex items-center gap-2.5 border-b border-line px-3.5 py-2.5">
         <Yeti size={36} pose={y.busy ? "think" : connected ? "idle" : "sleep"} />
         <div className="min-w-0 flex-1">
-          <div className="text-[13.5px] font-semibold text-fg">Yeti</div>
+          <div className="text-[13.5px] font-semibold text-fg">{name}</div>
           <div className="truncate text-2xs text-subtle">{connected ? `your ModelLab guide · ${model ?? "Claude"}` : y.settings ? "not connected to Claude yet" : "…"}</div>
         </div>
         {y.view === "chat" && connected && y.messages.length > 0 && <IconButton title="New chat" onClick={y.reset}><SquarePen /></IconButton>}
@@ -94,6 +96,7 @@ function suggestionsFor(kind: string | undefined): { label: string; ask: string;
 
 function Welcome() {
   const y = useYeti();
+  const { name } = useMascot();
   const [pose, setPose] = useState<"wave" | "idle">("idle");
   useEffect(() => { const t = window.setTimeout(() => setPose("wave"), 150); const u = window.setTimeout(() => setPose("idle"), 1700); return () => { clearTimeout(t); clearTimeout(u); }; }, []);
   const chips = [...(y.suggestion ? [{ label: y.suggestion.text, ask: y.suggestion.ask, focus: y.suggestion.focus }] : []), ...suggestionsFor(y.page?.kind)]
@@ -101,7 +104,7 @@ function Welcome() {
   return (
     <div className="flex flex-col items-center px-1 pt-3 text-center">
       <Yeti size={88} pose={pose} />
-      <div className="mt-3 text-[15px] font-semibold text-fg">Hi, I'm Yeti</div>
+      <div className="mt-3 text-[15px] font-semibold text-fg">Hi, I'm {name}</div>
       <p className="mt-1 max-w-[310px] text-[13px] leading-relaxed text-muted">
         I can show you around ModelLab, or explain your results: why a model won, what a PCA plot shows, how attention changed.
       </p>
@@ -186,6 +189,7 @@ function Message({ m }: { m: YetiMsg }) {
 
 function Composer() {
   const y = useYeti();
+  const { name } = useMascot();
   const ta = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = ta.current;
@@ -203,7 +207,7 @@ function Composer() {
       {sees && <div className="mb-2 flex min-w-0 items-center gap-1.5 px-1 text-2xs text-subtle"><Eye className="h-3 w-3 shrink-0" />sees <span className="truncate font-medium text-muted">{sees}</span></div>}
       <div className="flex items-end gap-2 rounded-xl bg-surface p-1.5 ring-1 ring-inset ring-line transition focus-within:ring-2 focus-within:ring-accent/50 dark:bg-raised/60">
         <textarea ref={ta} rows={1} value={y.draft} onChange={(e) => y.setDraft(e.target.value)} onKeyDown={key} maxLength={8000}
-          placeholder="Ask about ModelLab or your results…" aria-label="Message Yeti"
+          placeholder="Ask about ModelLab or your results…" aria-label={`Message ${name}`}
           className="scroll-thin min-h-[34px] flex-1 resize-none bg-transparent px-2 py-1.5 text-[13.5px] leading-snug text-fg placeholder:text-subtle focus:outline-none" />
         {y.busy ? (
           <button onClick={y.stop} title="Stop" aria-label="Stop" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-raised text-fg transition hover:bg-line">
@@ -266,6 +270,7 @@ function ConnectorHelp({ s }: { s: YetiSettings }) {
 
 function ConnectView() {
   const y = useYeti();
+  const { name } = useMascot();
   const s = y.settings!;
   return (
     <div className="scroll-thin flex-1 overflow-y-auto px-4 py-5">
@@ -294,15 +299,39 @@ function ConnectView() {
         <ConnectorHelp s={s} />
       </section>
       <p className="mt-4 px-1 text-2xs leading-relaxed text-subtle">
-        Either way, Claude only sees what Yeti's tools return when you ask (names, settings, metrics, log tails, feature figures),
+        Either way, Claude only sees what {name}'s tools return when you ask (names, settings, metrics, log tails, feature figures),
         never datasets, images or checkpoints, and it can't start, change or delete anything.
       </p>
     </div>
   );
 }
 
+/** Which plush mascot is the assistant: its look and name everywhere, and who Claude speaks as. Saved in this browser. */
+function MascotPicker() {
+  const { kind } = useMascot();
+  const [poke, setPoke] = useState<string | null>(null);
+  return (
+    <section className="space-y-2">
+      <h3 className="text-[13px] font-semibold text-fg">Your assistant</h3>
+      <div className="grid grid-cols-5 gap-1.5" role="radiogroup" aria-label="Assistant">
+        {MASCOT_LIST.map((m) => (
+          <button key={m.kind} role="radio" aria-checked={kind === m.kind} title={`${m.name}: ${m.tagline}`}
+            onClick={() => { setMascot(m.kind); setPoke(m.kind); }} onMouseEnter={() => setPoke(null)}
+            className={cx("flex flex-col items-center gap-0.5 rounded-xl px-0.5 pb-1.5 pt-1 text-2xs font-medium transition",
+              kind === m.kind ? "bg-accent-soft text-fg ring-1 ring-inset ring-accent/25" : "text-muted hover:bg-raised/70 hover:text-fg")}>
+            <Yeti kind={m.kind} size={48} fps={20} follow={false} pose={poke === m.kind ? "happy" : "idle"} />
+            <span className="whitespace-nowrap">{m.name}</span>
+          </button>
+        ))}
+      </div>
+      <p className="text-2xs text-subtle">{MASCOT_LIST.find((m) => m.kind === kind)?.name}, {MASCOT_LIST.find((m) => m.kind === kind)?.tagline}. Saved in this browser.</p>
+    </section>
+  );
+}
+
 function SettingsView() {
   const y = useYeti();
+  const { name } = useMascot();
   const s = y.settings;
   const [err, setErr] = useState<string | null>(null);
   if (!s) return <div className="flex flex-1 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-subtle" /></div>;
@@ -317,6 +346,7 @@ function SettingsView() {
   return (
     <div className="scroll-thin flex-1 space-y-5 overflow-y-auto px-4 py-4">
       {err && <Callout tone="error">{err}</Callout>}
+      <MascotPicker />
       <section className="space-y-2.5">
         <h3 className="text-[13px] font-semibold text-fg">Claude API key</h3>
         {s.connected ? (
@@ -364,8 +394,8 @@ function SettingsView() {
         )}
       </section>
       <p className="text-2xs leading-relaxed text-subtle">
-        Claude only sees what Yeti's tools return when you ask: run and search names, settings, metrics, log tails and feature
-        figures. Never datasets, images or checkpoints. Yeti can read but never start, change or delete anything.
+        Claude only sees what {name}'s tools return when you ask: run and search names, settings, metrics, log tails and feature
+        figures. Never datasets, images or checkpoints. {name} can read but never start, change or delete anything.
       </p>
     </div>
   );

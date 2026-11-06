@@ -191,6 +191,10 @@ results: why a search recommended its model, why a run scored what it did or fai
 show, how two runs differ, what a machine's failing checks mean. Pages with something to explain make Yeti wave once
 with a short offer, and "Explain" buttons sit next to recommendations, results, figures, failures and checks.
 
+The assistant is one of five plush mascots, drawn live in 3D: Yeti (the default), Dr. Mochi, Bop, Twinkle or Pip.
+Pick one under **Your assistant** in its settings (saved in that browser). Its look and name change everywhere,
+and Claude answers as that character. How they're drawn: [tools/mascot](../tools/mascot/README.md).
+
 Yeti runs on Claude, with each user's own Claude account. Two ways, set up in Yeti's settings (the sliders icon):
 
 - **Chat in ModelLab**: paste an API key from your Claude Console account (console.anthropic.com → API keys). The

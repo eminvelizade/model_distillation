@@ -159,7 +159,7 @@ export type YetiEvent =
   | { type: "error"; code: string; message: string };
 
 /** POST a chat turn and read the server-sent events as they arrive (EventSource can't POST). */
-export async function streamYeti(body: { messages: { role: string; text: string; note?: string | null }[]; page?: YetiPage | null },
+export async function streamYeti(body: { messages: { role: string; text: string; note?: string | null }[]; page?: YetiPage | null; mascot?: string },
                                  onEvent: (e: YetiEvent) => void, signal?: AbortSignal): Promise<void> {
   const r = await fetch("/api/assistant/chat", { method: "POST", headers: { ...H, "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
   if (!r.ok || !r.body) { await j(r); return; }

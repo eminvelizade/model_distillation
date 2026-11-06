@@ -296,6 +296,21 @@ def test_chat_runs_tools_and_streams(hub, monkeypatch):  # noqa: F811
     assert second_body["system"] == b["system"] and second_body["tools"] == b["tools"]
 
 
+def test_chat_speaks_as_the_chosen_mascot(hub, monkeypatch):  # noqa: F811
+    from modellab.hub import yeti
+
+    u, _ = finished_search(hub)
+    fake = FakeClaude([sse_message([{"type": "text", "text": "Hello from the lab!"}], "end_turn")])
+    monkeypatch.setattr(yeti, "make_client", fake.client)
+    u.put("/api/assistant", json={"api_key": KEY})
+    ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "who are you?"}], "mascot": "mochi"}))
+    assert ev[-1]["type"] == "done"
+    system = fake.requests[1]["body"]["system"][0]["text"]
+    assert system.startswith("You are Dr. Mochi,") and "lab coat" in system and "You are Yeti" not in system
+    assert "{" not in system.split("# The ModelLab guide")[0]  # every placeholder filled in
+    assert u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "hi"}], "mascot": "clippy"}).status_code == 422
+
+
 def test_chat_errors_and_haiku_settings(hub, monkeypatch):  # noqa: F811
     from modellab.hub import yeti
 
