@@ -26,7 +26,7 @@ export default function Yeti({ size = 64, pose = "idle", className, title, kind,
     let alive = true;
     loadEngine().then((m) => {
       if (!alive || !host.current) return;
-      view.current = new m.View(host.current, { kind: k, pose, fps: fps ?? (small ? 15 : 30), follow: follow ?? !small });
+      view.current = new m.View(host.current, { kind: k, pose, fps: fps ?? (small ? 15 : 30), follow: follow ?? !small, portrait: small });
       setLive(true);
     }).catch(() => undefined);   // no WebGL: the still picture stays
     return () => { alive = false; view.current?.dispose(); view.current = null; setLive(false); };
