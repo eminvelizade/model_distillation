@@ -5,6 +5,7 @@ import { api, Machine } from "../api";
 import { CopyBox, MachineDot, machineState } from "../components/Hub";
 import { useSession } from "../session";
 import { Button, Callout, Card, cx, Empty, Field, inputCls, LiveDot, Modal, PageHeader, ProgressBar, relTime, sparkleBurst } from "../ui";
+import { useYetiPage } from "../components/yeti/YetiContext";
 
 function ChecksChip({ m }: { m: Machine }) {
   if (!m.report_time) return <span className="rounded-md bg-raised px-1.5 py-0.5 text-[11px] text-subtle">no report yet</span>;
@@ -161,6 +162,7 @@ function AddMachine({ onClose }: { onClose: () => void }) {
 }
 
 export default function Machines() {
+  useYetiPage({ kind: "machines" });
   const { machines, ready } = useSession();
   const [adding, setAdding] = useState(false);
   const online = machines.filter((m) => m.online).length;

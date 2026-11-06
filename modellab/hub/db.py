@@ -145,6 +145,42 @@ searches = sa.Table(
     Column("created", Float), Column("updated", Float), Column("finished", Float),
 )
 
+assistant = sa.Table(
+    "assistant", md,  # Yeti, per user: the Claude API key (encrypted, modellab/hub/yeti.py) and the chosen model
+    Column("user_id", String(32), primary_key=True),
+    Column("api_key", Text), Column("key_hint", String(16)),
+    Column("model", String(64)), Column("effort", String(16)), Column("updated", Float),
+)
+
+oauth_clients = sa.Table(
+    "oauth_clients", md,  # Claude apps registered for the MCP connector (OAuth dynamic client registration)
+    Column("id", String(64), primary_key=True),
+    Column("name", String(200)), Column("redirect_uris", Text, nullable=False),
+    Column("auth_method", String(32), nullable=False, default="none"),  # none | client_secret_post | client_secret_basic
+    Column("secret_hash", String(64)),
+    Column("created", Float), Column("ip", String(64)),
+)
+
+oauth_codes = sa.Table(
+    "oauth_codes", md,  # one-time authorization codes (stored hashed), 10 minutes
+    Column("code_hash", String(64), primary_key=True),
+    Column("client_id", String(64), nullable=False), Column("user_id", String(32), nullable=False),
+    Column("redirect_uri", Text, nullable=False), Column("challenge", String(128), nullable=False),
+    Column("scope", String(200)), Column("resource", Text),
+    Column("created", Float), Column("expires", Float), Column("used", Boolean, nullable=False, default=False),
+)
+
+oauth_tokens = sa.Table(
+    "oauth_tokens", md,  # access (1 h) and refresh (30 days, rotated) tokens, stored hashed
+    Column("token_hash", String(64), primary_key=True),
+    Column("kind", String(8), nullable=False),  # access | refresh
+    Column("family", String(32), nullable=False),  # one grant: a reused refresh token revokes the whole family
+    Column("client_id", String(64), nullable=False), Column("user_id", String(32), nullable=False, index=True),
+    Column("scope", String(200)), Column("resource", Text),
+    Column("created", Float), Column("expires", Float), Column("last_used", Float),
+    Column("revoked", Boolean, nullable=False, default=False),
+)
+
 settings = sa.Table(
     "settings", md,
     Column("key", String(64), primary_key=True), Column("value", Text),

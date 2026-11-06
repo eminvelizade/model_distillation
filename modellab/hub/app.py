@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 
 from modellab import ROOT
-from modellab.hub import Config, agent_api, api, browse, db, load_config, model
+from modellab.hub import Config, agent_api, api, browse, db, load_config, mcp, model, oauth, yeti
 
 WEB_DIST = ROOT / "modellab" / "web" / "dist"
 INSTALLER = ROOT / "modellab" / "hub" / "install.sh"
@@ -69,6 +69,9 @@ def create_app(cfg: Config | None = None) -> FastAPI:
 
     app.include_router(api.router)
     app.include_router(agent_api.router)
+    app.include_router(yeti.router)  # Yeti: settings + chat (/api/assistant...)
+    app.include_router(oauth.router)  # OAuth for the MCP connector (/.well-known/..., /oauth/...)
+    app.include_router(mcp.router)  # MCP server for Claude apps (/mcp)
 
     @app.get("/healthz", include_in_schema=False)
     def healthz():
@@ -84,7 +87,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
 
     @app.get("/{path:path}", include_in_schema=False)
     def ui(path: str):
-        if path.startswith(("api/", "agent/")):
+        if path.startswith(("api/", "agent/", "oauth/", ".well-known/")):
             return JSONResponse({"detail": "not found"}, status_code=404)
         f = (WEB_DIST / path).resolve()
         if path and WEB_DIST.resolve() in f.parents and f.is_file():

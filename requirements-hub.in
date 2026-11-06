@@ -4,3 +4,4 @@ pyyaml==6.0.3
 sqlalchemy==2.1.6
 psycopg[binary]==3.3.6
 cryptography==50.0.2
+anthropic==2.4.0

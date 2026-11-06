@@ -4,6 +4,7 @@ import { api, TeamUser } from "../api";
 import { CopyBox } from "../components/Hub";
 import { useSession } from "../session";
 import { Button, Callout, Card, cx, Field, inputCls, Modal, PageHeader, relTime, Switch, Toast, usePoll } from "../ui";
+import { useYetiPage } from "../components/yeti/YetiContext";
 
 /** Shown once: a temporary password the person changes at their first sign-in. */
 function Secret({ who, password, onClose }: { who: string; password: string; onClose: () => void }) {
@@ -58,6 +59,7 @@ function AddUser({ onClose, onCreated }: { onClose: () => void; onCreated: (who:
 }
 
 export default function Team() {
+  useYetiPage({ kind: "team" });
   const { me } = useSession();
   const users = usePoll(api.users, 0);
   const rel = usePoll(api.releases, 0);

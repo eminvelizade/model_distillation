@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import ExplainButton from "../components/yeti/ExplainButton";
+import { useYetiPage } from "../components/yeti/YetiContext";
 import { ArrowLeft, Crown, Loader2 } from "lucide-react";
 import { api, fmt, ResultRow } from "../api";
 import { Button, Callout, Card, CountUp, cx, Empty, PageHeader, useWidth } from "../ui";
@@ -73,6 +75,7 @@ export default function Compare() {
   const [err, setErr] = useState<string | null>(null);
   const [hi, setHi] = useState<number | null>(null);
   const nav = useNavigate();
+  useYetiPage({ kind: "compare", items });
   useEffect(() => {
     if (items.length) api.compare(items).then(setData).catch((e) => setErr(String(e.message)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,7 +83,9 @@ export default function Compare() {
 
   const header = (n?: number) => (
     <PageHeader eyebrow="Analyze" title="Compare" description={n ? `${n} results side by side. Best value per metric is highlighted.` : "Put 2–4 results head to head."}
-      actions={<Button onClick={() => nav("/leaderboard")}><ArrowLeft />Leaderboard</Button>} />
+      actions={<>{!!n && n > 1 && <ExplainButton label="Explain the differences" focus="comparison" about="this comparison"
+        ask="Explain the differences between these results: which is better where, which config differences most likely caused it, and whether the gaps are meaningful." />}
+        <Button onClick={() => nav("/leaderboard")}><ArrowLeft />Leaderboard</Button></>} />
   );
   if (!items.length) return <div className="space-y-6">{header()}<Card><Empty title="Pick 2–4 results to compare" mood="happy">Select rows on the <Link className="font-medium text-accent hover:underline" to="/leaderboard">Leaderboard</Link> and press Compare.</Empty></Card></div>;
   if (err) return <div className="space-y-6">{header()}<Callout tone="error" title="Couldn't load the comparison">{err}</Callout></div>;
@@ -188,11 +193,11 @@ export default function Compare() {
       </Card>
 
       {Object.values(data.pca as Record<string, string[]>).some((l) => l.length) && (
-        <Card title="Feature PCA">
+        <Card title="Feature figures" description="PCA of each backbone's features, and where its last global attention layer looks">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {runIds.flatMap((rid) => (data.pca[rid] as string[]).map((p) => (
               <figure key={rid + p} className="overflow-hidden rounded-xl border border-line bg-raised/40">
-                <img src={api.fileUrl(rid, p)} alt="PCA" className="w-full" />
+                <img src={api.fileUrl(rid, p)} alt={p.endsWith("attention.png") ? "attention" : "PCA"} className="w-full" />
                 <figcaption className="px-3 py-2 text-[11.5px] text-muted">{rows.find((r) => r.run_id === rid)?.run_name} · <span className="font-mono">{p}</span></figcaption>
               </figure>
             )))}

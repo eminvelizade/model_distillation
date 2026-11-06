@@ -5,6 +5,7 @@ import { api, Catalog, Preview } from "../api";
 import { Button, Callout, Card, cx, Field, IconButton, inputCls, Mascot, PageHeader, Segmented, sparkleBurst, Tag, Toast, Yaml } from "../ui";
 import { MachinePicker } from "../components/Hub";
 import { useSession } from "../session";
+import { useYetiPage } from "../components/yeti/YetiContext";
 
 type Ref = { from: string };
 type Stage = Record<string, any> & { name: string; type: string };
@@ -242,6 +243,7 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
 }
 
 export default function NewExperiment() {
+  useYetiPage({ kind: "new" });
   const [cat, setCat] = useState<Catalog | null>(null);
   const [recipe, setRecipe] = useState<Recipe>(BLANK);
   const [mode, setMode] = useState<"builder" | "yaml">("builder");

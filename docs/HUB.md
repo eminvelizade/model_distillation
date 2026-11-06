@@ -42,6 +42,7 @@ Design and decisions: [HUB_PLAN.md](HUB_PLAN.md).
    | `MODELLAB_RELEASE_PUBKEY` | the public key from step 1 |
    | `MODELLAB_RELEASE_UPLOAD_TOKEN` | the token from step 2 |
    | `MODELLAB_PUBLIC_URL` | optional: `https://your.custom.domain` (default `https://$RAILWAY_PUBLIC_DOMAIN`) |
+   | `MODELLAB_SECRET_KEY` | optional, recommended: any long random string. Encrypts the Claude API keys saved for Yeti (without it, the key that encrypts them is kept in the database) |
 
 6. **Settings → Networking → Generate Domain**, then deploy. `https://<domain>/healthz` answers `{"ok": true}`.
    Keep one replica: login throttling is kept in memory.
@@ -183,7 +184,41 @@ writes `runs/<id>/export/<stage>/`: `model.onnx`, `model.engine` (TensorRT FP16,
 that PC; it then also reports the TensorRT latency), `preprocess.json`, `infer_onnx.py` and `model_card.md/json`.
 Nothing is uploaded; the page shows the folder.
 
-## 8. Updates
+## 8. Yeti, the assistant
+
+The yeti in the bottom-right corner of every page is ModelLab's assistant. It answers how-to questions and explains
+results: why a search recommended its model, why a run scored what it did or failed, what PCA and attention figures
+show, how two runs differ, what a machine's failing checks mean. Pages with something to explain make Yeti wave once
+with a short offer, and "Explain" buttons sit next to recommendations, results, figures, failures and checks.
+
+The assistant is one of five plush mascots, drawn live in 3D: Yeti (the default), Dr. Mochi, Bop, Twinkle or Pip.
+Pick one under **Your assistant** in its settings (saved in that browser). Its look and name change everywhere,
+and Claude answers as that character. How they're drawn: [tools/mascot](../tools/mascot/README.md).
+
+Yeti runs on Claude, with each user's own Claude account. Two ways, set up in Yeti's settings (the sliders icon):
+
+- **Chat in ModelLab**: paste an API key from your Claude Console account (console.anthropic.com → API keys). The
+  hub checks it with a free call, stores it encrypted (`MODELLAB_SECRET_KEY`), and never sends it back to the browser.
+  Usage is billed to that Console account. Pick the model (Claude Opus 5.5 by default; Sonnet 5.5, Haiku 5.5, Fable
+  5.1) and how long it thinks (Quick, Balanced, Thorough).
+- **Use a Claude app** (subscription): ModelLab is an MCP server at `https://<domain>/mcp` with OAuth.
+  - claude.ai, Claude Desktop or mobile: Settings → Connectors → Add custom connector, paste the address, then
+    Connect and approve on the ModelLab page that opens (sign in first if asked).
+  - Claude Code: `claude mcp add --transport http modellab https://<domain>/mcp`, then `/mcp` to sign in.
+  - Connected apps are listed in Yeti's settings, with Disconnect.
+
+How it works: the hub runs the conversation. Claude asks for data through read-only tools (`modellab/hub/yeti_tools.py`)
+that act as the signed-in user: the guide, runs, logs, searches, the leaderboard, comparisons, machines and feature
+figures. The comparisons that matter for explanations are computed by ModelLab, not by the model
+(`modellab/hub/xai.py`): speed headroom, each round's ranking and cutoff, the gain of each step up in model or input
+size with diminishing-returns flags, distillation and learning-rate effects, seed noise and the margin over the
+runner-up. The answer streams back with each tool it used, linked to its page.
+
+What Claude sees: only what the tools return when you ask (run, search and machine names, settings, metrics, log
+tails, PCA and attention figures). Never datasets, images, annotations or checkpoints. Yeti can't start, change or
+delete anything.
+
+## 9. Updates
 
 Each heartbeat tells the agent the hub's current release. When the agent is idle (no run, no command), it:
 1. Downloads the release.
@@ -216,6 +251,11 @@ machine page, and is retried within the hour.
   time, as any `curl | bash` does.
 - **Network on the PC.** Training processes run with `offline_guard`'s network block. Only the agent process talks
   to the network.
+- **Yeti.** Claude API keys are encrypted at rest (Fernet; the key comes from `MODELLAB_SECRET_KEY`) and only the
+  last 4 characters are shown. Every tool is read-only and scoped to the user. The MCP server accepts only OAuth
+  access tokens: dynamic client registration, authorization code with PKCE (S256 only), exact redirect URIs (https,
+  or http on localhost for Claude Code), single-use codes, 1-hour access tokens, rotating 30-day refresh tokens (a
+  reused one revokes the grant), all stored hashed, and a consent page with a CSRF token.
 - **Rotating keys.** The upload token can be replaced at any time: Railway variable plus GitHub secret. A new signing
   key means re-running the install command, with a new `--pair` code, on each machine, because agents pin the key.
 
@@ -238,7 +278,9 @@ UI: `cd modellab/web && npm run dev` proxies `/api` to port 8765 (edit `vite.con
 `npm run build` and commit `dist/`.
 
 Screenshots: [docs/screenshots/](screenshots/) `hub_*`. The RTX 5090 / A4000 machines in them are simulated through
-the agent API, because the sandbox where this was built has no GPU. "cpu box" and "installed box" are real agents.
+the agent API, because the sandbox where this was built has no GPU. "cpu box" and "installed box" are real agents. In
+`hub_10_yeti_explains` and `hub_11_yeti_mobile`, Claude's answers come from a scripted stand-in fed by the real tool
+results (there was no API key in the sandbox).
 
 ## What was tested, and what wasn't
 
@@ -263,7 +305,16 @@ Tested in a Linux sandbox without GPU:
   export); ONNX export of both families with the generated `infer_onnx.py` run on a real image; the pages in a
   browser at 1440 px and 390 px.
 
+- Yeti: the tools against seeded searches, runs and machines (user isolation, argument validation), the chat loop with
+  the real Claude SDK against a mocked API (streaming, a tool call and its result, the request's caching, effort,
+  thinking and fallback settings, history replay, errors), the encrypted key, and the whole OAuth flow into the MCP
+  server (registration, consent, PKCE, code reuse, refresh rotation and reuse detection, disconnect). The UI with a
+  scripted Claude in a browser at 1440 px (light and dark) and 390 px. Attention maps: recomputed attention matches the
+  RF-DETR Nano layer's own output (max error 4e-6), and the features stage wrote them on CPU.
+
 Not tested here; check these on the real machines:
+- **Yeti against the real Claude API.** There was no API key here: the requests were checked against the SDK and a
+  mocked API. The first real chat is the check (and claude.ai's connector against the deployed hub).
 - **TensorRT export.** There is no GPU or `trtexec` here: the engine build and its latency parsing have not run.
 - **Search speed on a GPU.** Timing and trials ran on CPU; GPU latency comes from the same code as the eval stage.
 - **Building the CUDA environment on a GPU PC.** The full lock resolved with `uv pip install --dry-run` (134

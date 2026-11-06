@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import ExplainButton from "../components/yeti/ExplainButton";
+import { useYetiPage } from "../components/yeti/YetiContext";
 import { ArrowDown, ArrowRight, ArrowUp, Cpu, Database, MousePointerClick, Gauge, GitCompareArrows, Layers, MessageSquareText, Pencil, Sparkles, Trophy, X, Zap } from "lucide-react";
 import { api, fmt, ResultRow } from "../api";
 import { comparability } from "../comparability";
@@ -101,6 +103,7 @@ function ChampionCard({ best, second, ds }: { best: ResultRow; second?: ResultRo
 
 export default function Leaderboard() {
   const res = usePoll(api.results, 10000);
+  useYetiPage({ kind: "leaderboard" });
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "map", desc: true });
   const [dataset, setDataset] = useState<string>("");
   const [split, setSplit] = useState<string>("");
@@ -180,6 +183,8 @@ export default function Leaderboard() {
             </div>
           )}
           {splits.length > 1 && <Segmented value={sp} onChange={setSplit} options={splits.map((x) => ({ value: x, label: x }))} />}
+          {ranked.length > 0 && <ExplainButton label="Which should I use?" focus="champion" about={`the ${ds} leaderboard`}
+            ask={`Looking at my ${ds} leaderboard (${sp} split), which model should I use and why? Consider accuracy, latency and how big the gaps really are.`} />}
           <Button variant="brand" disabled={sel.size < 2} onClick={() => nav(`/compare?items=${[...sel].join(",")}`)}><GitCompareArrows />Compare{sel.size ? ` · ${sel.size}` : ""}</Button>
         </>} />
 

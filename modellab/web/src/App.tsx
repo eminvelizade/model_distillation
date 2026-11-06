@@ -18,6 +18,8 @@ import MachineDetail from "./pages/MachineDetail";
 import Team from "./pages/Team";
 import SearchPage from "./pages/Search";
 import SearchDetail from "./pages/SearchDetail";
+import { YetiProvider } from "./components/yeti/YetiContext";
+import YetiDock from "./components/yeti/YetiDock";
 
 function ThemeSwitch() {
   const { dark, set } = useTheme();
@@ -212,7 +214,7 @@ function Shell() {
 
       <main className="relative isolate min-w-0 overflow-x-clip">
         <div className="aurora pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px]" />
-        <div key={loc.pathname} className="page mx-auto max-w-[1320px] px-4 py-6 sm:px-8 lg:py-10">
+        <div key={loc.pathname} className={cx("page mx-auto max-w-[1320px] px-4 py-6 sm:px-8 lg:py-10", hub && "pb-28 lg:pb-28")}>
           <Routes>
             <Route path="/" element={<NewExperiment />} />
             <Route path="/queue" element={<Queue />} />
@@ -231,15 +233,24 @@ function Shell() {
       </main>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       {(password || me?.user?.must_change_password) && <ChangePassword forced={!!me?.user?.must_change_password} onClose={() => setPassword(false)} />}
+      <YetiDock />
     </div>
   );
 }
 
+/** A Claude app connecting through OAuth sent the user here to sign in first (/?login_next=/oauth/authorize?...). */
+function loginNext(): string | null {
+  const n = new URLSearchParams(window.location.search).get("login_next");
+  return n && n.startsWith("/oauth/authorize?") ? n : null;
+}
+
 function Gate() {
-  const { ready, needsLogin, reload } = useSession();
+  const { ready, needsLogin, reload, me } = useSession();
+  const next = loginNext();
+  useEffect(() => { if (next && me?.user) window.location.replace(next); }, [next, me?.user]);
   if (needsLogin) return <Login onDone={reload} />;
-  if (!ready) return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />opening the lab…</div>;
-  return <Shell />;
+  if (!ready || (next && me?.user)) return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-subtle"><Loader2 className="h-4 w-4 animate-spin" />{next ? "connecting your Claude app…" : "opening the lab…"}</div>;
+  return <YetiProvider><Shell /></YetiProvider>;
 }
 
 export default function App() {

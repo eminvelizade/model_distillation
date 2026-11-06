@@ -5,6 +5,7 @@ import { api, Catalog, DatasetInfo, fmt, MachineDetail, SearchPreview, SearchSpe
 import { useSession } from "../session";
 import { Button, Callout, Card, cx, Empty, Field, inputCls, PageHeader, relTime, Segmented, StatusPill, usePoll } from "../ui";
 import { FAMILY } from "../components/Scatter";
+import { useYetiPage } from "../components/yeti/YetiContext";
 
 /** "1e-4, 2e-4" or "320 384" -> numbers; null if something isn't a number. */
 const numbers = (s: string): number[] | null => {
@@ -204,6 +205,7 @@ function NewSearch({ onCreated }: { onCreated: (id: string) => void }) {
 }
 
 export default function Search() {
+  useYetiPage({ kind: "searches" });
   const list = usePoll(api.searches, 5000);
   const nav = useNavigate();
   const [show, setShow] = useState(false);
