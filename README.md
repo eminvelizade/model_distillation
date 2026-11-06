@@ -109,6 +109,6 @@ Current version: **v0.1** (beta).
 | `modellab/agent/` | the agent on each GPU PC |
 | `modellab/web/` | the web UI (React) |
 | `recipes/` | experiment templates |
-| `tools/mascot/` | the 3D plush mascots: how they're drawn and how to add one ([guide](tools/mascot/README.md)) |
+| `tools/mascot/` | the 3D mascots (five plush, one snow golem): how they're drawn and how to add one ([guide](tools/mascot/README.md)) |
 | `docs/` | guides and design notes |
 | `tests/` | tests (`python -m pytest tests/modellab tests/hub -q`) |

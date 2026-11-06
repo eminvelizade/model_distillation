@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { MascotKind, MascotPose } from "../mascots";
-import { BOP, COMMON, MOCHI, PIP, RENDER, TWINKLE, VERT, YETI } from "./shaders";
+import { BOP, COMMON, MOCHI, PIP, RENDER, RIME, TWINKLE, VERT, YETI } from "./shaders";
 
 /** The 3D mascots, drawn live with three.js.
  *
@@ -10,13 +10,17 @@ import { BOP, COMMON, MOCHI, PIP, RENDER, TWINKLE, VERT, YETI } from "./shaders"
  *  which is then copied onto the View's. One animation loop runs the Views that are on screen, each at its own frame
  *  rate, and stops when none are. With "reduce motion" on, Views draw one still frame per change instead. */
 
-type Arm = { shoulder: [number, number, number]; len: number; rest: number; hide: boolean };
+// raise: the arm's angle at the top of a wave (from straight up, outward is negative); fwd: how far forward it comes
+type Arm = { shoulder: [number, number, number]; len: number; rest: number; hide: boolean; raise?: number; fwd?: number };
 type Spec = {
   glsl: string; box: number[]; cam: [number, number, number, number]; top: number; shadow: [number, number];
   eye: { x: number; y: number; rx: number; ry: number }; eyeZ: number; faceR: number;
   nose: [number, number, number, number]; mouth: [number, number, number, number]; blush: [number, number, number, number];
   rest: number; prop: string; exposure: number; colors: { main: string; accent: string; blush: string; extra: string };
   ears?: boolean; petals?: boolean; bubbles?: boolean; arm?: Arm;
+  stoic?: boolean;          // never smiles (Rime): no happy eyes, a slow, stiff wave
+  frost?: boolean;          // has frost drifting round it (uFrost*)
+  flake?: "snow";           // thinks in snowflakes (else sparkles)
 };
 
 // Shapes, faces and palette colours (ModelLab's ice scale and the Tailwind palette). Positions are in each mascot's
@@ -53,6 +57,13 @@ const SPECS: Record<MascotKind, Spec> = {
     eye: { x: 0.22, y: 0.96, rx: 0.07, ry: 0.088 }, eyeZ: 0.67, faceR: 0.7, nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0],
     blush: [0.42, 0.74, 0.58, 0.12], rest: 0, prop: "#84cc16", exposure: 1.0,
     colors: { main: "#a3e635", accent: "#f97316", blush: "#facc15", extra: "#a3e635" },   // lime-400, orange-500, yellow-400
+  },
+  rime: {
+    glsl: RIME, box: [-1.36, -0.1, -1.36, 1.36, 2.45, 1.36], cam: [2.3, 9.9, 1.02, 15.5], top: 1.7, shadow: [2.0, 1.4],
+    eye: { x: 0.17, y: 1.32, rx: 0.048, ry: 0.056 }, eyeZ: 0.455, faceR: 3.0, nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0],
+    blush: [0.3, 1.2, 0.45, 0], rest: 0, prop: "#7eb0ee", exposure: 1.04, stoic: true, frost: true, flake: "snow",
+    arm: { shoulder: [0.4, 0.84, 0.03], len: 0.52, rest: Math.PI + 0.24, hide: false, raise: -0.9, fwd: 0.12 },   // hangs; waves out to the side
+    colors: { main: "#f3f7fc", accent: "#713f12", blush: "#22c55e", extra: "#7eb0ee" },   // snow, yellow-900 (twigs), green-500 (sprout), ice-400
   },
 };
 
@@ -159,6 +170,7 @@ export class View {
   private st = {
     pose: "idle" as MascotPose, poseT: 0, t: Math.random() * 10, blinkIn: 1.6 + Math.random() * 2, blinkT: -1,
     look: new THREE.Vector2(), lookV: new THREE.Vector2(), poke: -1, tilt: 0, tiltV: 0, flake: 0, zz: 0, bub: 0,
+    frost: Math.random() * 40,
   };
   private earM = new THREE.Matrix4(); private earE = new THREE.Euler(); private v3 = new THREE.Vector3();
   private q = new THREE.Quaternion(); private qi = new THREE.Quaternion();
@@ -201,6 +213,7 @@ export class View {
       uArmA: { value: new THREE.Vector3() }, uArmB: { value: new THREE.Vector3() }, uArmOn: { value: 0 },
       uPetal: { value: [0, 1, 2].map(() => new THREE.Vector4()) }, uCurl: { value: [0, 1, 2].map(() => new THREE.Vector3()) },
       uPetalRoot: { value: new THREE.Vector3(0, 1.49, 0.1) }, uSway: { value: 0 },
+      uFrostT: { value: 0 }, uFrostR: { value: 1 }, uFrostC: { value: C("#3d82dc") },
     };
     const box = new THREE.BoxGeometry(boxMax.x - boxMin.x, boxMax.y - boxMin.y, boxMax.z - boxMin.z);
     box.translate((boxMax.x + boxMin.x) / 2, (boxMax.y + boxMin.y) / 2, (boxMax.z + boxMin.z) / 2);
@@ -232,7 +245,7 @@ export class View {
     this.scene.add(this.shadow);
     this.disposables.push(shadowTex, plane, this.shadow.material);
 
-    // props: a snowflake (Yeti) or a sparkle while thinking, bubbles for the scientist, z's while asleep
+    // props: a snowflake (Yeti, Rime) or a sparkle while thinking, bubbles for the scientist, z's while asleep
     const sprite = (draw: (x: CanvasRenderingContext2D) => void) => {
       const c = document.createElement("canvas");
       c.width = c.height = 128;
@@ -249,7 +262,7 @@ export class View {
     };
     this.flake = sprite((x) => {
       x.translate(64, 64);
-      if (K.ears) {
+      if (K.ears || K.flake === "snow") {
         x.strokeStyle = K.prop; x.lineWidth = 9; x.lineCap = "round";
         for (let i = 0; i < 6; i++) {
           x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -52); x.moveTo(0, -31); x.lineTo(-15, -45); x.moveTo(0, -31); x.lineTo(15, -45);
@@ -304,6 +317,7 @@ export class View {
     const dark = isDark();
     (this.uniforms.uBackCol.value as THREE.Color).set("#ffffff").multiplyScalar(dark ? 0.85 : 0.58);   // the rim glow reads better on dark
     this.shadow.material.color.set(dark ? "#000000" : "#ffffff");
+    (this.uniforms.uFrostC.value as THREE.Color).set(dark ? "#cfe1f8" : "#3d82dc");   // frost: pale on dark, deeper blue on light
     this.dirty = true;
     kick();
   }
@@ -330,7 +344,7 @@ export class View {
       return false;
     }
     if (this.last && now - this.last < 1000 / this.fps - 2) return true;
-    const dt = this.last ? Math.min(0.05, (now - this.last) / 1000) : 1 / this.fps;
+    const dt = this.last ? Math.min(0.05, Math.max(0, now - this.last) / 1000) : 1 / this.fps;   // (never backwards: it would wreck the springs)
     this.last = now;
     this.update(dt);
     this.draw();
@@ -410,7 +424,7 @@ export class View {
 
     // eyes: blink, expressions, and a glance toward the target
     let mode = K.rest, open = 1;
-    if (P === "wave" || P === "happy") mode = 1;
+    if ((P === "wave" || P === "happy") && !K.stoic) mode = 1;   // (Rime never smiles)
     else if (P === "sleep") mode = 2;
     else if (mode === 0 && !reduce) {
       st.blinkIn -= dt;
@@ -444,16 +458,21 @@ export class View {
       });
     }
     if (K.arm) {     // the arm on the viewer's right rises, waves and comes back down
-      let up = 0, ang = -0.38;
+      let up = 0, ang = K.arm.raise ?? -0.38;
       if (P === "wave") {
         up = ease(pt / 0.4) * (1 - ease((pt - 1.45) / 0.4));
-        ang += 0.26 * Math.sin((pt - 0.4) * 11) * (pt > 0.4 && pt < 1.45 ? 1 : 0);
+        ang += (K.stoic ? 0.16 * Math.sin((pt - 0.4) * 6) : 0.26 * Math.sin((pt - 0.4) * 11)) * (pt > 0.4 && pt < 1.45 ? 1 : 0);
       }
       U.uArmOn.value = !K.arm.hide || up > 0.01 ? 1 : 0;
       const a = K.arm.rest + (ang + Math.PI * 2 - K.arm.rest) * up;
       const [sx, sy, sz] = K.arm.shoulder, L = K.arm.len;
       (U.uArmA.value as THREE.Vector3).set(sx, sy, sz);
-      (U.uArmB.value as THREE.Vector3).set(sx - Math.sin(a) * L, sy + Math.cos(a) * L, sz + 0.04 * up);
+      (U.uArmB.value as THREE.Vector3).set(sx - Math.sin(a) * L, sy + Math.cos(a) * L, sz + (K.arm.fwd ?? 0.04) * up);
+    }
+    if (K.frost) {   // the frost drifts faster while thinking, slower asleep, and puffs out on a hop
+      st.frost += reduce ? 0 : dt * (P === "think" ? 2.6 : P === "sleep" ? 0.35 : 1);
+      U.uFrostT.value = st.frost;
+      U.uFrostR.value = 1 + (P === "happy" && !reduce ? 0.2 * Math.sin(Math.PI * Math.min(1, pt / 1.2)) : 0);
     }
 
     // props
@@ -461,7 +480,7 @@ export class View {
     st.flake += ((P === "think" ? 1 : 0) - st.flake) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 6));
     this.flake.visible = st.flake > 0.01 && !K.bubbles;
     this.flake.material.opacity = st.flake;
-    this.flake.material.rotation = reduce ? 0 : (K.ears ? t * 0.8 : Math.sin(t * 2.0) * 0.25);
+    this.flake.material.rotation = reduce ? 0 : (K.ears || K.flake ? t * 0.8 : Math.sin(t * 2.0) * 0.25);
     this.flake.scale.setScalar(0.3 * (0.5 + 0.5 * st.flake));
     this.flake.position.set(bx * 0.82, H + 0.42 + (reduce ? 0 : Math.sin(t * 1.6) * 0.04), 0.3);
     st.bub += ((P === "think" ? 1 : 0) - st.bub) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 5));

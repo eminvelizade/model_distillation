@@ -311,6 +311,18 @@ def test_chat_speaks_as_the_chosen_mascot(hub, monkeypatch):  # noqa: F811
     assert u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "hi"}], "mascot": "clippy"}).status_code == 422
 
 
+def test_each_mascot_has_its_own_voice():
+    from modellab.hub import yeti
+
+    for key, (name, _, _) in yeti.MASCOTS.items():
+        head = yeti.system_prompt(key).split("# The ModelLab guide")[0]
+        assert head.startswith(f"You are {name},") and "{" not in head
+    # the plush ones are warm and light; Rime, the snow golem, is calm and never gushes
+    assert "- Be warm and light. A touch of snowy personality is welcome; clarity comes first." in yeti.system_prompt("yeti")
+    rime = yeti.system_prompt("rime").split("# The ModelLab guide")[0]
+    assert "warm and light" not in rime and "no exclamation marks" in rime and "fully helpful" in rime
+
+
 def test_chat_errors_and_haiku_settings(hub, monkeypatch):  # noqa: F811
     from modellab.hub import yeti
 
