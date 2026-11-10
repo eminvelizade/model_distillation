@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import bloom from "./stills/bloom.webp";
 import bop from "./stills/bop.webp";
 import mochi from "./stills/mochi.webp";
 import pip from "./stills/pip.webp";
@@ -6,10 +7,10 @@ import rime from "./stills/rime.webp";
 import twinkle from "./stills/twinkle.webp";
 import yeti from "./stills/yeti.webp";
 
-/** The assistant is one of ModelLab's mascots (five plush, one snow golem). This file is the light part (names and
+/** The assistant is one of ModelLab's mascots (five plush, a snow golem, and a furry cub modelled on a real plush). This file is the light part (names and
  *  still pictures); the 3D renderer (./mascot/engine.ts, with three.js) loads on demand. The hub's persona list
  *  (hub/yeti.py, MASCOTS) uses the same keys. */
-export type MascotKind = "yeti" | "mochi" | "bop" | "twinkle" | "pip" | "rime";
+export type MascotKind = "yeti" | "mochi" | "bop" | "twinkle" | "pip" | "rime" | "bloom";
 export type MascotPose = "idle" | "wave" | "think" | "happy" | "sleep";
 
 export const MASCOT_LIST: { kind: MascotKind; name: string; tagline: string }[] = [
@@ -19,11 +20,12 @@ export const MASCOT_LIST: { kind: MascotKind; name: string; tagline: string }[] 
   { kind: "twinkle", name: "Twinkle", tagline: "a star who cheers every finished run" },
   { kind: "pip", name: "Pip", tagline: "small, quick and curious" },
   { kind: "rime", name: "Rime", tagline: "a tall, quiet snow golem who notices everything" },
+  { kind: "bloom", name: "Bloom", tagline: "a fluffy little cub who helps your models bloom" },
 ];
 export const MASCOT_NAMES = Object.fromEntries(MASCOT_LIST.map((m) => [m.kind, m.name])) as Record<MascotKind, string>;
 
 /** A still picture of each mascot (rendered from the 3D one): shown while the renderer loads, and where WebGL is off. */
-export const STILLS: Record<MascotKind, string> = { yeti, mochi, bop, twinkle, pip, rime };
+export const STILLS: Record<MascotKind, string> = { yeti, mochi, bop, twinkle, pip, rime, bloom };
 
 // ---------------------------------------------------------------- which mascot is the assistant (this browser)
 const KEY = "modellab-mascot";

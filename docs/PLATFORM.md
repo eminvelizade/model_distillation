@@ -51,7 +51,7 @@ never a second way around it.
 
 ## Agents
 
-The assistants that help you develop: Yeti and the other mascots, one engine with six characters.
+The assistants that help you develop: Yeti and the other mascots, one engine with seven characters.
 
 **Today:**
 - Answers how-to questions and explains results: why a search recommended its model, why a run scored what it did or

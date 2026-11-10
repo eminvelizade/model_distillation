@@ -306,14 +306,14 @@ function ConnectView() {
   );
 }
 
-/** Which plush mascot is the assistant: its look and name everywhere, and who Claude speaks as. Saved in this browser. */
+/** Which mascot is the assistant: its look and name everywhere, and who Claude speaks as. Saved in this browser. */
 function MascotPicker() {
   const { kind } = useMascot();
   const [poke, setPoke] = useState<string | null>(null);
   return (
     <section className="space-y-2">
       <h3 className="text-[13px] font-semibold text-fg">Your assistant</h3>
-      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="radiogroup" aria-label="Assistant">
+      <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Assistant">
         {MASCOT_LIST.map((m) => (
           <button key={m.kind} role="radio" aria-checked={kind === m.kind} title={`${m.name}: ${m.tagline}`}
             onClick={() => { setMascot(m.kind); setPoke(m.kind); }} onMouseEnter={() => setPoke(null)}
