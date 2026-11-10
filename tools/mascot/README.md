@@ -115,10 +115,13 @@ real object, a photo of a plush, and the one with a real pile. His GLSL starts w
   - The studio's shadow is worked out once per pixel, where the fur's surface is, and is never black: fur lets light
     through. The fur casts shadows too, from half-way up the pile.
 - **Three piles.** The body's is long and lies down, combed away from the crown. The ears have short, nubby blue pile
-  in front and the body's white fur behind and round the rim. The tuft is long fibres fanning out of a small core on
-  the crown, lying over the head's own fur, in a slightly deeper blue.
-- **Embroidery.** No pile grows on the stitches, and the pile round them is pulled down. The eyes are satin stitch:
-  rows that zigzag, with a border sewn round the edge. The thread is a soft black, sampled from the photo.
+  in front and the body's white fur behind and round the rim. The tuft is long, straight fibres fanning out of a
+  small core on the crown, lying over the head's own fur, in a slightly deeper blue; its locks differ a lot in
+  length, so its outline is ragged.
+- **Embroidery.** No pile grows on the stitches, and the pile round them is pulled down, so it lies in a hollow, in the
+  shade of the taller fur. The eyes are satin stitch: rows that zigzag, with a border sewn round the edge. The thread
+  is a soft black, sampled from the photo. A stitch thinner than a pixel covers only its share of that pixel, so in a
+  small view the mouth is a faint line and doesn't run into the eyes.
 - **Cost.** A pixel takes about 12 march steps in the corner button and about 20 at 176 px, with two or three fibre
   shadings: about what the plush mascots take. Software rendering (no GPU) is slower with fur than with plush.
 - **Motion.** His ears twitch like Yeti's and the tuft sways. He has no arms, so he wiggles hello.

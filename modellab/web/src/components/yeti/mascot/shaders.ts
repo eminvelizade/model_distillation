@@ -57,6 +57,7 @@ struct Fur {
   float len;    // how deep the pile is here,
   float h;      // ...and how far up it this point is (0: at the fabric, 1: at the tips)
   float top;    // how far up the fibre through this point reaches (fibres differ; 0 where embroidery leaves none)
+  float under;  // how much taller the pile round it stands (pile pulled down by stitches lies in a hollow, in the shade)
   vec3 n;       // which way is out
   vec3 root;    // where that fibre is rooted (fibres lean and wander, so not straight below)
   vec3 dir;     // which way it runs here
@@ -449,6 +450,8 @@ const float TUFT_PILE = 0.3;                     // ...and long fibres all round
 const float FACE_R = 0.947;                      // the face is laid out on the body's surface: longitude x this, and height
 const float EYE_TILT = 0.17;                     // the eyes lean outward at the top
 const vec3 THREAD = vec3(0.061, 0.059, 0.073);    // embroidery thread: a soft black (the tone curve deepens it)
+// (the noise is read in a turned frame: its cells would show as squares on a flat part that faces along an axis, as the ears do)
+const mat3 TWIST = mat3(0.8, -0.6, 0.0, 0.36, 0.48, -0.8, 0.48, 0.64, 0.6);
 // the body's fabric: a superellipse of revolution with a flat base (the photo's outline, less the pile), and which way
 // is out (worked out with it, so the pile needs no numeric normals)
 float bodyD(vec3 p, out vec3 n) {
@@ -481,12 +484,15 @@ float skinM(vec3 p, out Mat m, bool full) { m = Mat(uMain, 0.0, 0.0); return blo
 float pileD(vec3 p) { return bloomD(p, 0.5); }
 // the embroidery, on the face's chart: two oval eyes and a small mouth (a short bar, flat below)
 vec2 eyeQ(vec2 q, int i) { return rot2(i == 0 ? -EYE_TILT : EYE_TILT) * (q - uEye[i].xy); }   // in an eye's own frame
-float stitchD(vec2 q) {
+float barD(vec2 q) {
   vec2 m = q - uNose.xy;
-  float d = max(length(vec2(max(abs(m.x) - uNose.z + uNose.w, 0.0), m.y)) - uNose.w, -0.6 * uNose.w - m.y);
-  for (int i = 0; i < 2; i++) d = min(d, eyeD(uEye[i].xy + eyeQ(q, i), uEye[i]));
-  return d;
+  return max(length(vec2(max(abs(m.x) - uNose.z + uNose.w, 0.0), m.y)) - uNose.w, -0.6 * uNose.w - m.y);
 }
+float eyesD(vec2 q) { return min(eyeD(uEye[0].xy + eyeQ(q, 0), uEye[0]), eyeD(uEye[1].xy + eyeQ(q, 1), uEye[1])); }
+float stitchD(vec2 q) { return min(barD(q), eyesD(q)); }
+// how much of a pixel a stitched shape covers, from its distance; 'wide' is how wide the shape is (one thinner than a
+// pixel only ever covers that share of it, so a small view shows a faint mouth, not a heavy one)
+float inked(float d, float wide) { return clamp(0.5 - d / gPix, 0.0, min(1.0, wide / gPix)); }
 // the fur at p: the distance to the fabric, and the pile there
 float furM(vec3 p, out Fur f) {
   vec3 n;
@@ -530,17 +536,17 @@ float furM(vec3 p, out Fur f) {
       s = TUFT_C + axis + n * 0.2;                     // (its fibres are told apart by their direction from the core)
       h = dt / TUFT_PILE;
       pull = normalize(vec3(v.x * 2.0 + 0.25 * sin(uSway * 0.7), -0.35, v.z * 2.0 + 0.15 * sin(uSway * 0.9 + 1.0)));
-      len = TUFT_PILE; lean = 0.8; stray = 0.7; curl = 0.06; grain = 46.0;
-      alb = uExtra * 0.9; tip = mix(uExtra, vec3(1.0), 0.22);
+      len = TUFT_PILE; lean = 0.35; stray = 0.5; curl = 0.03; grain = 46.0;
+      alb = uExtra * 0.9; tip = mix(uExtra, vec3(1.0), 0.4);
       f.fine = 105.0; f.gloss = 0.8;
       body = 0.0; tufty = 1.0;
     }
     d = smin(d, dt, 0.06);
   }
-  f.n = n; f.len = len; f.h = h; f.gap = gap; f.ink = 0.0; f.top = 0.0;
-  if (gap > 0.0 && d > 0.01) return d;                 // (not in the pile: the march only needs the distances)
+  f.n = n; f.len = len; f.h = h; f.gap = gap; f.ink = 0.0; f.top = 0.0; f.under = 0.0; f.root = s; f.dir = n; f.alb = alb;
+  if (gap > 0.0 && d > max(0.01, 0.3 * gPix)) return d;   // (not in the pile: the march only needs the distances)
   // how the pile lies: locks of fibres lean together, turned a little off the way it was combed; curly pile wanders
-  float lock = snoise(s * grain + 3.0, 0.0);
+  float lock = snoise(TWIST * s * grain + 3.0, 0.0);
   vec3 lay = pull - n * dot(pull, n);
   lay = dot(lay, lay) > 1e-5 ? normalize(lay) : normalize(cross(n, vec3(0.31, 0.2, 0.93)));
   float turn = 0.5 * stray * (sin(dot(s, vec3(11.0, 7.0, 9.0))) + sin(dot(s, vec3(-8.0, 13.0, 6.0)) + 1.7));
@@ -550,14 +556,16 @@ float furM(vec3 p, out Fur f) {
   float hc = clamp(h, 0.0, 1.0);
   float reach = lean * len * (0.75 + 0.5 * lock);
   float wave = curl * len * sin(hc * 6.0 + lock * 37.0 + dot(s, vec3(53.0, 37.0, 41.0)));
-  f.root = s - lay * reach * hc * (0.4 + 0.6 * hc) - side * wave * hc;
+  f.root = TWIST * (s - lay * reach * hc * (0.4 + 0.6 * hc) - side * wave * hc);
   f.dir = normalize(n * len + lay * reach * (0.4 + 1.2 * hc) + side * wave);
-  f.top = mix(0.55 + 0.45 * lock, 0.42 + 0.4 * lock, tufty);   // (the tuft's locks stop well short of its longest fibres)
+  f.top = mix(0.55 + 0.45 * lock, 0.3 + 0.3 * lock + 0.34 * snoise(s * 11.0 + 5.0, 0.0), tufty);   // (the tuft is ragged: its locks differ a lot, and stop short of its longest fibres)
   alb *= mix(vec3(1.0), mix(vec3(0.68, 0.86, 0.93), vec3(1.03), smoothstep(0.25, 0.7, lock)), nub);   // the nubs' creases are deeper in colour
   // the face: embroidery (no pile on it, and the stitches pull the pile down round them) and a blush sprayed on the fur
   if (body > 0.5 && s.z > 0.3 && s.y > 0.4 && s.y < 1.1) {
     vec2 q = vec2(atan(s.x, s.z) * FACE_R, s.y);
-    f.top *= smoothstep(0.0, 0.085, stitchD(q + vec2(0.0, 0.018)));   // (a few fibres from above lie over the edge)
+    float press = smoothstep(0.0, 0.085, stitchD(q + vec2(0.0, 0.018)));   // (a few fibres from above lie over the edge)
+    f.under = 0.8 * f.top * (1.0 - press);
+    f.top *= press;
     for (int i = 0; i < 2; i++) {
       vec2 b = rot2(i == 0 ? 0.35 : -0.35) * (q - uBlush[i].xy) / (uBlush[i].w * vec2(1.0, 0.72));
       float k = exp(-0.69 * dot(b, b));
@@ -565,10 +573,8 @@ float furM(vec3 p, out Fur f) {
       tip = mix(tip, tip * mix(vec3(1.0), uBlushC, 0.85), k);
     }
     if (d < 0.03) {                                    // the thread itself, on the fabric
-      float fd = stitchD(q);
-      float fray = 1.0 - smoothstep(0.5, 1.5, gPix * 300.0);
-      if (fd < 0.03) fd += 0.007 * fray * (snoise(vec3(q * 300.0, 1.0), 0.0) - 0.5);    // stitched edges are a little ragged
-      f.ink = 1.0 - smoothstep(-gPix, gPix, fd);
+      float fray = 0.007 * (1.0 - smoothstep(0.5, 1.5, gPix * 300.0)) * (snoise(vec3(q * 300.0, 1.0), 0.0) - 0.5);   // stitched edges are a little ragged
+      f.ink = max(inked(eyesD(q) + fray, (uEyeMode > 0.5 ? 0.76 : 2.0) * uEye[0].z), inked(barD(q) + fray, 2.0 * uNose.w));
       if (f.ink > 0.0) {
         // satin stitch: the eyes are filled in rows that zigzag, with a border sewn round the edge; the mouth is
         // sewn across. The thread runs along 'dir', and the rows show as shallow grooves.
@@ -961,11 +967,11 @@ void main() {
     if (c > 0.003) {
       float a = 1.0;
       if (fabric) {                                        // the fabric itself: bare only where it's embroidered
-        col = shadeFur(p, f, f.top, V, key);
+        col = shadeFur(p, f, f.top + f.under, V, key);
         if (f.ink > 0.0) { vec3 k2; col = mix(col, shadeThread(p, f, V, k2), f.ink); key = mix(key, k2, f.ink); }
       } else {
         a = 1.0 - exp(-c * ds * f.fine * FUR_OPACITY);
-        if (!seen || (1.0 - A) * a > 0.02) col = shadeFur(p, f, max(f.top - f.h, 0.0), V, key);   // (a faint fibre takes the light of the one before)
+        if (!seen || (1.0 - A) * a > 0.02) col = shadeFur(p, f, max(f.top - f.h, 0.0) + f.under, V, key);   // (a faint fibre takes the light of the one before)
       }
       float A1 = A + (1.0 - A) * a;
       if (!seen || (A < 0.5 && A1 >= 0.5)) { seen = true; sp = p; sn = f.n; lift = max(0.55 - f.h, 0.0) * f.len; depth = d; }
