@@ -44,9 +44,6 @@ uniform mat3 uEarM[2];
 uniform vec3 uArmA;
 uniform vec3 uArmB;
 uniform float uArmOn;
-uniform vec4 uPetal[3];     // tuft lobes: direction, length
-uniform vec3 uCurl[3];      // ...and which way each curls
-uniform vec3 uPetalRoot;    // where the tuft grows from
 uniform float uSway;
 varying vec3 vPos;
 
@@ -163,57 +160,6 @@ float eyeDomes(vec3 p) {
 `;
 
 // ---- the characters: each defines its plush (skinM) and its plastic parts (solid)
-export const YETI = /* glsl */ `
-// the body: a superellipse of revolution fitted to the photo of the plush (half-width 1)
-float bodySdf(vec3 p) {
-  vec2 xz = vec2(p.x, p.z / 0.9);
-  float rho = length(xz), hh = p.y - 0.68;
-  float w = smoothstep(-0.45, 0.45, hh);
-  float n = mix(3.4, 2.2, w), B = mix(0.72, 0.9, w);
-  vec2 q = max(vec2(rho, abs(hh) / B), 1e-4);
-  vec2 qn = pow(q, vec2(n));
-  float r = pow(qn.x + qn.y, 1.0 / n);
-  vec2 g = pow(r, 1.0 - n) * (qn / q) / vec2(1.0, B);
-  float d = (r - 1.0) / max(length(g), 1e-3);
-  float zz = p.z * p.z;
-  d *= mix(1.0, 0.9, zz / max(p.x * p.x + zz, 1e-5));
-  return smax(d, -p.y + 0.02, 0.26);
-}
-float skinM(vec3 p, out Mat m, bool full) {
-  m = Mat(uMain, 1.0, 0.0);
-  float d = bodySdf(p) + seam(p.z + 0.04, 0.006, 0.02);   // where the front and back panels are sewn together
-  if (full) stitchFace(p, m, uBlushC, true);
-  // panda ears: thick rounded discs with a cupped front, set into the upper corners of the head
-  for (int i = 0; i < 2; i++) {
-    vec3 q = uEarM[i] * (p - uEarC[i]);
-    float disc = sdEllipsoid(q, vec3(0.235, 0.22, 0.12));
-    float cup = sdEllipsoid(q - vec3(0.0, 0.025, 0.13), vec3(0.15, 0.14, 0.085));
-    addPart(d, m, smax(disc, -cup, 0.05), Mat(uAccent, 1.0, 0.0), 0.05);
-  }
-  // the tuft: one soft flame of plush, curling over like a cowlick
-  vec3 v = p - uPetalRoot;
-  if (dot(v, v) < 1.0) {
-    float dt = 1e3;
-    for (int i = 0; i < 3; i++) {
-      vec3 dir = uPetal[i].xyz, a = uPetalRoot + dir * 0.02;
-      float L = uPetal[i].w, r0 = i == 0 ? 0.17 : 0.135;
-      vec3 b = a + dir * L * 0.55;
-      vec3 c = b + normalize(dir + uCurl[i]) * L * 0.5;
-      dt = smin(dt, smin(sdRoundCone(p, a, b, r0, r0 * 0.66), sdRoundCone(p, b, c, r0 * 0.66, r0 * 0.4), 0.05), 0.12);
-    }
-    addPart(d, m, dt, Mat(uAccent, 1.0, 0.0), 0.07);
-  } else d = min(d, length(v) - 0.65);   // (a safe bound: the tuft reaches no further than 0.65 from its root)
-  // the waving arm, with a pad on the paw
-  if (uArmOn > 0.5) {
-    vec3 a = mix(uMain, uAccent, 1.0 - smoothstep(0.05, 0.085, distance(p, uArmB + vec3(0.0, 0.02, 0.12))));
-    addPart(d, m, sdRoundCone(p, uArmA, uArmB, 0.15, 0.135), Mat(a, 1.0, 0.0), 0.03);
-  }
-  return d;
-}
-float solid(vec3 p, out vec3 col, out float rough) { col = vec3(0.0); rough = 0.3; return 1e3; }
-float casters(vec3 p) { return 1e3; }
-`;
-
 export const MOCHI = /* glsl */ `
 // Dr. Mochi, the scientist: a soft gumdrop in a white lab coat, with round glasses and a pen in the breast pocket.
 // (The glasses, buttons and pen were placed on the surface by solving this same shape numerically.)
@@ -437,13 +383,12 @@ float casters(vec3 p) { return 1e3; }
 
 export const BLOOM = /* glsl */ `
 #define FUR
-// Bloom: a round, fluffy white cub with sky-blue ears and a tuft of long blue fur, modelled on a photo of the real
+// Bloom: a round, fluffy white cub with furry sky-blue ears and a tuft of the same long blue fur, modelled on a photo of the real
 // plush. A camera and this shape were fitted to the photo's outline, eyes, mouth and ears, and the colours were sampled
 // from it. He's the one mascot with a real pile: FUR switches RENDER to draw his fur as a volume of fibres.
 const float PILE = 0.05;                         // how far the body's pile stands off its fabric
-const vec3 EAR_R = vec3(0.2, 0.2, 0.065);      // an ear's fabric: a thick disc on the head, facing forward
-const vec2 EAR_PILE = vec2(0.032, 0.028);        // the pile on its white back and rim, and on its blue front,
-const float EAR_BLUE = 0.188;                    // ...which is a smaller disc: the white wraps round the rim
+const vec3 EAR_R = vec3(0.165, 0.165, 0.05);     // an ear's fabric: a thick disc on the head, facing forward,
+const float EAR_PILE = 0.075;                    // ...in the tuft's fur, cut shorter
 const vec3 TUFT_C = vec3(0.0, 1.73, 0.2);        // the tuft: a small core lying across the crown,
 const float TUFT_W = 0.15, TUFT_R = 0.06;        // (a capsule: half its length, and its radius)
 const float TUFT_PILE = 0.3;                     // ...and long fibres all round it
@@ -474,7 +419,7 @@ float bloomD(vec3 p, float pile) {
   float d = bodyD(p, n) - pile * PILE;
   for (int i = 0; i < 2; i++) {
     vec3 q = uEarM[i] * (p - uEarC[i]);
-    d = smin(d, sdEllipsoid(q, EAR_R) - pile * mix(EAR_PILE.x, EAR_PILE.y, step(0.0, q.z) * step(length(q.xy), EAR_BLUE)), 0.04);
+    d = smin(d, sdEllipsoid(q, EAR_R) - pile * EAR_PILE, 0.04);
   }
   vec3 v = p - TUFT_C;
   v.x -= clamp(v.x, -TUFT_W, TUFT_W);
@@ -498,28 +443,24 @@ float furM(vec3 p, out Fur f) {
   vec3 n;
   float d = bodyD(p, n);
   // the body: a long white pile that lies down, combed away from the crown
-  float len = PILE, lean = 2.0, stray = 0.3, curl = 0.04, grain = 17.0, body = 1.0, tufty = 0.0, nub = 0.0;
+  float len = PILE, lean = 2.0, stray = 0.3, curl = 0.04, grain = 17.0, body = 1.0, tufty = 0.0;
   vec3 pull = normalize(vec3(p.x, 0.0, p.z) * 0.3 - vec3(0.0, 1.0, 0.0)), alb = uMain, tip = uMain;
   f.fine = 80.0; f.gloss = 0.5;
-  // the ears: short, nubby blue pile in front; the body's white fur behind and round the rim
+  // the ears: blue all over, in the same fur as the tuft, cut shorter
   for (int i = 0; i < 2; i++) {
     vec3 q = uEarM[i] * (p - uEarC[i]);
     if (dot(q, q) > 0.16) continue;
-    float de = sdEllipsoid(q, EAR_R), seam = EAR_BLUE + 0.02 * (snoise(q * 30.0 + 7.0, 0.0) - 0.5);
-    float front = smoothstep(-0.012, 0.012, q.z) * (1.0 - smoothstep(seam - 0.01, seam + 0.01, length(q.xy)));
+    float de = sdEllipsoid(q, EAR_R);
     float w = clamp(0.5 + 0.5 * (de - d) / 0.04, 0.0, 1.0), e = 1.0 - w;
     d = mix(de, d, w) - 0.04 * w * e;
     n = mix(n, normalize(q / (EAR_R * EAR_R)) * uEarM[i], e);
     pull = mix(pull, normalize(vec3(q.xy, 0.0) + 1e-4) * uEarM[i], e);
-    len = mix(len, mix(EAR_PILE.x, EAR_PILE.y, front), e);
-    lean = mix(lean, mix(1.3, 0.35, front), e);
-    stray = mix(stray, mix(1.8, 3.1, front), e);
-    curl = mix(curl, mix(0.05, 0.2, front), e);
-    grain = mix(grain, mix(17.0, 70.0, front), e);
-    nub = max(nub, front * e);
-    alb = mix(alb, mix(uMain, uAccent, front), e);
-    tip = mix(tip, mix(uMain, uAccent, front), e);
-    f.fine = mix(f.fine, mix(95.0, 46.0, front), e);
+    len = mix(len, EAR_PILE, e);
+    lean = mix(lean, 0.35, e); stray = mix(stray, 0.5, e); curl = mix(curl, 0.03, e); grain = mix(grain, 46.0, e);
+    alb = mix(alb, uExtra * 0.9, e);
+    tip = mix(tip, mix(uExtra, vec3(1.0), 0.4), e);
+    f.fine = mix(f.fine, 105.0, e); f.gloss = mix(f.gloss, 0.8, e);
+    tufty = max(tufty, e);
     body *= w;
   }
   n = normalize(n);
@@ -558,8 +499,7 @@ float furM(vec3 p, out Fur f) {
   float wave = curl * len * sin(hc * 6.0 + lock * 37.0 + dot(s, vec3(53.0, 37.0, 41.0)));
   f.root = TWIST * (s - lay * reach * hc * (0.4 + 0.6 * hc) - side * wave * hc);
   f.dir = normalize(n * len + lay * reach * (0.4 + 1.2 * hc) + side * wave);
-  f.top = mix(0.55 + 0.45 * lock, 0.3 + 0.3 * lock + 0.34 * snoise(s * 11.0 + 5.0, 0.0), tufty);   // (the tuft is ragged: its locks differ a lot, and stop short of its longest fibres)
-  alb *= mix(vec3(1.0), mix(vec3(0.68, 0.86, 0.93), vec3(1.03), smoothstep(0.25, 0.7, lock)), nub);   // the nubs' creases are deeper in colour
+  f.top = mix(0.55 + 0.45 * lock, 0.3 + 0.3 * lock + 0.34 * snoise(s * 11.0 + 5.0, 0.0), tufty);   // (the tuft and ears are ragged: their locks differ a lot, and stop short of the longest fibres)
   // the face: embroidery (no pile on it, and the stitches pull the pile down round them) and a blush sprayed on the fur
   if (body > 0.5 && s.z > 0.3 && s.y > 0.4 && s.y < 1.1) {
     vec2 q = vec2(atan(s.x, s.z) * FACE_R, s.y);

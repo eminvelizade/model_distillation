@@ -1,11 +1,12 @@
 # The mascots
 
-ModelLab's assistant is one of seven mascots: five plush ones, **Yeti** (the default), **Dr. Mochi**, **Bop**,
-**Twinkle** and **Pip**; **Rime**, a quiet snow golem; and **Bloom**, a fluffy white cub with real fur, modelled on a
-photo of a plush. You pick one in the assistant's settings. Its look and name then follow everywhere, and Claude speaks
-as it, in its own voice (`MASCOTS` in `modellab/hub/yeti.py`: the plush ones and Bloom are warm and light, Rime is calm
-and brief and never gushes). Everything is drawn live in the browser from code: there are no images or 3D model files,
-except the small still pictures described below.
+ModelLab's assistant is one of six mascots: **Bloom** (the default), a fluffy white cub with real fur, modelled on a
+photo of a plush; four plush ones, **Dr. Mochi**, **Bop**, **Twinkle** and **Pip**; and **Rime**, a quiet snow golem.
+You pick one in the assistant's settings. Its look and name then follow everywhere, and Claude speaks as it, in its
+own voice (`MASCOTS` in `modellab/hub/yeti.py`: Bloom and the plush ones are warm and light, Rime is calm and brief
+and never gushes). Everything is drawn live in the browser from code: there are no images or 3D model files, except
+the small still pictures described below. (The assistant's code is still named `yeti`, after the first mascot, which
+Bloom replaced.)
 
 | file | what's in it |
 |---|---|
@@ -81,15 +82,15 @@ compile any of it.
 
 ## Bloom, the furry cub
 
-Bloom is a round, fluffy white cub with sky-blue ears and a tuft of long blue fur. He's the one mascot modelled on a
+Bloom is a round, fluffy white cub with furry sky-blue ears and a tuft of the same long blue fur. He's the one mascot modelled on a
 real object, a photo of a plush, and the one with a real pile. His GLSL starts with `#define FUR`, which switches
 `RENDER` to the fur; the other mascots never compile any of it.
 
 - **Measured from the photo.** The plush was cut out of the picture, and a camera and a shape (a superellipse of
   revolution with a flat base) were fitted together to its outline and to the centres of the eyes and the mouth, by
   least squares. The outline agrees to about 8 px in the 2000 px photo and the face to about 1 px. The eyes, mouth and
-  blush were then taken from the picture back onto that surface, which gives their true size and place, and the ears'
-  blue fronts were fitted as discs sitting on the head.
+  blush were then taken from the picture back onto that surface, which gives their true size and place, and the ears
+  were placed by fitting discs to their blue fronts.
   - His face is laid out on the body's surface (distance round the body, and height), not flat across the picture as
     the other faces are. So `eye.x` and the blush's x in his spec are distances round the body.
   - The eyes lean outward at the top by about 10°, as they do on the plush.
@@ -114,17 +115,17 @@ real object, a photo of a plush, and the one with a real pile. His GLSL starts w
     when lit from behind.
   - The studio's shadow is worked out once per pixel, where the fur's surface is, and is never black: fur lets light
     through. The fur casts shadows too, from half-way up the pile.
-- **Three piles.** The body's is long and lies down, combed away from the crown. The ears have short, nubby blue pile
-  in front and the body's white fur behind and round the rim. The tuft is long, straight fibres fanning out of a
-  small core on the crown, lying over the head's own fur, in a slightly deeper blue; its locks differ a lot in
-  length, so its outline is ragged.
+- **Two furs.** The body's is long and white and lies down, combed away from the crown. The tuft is long, straight
+  blue fibres fanning out of a small core on the crown, lying over the head's own fur; its locks differ a lot in
+  length, so its outline is ragged. The ears are blue all over, in the tuft's fur cut shorter. (On the plush the ears
+  are short nubby pile with a white back; these were asked for instead.)
 - **Embroidery.** No pile grows on the stitches, and the pile round them is pulled down, so it lies in a hollow, in the
   shade of the taller fur. The eyes are satin stitch: rows that zigzag, with a border sewn round the edge. The thread
   is a soft black, sampled from the photo. A stitch thinner than a pixel covers only its share of that pixel, so in a
   small view the mouth is a faint line and doesn't run into the eyes.
 - **Cost.** A pixel takes about 12 march steps in the corner button and about 20 at 176 px, with two or three fibre
   shadings: about what the plush mascots take. Software rendering (no GPU) is slower with fur than with plush.
-- **Motion.** His ears twitch like Yeti's and the tuft sways. He has no arms, so he wiggles hello.
+- **Motion.** His ears twitch now and then and the tuft sways. He has no arms, so he wiggles hello.
 
 ## Changing a mascot or adding one
 
@@ -138,5 +139,5 @@ real object, a photo of a plush, and the one with a real pile. His GLSL starts w
    looks like, and how it talks).
 4. **Still picture.** Make a 176 px still with a transparent background: screenshot the live mascot (headless
    Chromium works) and save it as WebP in `components/yeti/stills/`.
-5. **Consent-page picture.** The OAuth consent page's picture, `modellab/hub/yeti.webp` (160 px), is a still of Yeti
+5. **Consent-page picture.** The OAuth consent page's picture, `modellab/hub/yeti.webp` (160 px), is a still of Bloom
    made the same way.

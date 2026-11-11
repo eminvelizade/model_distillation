@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { MascotKind, MascotPose } from "../mascots";
-import { BLOOM, BOP, COMMON, MOCHI, PIP, RENDER, RIME, TWINKLE, VERT, YETI } from "./shaders";
+import { BLOOM, BOP, COMMON, MOCHI, PIP, RENDER, RIME, TWINKLE, VERT } from "./shaders";
 
 /** The 3D mascots, drawn live with three.js.
  *
@@ -20,11 +20,10 @@ type Spec = {
   eye: { x: number; y: number; rx: number; ry: number }; eyeZ: number; faceR: number;
   nose: [number, number, number, number]; mouth: [number, number, number, number]; blush: [number, number, number, number];
   rest: number; prop: string; exposure: number; colors: { main: string; accent: string; blush: string; extra: string };
-  ears?: Ears; petals?: boolean; bubbles?: boolean; arm?: Arm;
+  ears?: Ears; bubbles?: boolean; arm?: Arm;
   stoic?: boolean;          // his face never changes (Rime): no smile, no blinking, no closed eyes; a slow, stiff wave
   frost?: boolean;          // has frost drifting round it (uFrost*)
-  flake?: "snow";           // thinks in snowflakes (else sparkles)
-  props?: false;            // no snowflake, sparkle or z's at all
+  props?: false;            // no sparkle or z's at all
   head?: boolean;           // turns its own head (uHead) to watch, nod and bow; the body turns less
   motion?: Partial<{ breathe: number; hop: number; squash: number; tilt: number }>;   // scales the usual motion
   portrait?: [number, number, number, number];   // the camera for small views: head and shoulders
@@ -33,13 +32,14 @@ type Spec = {
 // Shapes, faces and palette colours (ModelLab's ice scale and the Tailwind palette). Positions are in each mascot's
 // own units (floor at y = 0, facing +z); exposures were set by measuring each render against its palette swatch.
 const SPECS: Record<MascotKind, Spec> = {
-  yeti: {
-    glsl: YETI, box: [-1.34, -0.1, -1.1, 1.34, 2.3, 1.15], cam: [2.42, 9.9, 1.02, 18], top: 1.58, shadow: [2.7, 1.6],
-    eye: { x: 0.35, y: 0.678, rx: 0.068, ry: 0.1 }, eyeZ: 0, faceR: 1, nose: [0, 0.607, 0.031, 0.009], mouth: [0, 0, 0, 0],
-    blush: [0.57, 0.5, 0.8, 0.2], ears: { base: [0.7, 1.14, 0.12], off: [0.1, 0.16], yaw: 0.28, lean: 0.5 }, petals: true, flake: "snow",
-    rest: 0, prop: "#7eb0ee", exposure: 1.1,
-    arm: { shoulder: [0.82, 0.76, 0.3], len: 0.44, rest: 2.6, hide: true },   // tucked inside the body until it waves
-    colors: { main: "#f3f8fe", accent: "#7eb0ee", blush: "#a6c9f2", extra: "#7eb0ee" },   // ice-50, ice-400, ice-300
+  // Bloom was measured from a photo of the real plush: the face is laid out on his surface (eye and blush x are
+  // distances round the body, not across the picture), and the colours are the photo's, not the palette's.
+  bloom: {
+    glsl: BLOOM, box: [-1.15, -0.1, -1.08, 1.15, 2.22, 1.08], cam: [2.48, 9.9, 1.08, 17], top: 1.73, shadow: [2.6, 1.6],
+    eye: { x: 0.321, y: 0.785, rx: 0.062, ry: 0.088 }, eyeZ: 0, faceR: 1, nose: [0, 0.711, 0.055, 0.014], mouth: [0, 0, 0, 0],
+    blush: [0.481, 0.62, 0, 0.1], ears: { base: [0.605, 1.34, 0.339], off: [0, 0.14], yaw: 0, lean: 0.8 }, rest: 0,
+    prop: "#68c7ea", exposure: 1.1,
+    colors: { main: "#eff2fa", accent: "#99d7f0", blush: "#b0f1fc", extra: "#84d1f0" },   // white fur; (accent: unused); the blush's dye; the tuft's and ears' blue
   },
   mochi: {
     glsl: MOCHI, box: [-1.0, -0.1, -0.92, 1.0, 1.92, 0.95], cam: [2.2, 9.6, 0.9, 17], top: 1.72, shadow: [2.1, 1.5],
@@ -74,15 +74,6 @@ const SPECS: Record<MascotKind, Spec> = {
     motion: { breathe: 0.25, hop: 0, squash: 0.15, tilt: 0.5 },   // tall and made of snow: he barely bends
     arm: { shoulder: [0.215, 1.97, 0.0], len: 1.105, rest: Math.PI + 0.082, hide: false, raise: -0.85, fwd: 0.12 },
     colors: { main: "#f6f9fc", accent: "#7eb0ee", blush: "#7eb0ee", extra: "#7eb0ee" },   // snow; ice-400 for the frost
-  },
-  // Bloom was measured from a photo of the real plush: the face is laid out on his surface (eye and blush x are
-  // distances round the body, not across the picture), and the colours are the photo's, not the palette's.
-  bloom: {
-    glsl: BLOOM, box: [-1.15, -0.1, -1.08, 1.15, 2.22, 1.08], cam: [2.48, 9.9, 1.08, 17], top: 1.73, shadow: [2.6, 1.6],
-    eye: { x: 0.321, y: 0.785, rx: 0.062, ry: 0.088 }, eyeZ: 0, faceR: 1, nose: [0, 0.711, 0.055, 0.014], mouth: [0, 0, 0, 0],
-    blush: [0.481, 0.62, 0, 0.1], ears: { base: [0.605, 1.34, 0.339], off: [0, 0.14], yaw: 0, lean: 0.8 }, rest: 0,
-    prop: "#68c7ea", exposure: 1.1,
-    colors: { main: "#eff2fa", accent: "#99d7f0", blush: "#b0f1fc", extra: "#84d1f0" },   // white fur; the ears' sky blue; the blush's dye; the tuft's blue
   },
 };
 
@@ -231,8 +222,7 @@ export class View {
       uBlush: { value: [v4([-K.blush[0], K.blush[1], K.blush[2], K.blush[3]]), v4(K.blush)] },
       uEarC: { value: [new THREE.Vector3(), new THREE.Vector3()] }, uEarM: { value: [new THREE.Matrix3(), new THREE.Matrix3()] },
       uArmA: { value: new THREE.Vector3() }, uArmB: { value: new THREE.Vector3() }, uArmOn: { value: 0 },
-      uPetal: { value: [0, 1, 2].map(() => new THREE.Vector4()) }, uCurl: { value: [0, 1, 2].map(() => new THREE.Vector3()) },
-      uPetalRoot: { value: new THREE.Vector3(0, 1.49, 0.1) }, uSway: { value: 0 },
+      uSway: { value: 0 },
       uFrostT: { value: 0 }, uFrostR: { value: 1 }, uFrostC: { value: C("#3d82dc") }, uHead: { value: new THREE.Matrix3() },
     };
     const box = new THREE.BoxGeometry(boxMax.x - boxMin.x, boxMax.y - boxMin.y, boxMax.z - boxMin.z);
@@ -265,7 +255,7 @@ export class View {
     this.scene.add(this.shadow);
     this.disposables.push(shadowTex, plane, this.shadow.material);
 
-    // props: a snowflake (Yeti, Rime) or a sparkle while thinking, bubbles for the scientist, z's while asleep
+    // props: a sparkle while thinking, bubbles for the scientist, z's while asleep
     const sprite = (draw: (x: CanvasRenderingContext2D) => void) => {
       const c = document.createElement("canvas");
       c.width = c.height = 128;
@@ -282,18 +272,10 @@ export class View {
     };
     this.flake = sprite((x) => {
       x.translate(64, 64);
-      if (K.flake === "snow") {
-        x.strokeStyle = K.prop; x.lineWidth = 9; x.lineCap = "round";
-        for (let i = 0; i < 6; i++) {
-          x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -52); x.moveTo(0, -31); x.lineTo(-15, -45); x.moveTo(0, -31); x.lineTo(15, -45);
-          x.stroke(); x.rotate(Math.PI / 3);
-        }
-      } else {
-        x.fillStyle = K.prop;
-        x.beginPath();
-        for (let i = 0; i < 4; i++) { x.quadraticCurveTo(0, 0, 0, -56); x.quadraticCurveTo(0, 0, 56, 0); x.rotate(Math.PI / 2); }
-        x.fill();
-      }
+      x.fillStyle = K.prop;
+      x.beginPath();
+      for (let i = 0; i < 4; i++) { x.quadraticCurveTo(0, 0, 0, -56); x.quadraticCurveTo(0, 0, 56, 0); x.rotate(Math.PI / 2); }
+      x.fill();
     });
     this.bubbles = K.bubbles ? [0, 1, 2].map(() => sprite((x) => {
       x.beginPath(); x.arc(64, 64, 50, 0, Math.PI * 2);
@@ -472,16 +454,6 @@ export class View {
         this.setEar(ears, i, sgn, tw * 0.2 + (P === "wave" ? 0.06 * Math.sin(pt * 9) : 0) + (P === "sleep" ? -0.1 : 0));
       });
     }
-    if (K.petals) {   // Yeti's tuft: a tall middle lobe that curls over and two smaller ones; they sway a little
-      const PETALS: [number, number, number, number[]][] = [[0.0, 0.12, 0.42, [0.3, 0.0, 0.3]], [-0.52, 0.05, 0.3, [-0.55, -0.1, 0.05]], [0.55, 0.0, 0.3, [0.55, -0.1, 0.05]]];
-      const sway = reduce ? 0 : 1;
-      PETALS.forEach(([a, b, len, curl], i) => {
-        const aa = a + sway * 0.05 * Math.sin(t * 1.3 + i * 1.9), bb = b + sway * 0.04 * Math.sin(t * 0.9 + i);
-        this.v3.set(Math.sin(aa), Math.cos(aa) * Math.cos(bb), Math.sin(bb) * 0.8 + 0.1).normalize();
-        (U.uPetal.value as THREE.Vector4[])[i].set(this.v3.x, this.v3.y, this.v3.z, len);
-        (U.uCurl.value as THREE.Vector3[])[i].set(curl[0], curl[1], curl[2]);
-      });
-    }
     if (K.arm) {     // the arm on the viewer's right rises, waves and comes back down
       let up = 0, ang = K.arm.raise ?? -0.38;
       if (P === "wave") {
@@ -514,7 +486,7 @@ export class View {
     st.flake += ((P === "think" ? 1 : 0) - st.flake) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 6));
     this.flake.visible = st.flake > 0.01 && !K.bubbles && K.props !== false;
     this.flake.material.opacity = st.flake;
-    this.flake.material.rotation = reduce ? 0 : (K.flake ? t * 0.8 : Math.sin(t * 2.0) * 0.25);
+    this.flake.material.rotation = reduce ? 0 : Math.sin(t * 2.0) * 0.25;
     this.flake.scale.setScalar(0.3 * (0.5 + 0.5 * st.flake));
     this.flake.position.set(bx * 0.82, H + 0.42 + (reduce ? 0 : Math.sin(t * 1.6) * 0.04), 0.3);
     st.bub += ((P === "think" ? 1 : 0) - st.bub) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 5));
