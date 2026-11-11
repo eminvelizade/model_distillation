@@ -127,7 +127,7 @@ function applyFill(r: Recipe, f: Record<string, string>): Recipe {
     return n;
   });
   const tags = f.tag && !(r.tags ?? []).includes(f.tag) ? [...(r.tags ?? []), f.tag] : r.tags;
-  return { ...r, stages, tags, ...(f.dataset ? { dataset: f.dataset } : {}) };
+  return { ...r, stages, tags, ...(f.dataset ? { dataset: f.dataset } : {}), ...(f.name ? { name: f.name } : {}) };
 }
 
 function StageCard({ st, idx, stages, cat, vars, main, onChange, onRemove, onMove }: {

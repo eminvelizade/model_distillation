@@ -163,6 +163,7 @@ export type YetiEvent =
   | { type: "tool"; id: string; name: string; label: string }
   | { type: "tool_done"; id: string; ok: boolean; label: string; href: string | null }
   | { type: "done"; text: string; usage: { input: number; output: number; cache_read: number; cache_write: number }; model: string; model_label: string; stop: string | null }
+  | { type: "action"; decision: import("./agent").Decision } // Claude drafted or proposed an action (yeti_actions.py)
   | { type: "error"; code: string; message: string };
 
 /** POST a chat turn and read the server-sent events as they arrive (EventSource can't POST). */

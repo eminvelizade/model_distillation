@@ -230,7 +230,8 @@ Say what to do in one sentence and the assistant does it, usually in under a sec
 | "where do I export this?" | the Export button is ringed; nothing else happens |
 | "cancel the queued one" (on the queue) | a card names the run and waits for one tap |
 | "delete this run" | a card with "This can't be undone" waits for one tap |
-| "why did this fail?", "halve the batch size and retry", "cancel this and then export that" | not one action: it goes to Claude, as before |
+| "why did this fail?" | a question: Claude answers, as before |
+| "start a quick test run on the 5090", "halve the batch size and retry" | not one action: Claude looks up what it needs, fills in New experiment and offers a "Queue it" card |
 
 - **Turn it on:** the assistant's settings → One-step actions → paste an OpenRouter key (openrouter.ai → Keys). It is
   stored encrypted, like the Claude key. Without it, every sentence goes to Claude.
@@ -240,10 +241,12 @@ Say what to do in one sentence and the assistant does it, usually in under a sec
   Never images, annotations, weights or files. OpenRouter and the model's provider receive that request.
 - **What it can do:** only what the page's own buttons do, through the same API. Opening and filling in happen at
   once; anything that runs, cancels or deletes waits for your tap. Every decision is logged
-  (`GET /api/assistant/actions`).
+  (`GET /api/assistant/actions`). Claude has the same actions and the same limits: it prepares, you tap.
 - **⌘K** lists the actions of the page you are on and presses the real button.
 
 ![One sentence fills in Clone & edit](screenshots/hub_12_one_sentence_clone_edit.png)
+
+![Claude drafts a quick test run and offers to queue it](screenshots/hub_16_claude_drafts.png)
 
 ### Fixes for known failures
 

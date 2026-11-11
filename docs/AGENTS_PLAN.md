@@ -402,8 +402,12 @@ Each step ships on its own and is useful without the next.
 3. **Act** (built for one sentence): the hub's `POST /api/assistant/decide` builds the screen from its own data,
    asks the decision model and routes the answer. Look and draft actions happen at once; act and careful actions
    show a card and wait for one tap; anything else goes to Claude. The OpenRouter key is in the assistant's
-   settings. Not built: the same actions for Claude apps through MCP, standing permissions, the agent GPU-hour
-   limit, and Claude standing in when there is no OpenRouter key (the sentence goes to Claude's chat instead).
+   settings. Claude takes the rest with two tools (`modellab/hub/yeti_actions.py`): `draft_experiment` fills in New
+   experiment, and `propose_action` offers any other registered action as a card, with the same tiers. "Start a
+   quick test run on the 5090" has no single action, so the decision model hands it over and Claude looks up the
+   machine and a dataset, drafts the run and offers a "Queue it" card. Not built: the same actions for Claude apps
+   through MCP, standing permissions, the agent GPU-hour limit, and Claude standing in when there is no OpenRouter
+   key (the sentence goes to Claude's chat instead).
 
 **The decision model in use:** `liquid/d1-ultra`, pinned as `liquid/d1-ultra-20261015`, with the gate the
 evaluation found for it: the least certain answer at 0.7 or more, and "asks for more than one thing" at 0.5 or

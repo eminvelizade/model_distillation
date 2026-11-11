@@ -17,6 +17,7 @@ export interface Decision {
   needs?: "none" | "tap" | "confirm"; show?: boolean; values?: Record<string, string>; extra?: Record<string, any>;
   title?: string; target?: string | null; changes?: { name: string; label: string; value: string }[];
   confidence?: number | null; reason?: string | null; tell?: string; ms?: number; note?: string;
+  by?: "claude"; // proposed by Claude through its action tools, not picked by the decision model
 }
 
 /** A failed run's diagnosis (the hub's failure catalogue) and its fix, a decision this page can carry out. */
@@ -121,7 +122,7 @@ export function Highlighter() {
 
 // ---------------------------------------------------------------- carrying a decision out
 
-const FIELDS = ["model", "dataset", "epochs", "batch_size", "grad_accum", "image_size", "lr", "speed_budget_ms", "gpu_hours"];
+const FIELDS = ["name", "model", "dataset", "epochs", "batch_size", "grad_accum", "image_size", "lr", "speed_budget_ms", "gpu_hours"];
 /** The settings a decision changes, as a form reads them from its address (`?fill=`). */
 export function fillOf(values: Record<string, string>): Record<string, string> {
   return Object.fromEntries(FIELDS.filter((k) => values[k] !== undefined).map((k) => [k, values[k]]));
@@ -178,7 +179,7 @@ export function useCarryOut() {
       case "results.compare": nav(`/compare?items=${(x.items ?? []).join(",")}`); done = "Opened the comparison"; break;
       case "experiment.fill":
         if (v.machine) setMachineId(v.machine);
-        nav(withFill("/", v)); highlight(fields(filled)); done = "Filled in New experiment"; break;
+        nav(withFill("/", x.name ? { ...v, name: x.name } : v)); highlight(fields(filled)); done = "Filled in New experiment"; break;
       case "run.clone_edit":
         if (v.machine) setMachineId(v.machine);
         nav(withFill("/", v, v.run, false, x.tag)); highlight(fields(filled));

@@ -22,6 +22,14 @@ export interface YetiMsg {
   action?: { d: Decision; state: "shown" | "pending" | "working" | "done" | "declined" | "failed"; note?: string };
 }
 
+/** What Claude reads in later turns about a card: what it was and what became of it. */
+function cardRecord(m: YetiMsg): string {
+  const s = m.action!.state;
+  const outcome = s === "done" ? "done" : s === "pending" || s === "working" ? "still waiting for the user's tap, so it has not happened"
+    : s === "declined" ? "the user declined it" : s === "shown" ? "shown on the page, not carried out" : `it failed: ${m.action!.note ?? ""}`;
+  return `(Card: ${m.text}. Outcome: ${outcome}.)`;
+}
+
 /** A decision in a sentence: what the chat keeps as the assistant's turn, and what Claude reads later. */
 export function actionText(d: Decision): string {
   const what = [d.title, d.target].filter(Boolean).join(": ");
@@ -107,8 +115,8 @@ export function YetiProvider({ children }: { children: ReactNode }) {
   // A card that waits for a tap keeps it open (the tap is in the panel).
   useEffect(() => {
     const aside = () => {
-      const last = msgsRef.current[msgsRef.current.length - 1];
-      if (!["pending", "working"].includes(last?.action?.state ?? "")) setOpenState(false);
+      const waiting = msgsRef.current.slice(-6).some((m) => ["pending", "working"].includes(m.action?.state ?? ""));
+      if (!waiting) setOpenState(false);
     };
     window.addEventListener(COVERED, aside);
     return () => window.removeEventListener(COVERED, aside);
@@ -130,6 +138,20 @@ export function YetiProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     const ctrl = new AbortController();
     abort.current = ctrl;
+    // Claude drafted or proposed an action: opening and filling in happen now; the rest is a card that waits for a tap
+    const act = async (d: Decision) => {
+      const card = (action: NonNullable<YetiMsg["action"]>) => setMessages((ms) => [...ms, { id: uid(), role: "assistant", text: actionText(d), action }]);
+      if (d.needs !== "none") { highlight(spotsFor(d)); card({ d, state: "pending" }); return; }
+      try {
+        const done = await carry(d);
+        card({ d, state: "done", note: done });
+        if (d.id) api.actionOutcome(d.id, "done").catch(() => undefined);
+      } catch (err) {
+        card({ d, state: "failed", note: (err as Error).message });
+        if (d.id) api.actionOutcome(d.id, "failed", (err as Error).message).catch(() => undefined);
+      }
+    };
+    let queue: Promise<void> = Promise.resolve();
     const onEvent = (e: YetiEvent) => {
       if (e.type === "start") patch(userId, (m) => ({ ...m, note: e.note }));
       else if (e.type === "text") patch(aid, (m) => ({ ...m, text: m.text + e.text, status: null }));
@@ -138,10 +160,11 @@ export function YetiProvider({ children }: { children: ReactNode }) {
       else if (e.type === "tool") patch(aid, (m) => ({ ...m, status: null, tools: [...(m.tools ?? []), { id: e.id, label: e.label, done: false }] }));
       else if (e.type === "tool_done") patch(aid, (m) => ({ ...m, tools: (m.tools ?? []).map((t) => t.id === e.id ? { ...t, label: e.label, href: e.href, ok: e.ok, done: true } : t) }));
       else if (e.type === "done") patch(aid, (m) => ({ ...m, text: e.text, streaming: false, status: null, model: e.model_label, usage: e.usage }));
+      else if (e.type === "action") queue = queue.then(() => act(e.decision)); // one after the other, in the order Claude gave
       else if (e.type === "error") patch(aid, (m) => ({ ...m, streaming: false, status: null, error: { code: e.code, message: e.message } }));
     };
     try {
-      await streamYeti({ messages: history.filter((m) => m.text.trim() || m.role === "user").map((m) => ({ role: m.role, text: m.text, note: m.role === "user" ? m.note ?? null : null })), page: pageCtx, mascot: currentMascot() },
+      await streamYeti({ messages: history.filter((m) => m.text.trim() || m.role === "user").map((m) => ({ role: m.role, text: m.action ? cardRecord(m) : m.text, note: m.role === "user" ? m.note ?? null : null })), page: pageCtx, mascot: currentMascot() },
         onEvent, ctrl.signal);
       patch(aid, (m) => (m.streaming ? { ...m, streaming: false, error: m.text ? null : { code: "cut", message: "The answer stopped early. Try again." } } : m));
     } catch (err) {
@@ -153,7 +176,7 @@ export function YetiProvider({ children }: { children: ReactNode }) {
       setBusy(false);
       abort.current = null;
     }
-  }, [reloadSettings]);
+  }, [reloadSettings, carry]);
 
   const send = useCallback((text: string, opts?: { focus?: string; about?: string }) => {
     const t = text.trim();
