@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 
 from modellab import ROOT
 from modellab.hub import Config, agent_api, api, browse, db, load_config, mcp, model, oauth, yeti
+from modellab.hub.system1 import service as system1
 
 WEB_DIST = ROOT / "modellab" / "web" / "dist"
 INSTALLER = ROOT / "modellab" / "hub" / "install.sh"
@@ -70,6 +71,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     app.include_router(api.router)
     app.include_router(agent_api.router)
     app.include_router(yeti.router)  # Yeti: settings + chat (/api/assistant...)
+    app.include_router(system1.router)  # one sentence → one decision (/api/assistant/decide, /api/actions)
     app.include_router(oauth.router)  # OAuth for the MCP connector (/.well-known/..., /oauth/...)
     app.include_router(mcp.router)  # MCP server for Claude apps (/mcp)
 

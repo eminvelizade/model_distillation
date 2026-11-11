@@ -79,7 +79,7 @@ def build(sentence: str, screen: dict) -> tuple[dict, dict]:
         elif p.kind == "page":
             crit = dict(A.PAGES)
         elif p.kind == "model":
-            crit = dict(MODELS)
+            crit = dict(screen.get("models") or MODELS)
         else:
             crit = {v: f'{v}, in "{ctx}"' for v, ctx in nums.items()}
         if not crit:

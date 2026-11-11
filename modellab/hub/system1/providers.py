@@ -42,7 +42,8 @@ class Result:
 class OpenRouter:
     """A keep-alive client. `key` may be a placeholder where a proxy injects the real one."""
 
-    def __init__(self, key: str, timeout: float = 60.0, provider: dict | None = None):
+    def __init__(self, key: str, timeout: float = 60.0, provider: dict | None = None, retries: int = 3):
+        self.retries = retries  # 0 where a person is waiting: a failed request goes to Claude instead
         self.http = httpx.Client(base_url=BASE, timeout=httpx.Timeout(timeout, connect=10.0),
                                  headers={"Authorization": f"Bearer {key}", "X-Title": "ModelLab"},
                                  limits=httpx.Limits(max_connections=64, max_keepalive_connections=32))
@@ -51,7 +52,17 @@ class OpenRouter:
     def close(self) -> None:
         self.http.close()
 
-    def _post(self, path: str, body: dict, retries: int = 3) -> tuple[dict | None, float, str | None]:
+    def check(self) -> str | None:
+        """None when OpenRouter accepts the key, else why not."""
+        try:
+            r = self.http.get("/api/v1/key")
+        except httpx.HTTPError as e:
+            return f"OpenRouter can't be reached: {type(e).__name__}"
+        return None if r.status_code == 200 else "OpenRouter rejected that key" if r.status_code in (401, 403) \
+            else f"OpenRouter answered {r.status_code}"
+
+    def _post(self, path: str, body: dict, retries: int | None = None) -> tuple[dict | None, float, str | None]:
+        retries = self.retries if retries is None else retries
         if self.provider:
             body = body | {"provider": self.provider}
         err = None
