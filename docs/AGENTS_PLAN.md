@@ -22,14 +22,15 @@ goes to Claude, which plans it.
 | topic | decision |
 |---|---|
 | Job | Help you develop: guide, act, fix, collaborate, find. Agents never go around the harness: every action is one the web app can take too. |
-| Two systems | **System 1**: a System One model (TypeSafe AI's Jev, a pinned version) for fast, bounded decisions: which action, which component, which option. **System 2**: Claude, the Yeti engine that exists today, for open-ended work: plans, recipes, diagnosis, search, explanations. |
+| Two systems | **System 1**: a System One (decision) model, a pinned version, for fast, bounded decisions: which action, which component, which option. Which model is chosen by our own evaluation, not by name. **System 2**: Claude, the Yeti engine that exists today, for open-ended work: plans, recipes, diagnosis, search, explanations. |
+| One router | System 1 models are reached through **OpenRouter**: one key and one credit balance for every decision model and for the chat models they are compared with, so a model can be swapped by changing its id. |
 | One sentence | One sentence → one System 1 request, with all its questions answered in parallel → one decision: act, show, ask you, or hand over to Claude. |
 | Clicking | The agent doesn't click pixels or read the page. It picks from registered actions; the web app highlights the matching component, fills it in, and calls the same API the button calls. |
 | Values | Numbers, sizes, names and dates are found in the sentence by code. System 1 only picks among those candidates, and the hub validates them as it does for the web app. |
 | Approval | By tier: **look** never asks, **draft** leaves the last click to you, **act** takes one tap (or a standing permission you grant), **careful** always asks. Some things are never in reach. |
-| Trust | System 1 decides an action kind on its own only after it passes our evals for that kind. TypeSafe's own benchmarks don't count. |
-| Accounts | Your own keys, encrypted on the hub: a TypeSafe key for System 1, and the Claude key Yeti already uses for System 2. Without a TypeSafe key, Claude stands in for System 1 (slower). |
-| Privacy | System 1 sees your sentence and what's on screen (component labels, names, current values). Never images, annotations, weights, checkpoints or file contents. Listed on the privacy page. |
+| Trust | System 1 decides an action kind on its own only after it passes our evals for that kind. Vendors' own benchmarks don't count. |
+| Accounts | Your own keys, encrypted on the hub: an OpenRouter key for System 1, and the Claude key Yeti already uses for System 2. Yeti's chat stays on the Claude key for now; OpenRouter can become a second way to reach Claude later. |
+| Privacy | System 1 sees your sentence and what's on screen (component labels, names, current values). Never images, annotations, weights, checkpoints or file contents. OpenRouter and the model's provider both receive it; both are listed on the privacy page. |
 | Claude apps | The same actions and tiers are served through the MCP server. |
 | Record | Every action is logged with the sentence, the decision, its confidence and who approved it. What an agent starts is tagged "via Yeti" (or with the Claude app's name). |
 
@@ -64,8 +65,10 @@ and adversarial text, and that it leans toward the first option. ModelLab is ful
 answers of two large LLMs rather than a ground truth. We measure it on our own tasks before trusting it
 ([Evals](#evals-trust-is-earned-per-action)).
 
-**Access.** Early access, a hosted API in the US, proprietary weights. We pin a version (`jev-1.14.0` today): the
-`jev-latest` alias moves with every release, and its answers move with it.
+**Access.** Through OpenRouter's Decisions API (`POST /api/alpha/decisions`, in alpha: its shape may change), which
+serves Jev (`typesafe/jev-1.14`) next to about thirty other decision models from fourteen makers, all with the same
+request. We pin a dated version: aliases such as `~typesafe/jev-latest` move with every release, and the answers
+move with them. Each maker's probabilities mean something slightly different, so a threshold is tuned per model.
 
 ### System 2: Claude
 
@@ -308,13 +311,26 @@ agent never sees. All of this needs the Foundations, the model library and data 
   version changes, and after big changes to the registry. The router itself is tested in the normal test suite with
   recorded answers.
 
-## Without a TypeSafe key
+## One interface, any model
 
-System 1 is an interface, `decide(state, questions) → answers`, with two adapters: TypeSafe's API, and Claude
-(Haiku 5.5 by default) answering the same questions through structured outputs, with each answer limited to the
-listed options. Claude gives a pick without calibrated probabilities, so its thresholds come from the evals, and it
-faces the same gate. Without a TypeSafe key the fast path still works, only slower. The interface also leaves room
-for other System One models, including open-weight ones on your own GPU, once they pass the same evals.
+System 1 is an interface, `decide(state, questions) → answers` (`modellab/hub/system1/providers.py`), with two
+adapters, both through OpenRouter:
+
+- **Decision models** (Jev and the others), through the Decisions API: a probability for every option.
+- **Chat models** (Claude and the others), through chat completions with structured outputs: each answer limited
+  to the listed options. They give a pick without probabilities, so there is no threshold to hold them to: they
+  can only be trusted by measurement, and they face the same gate.
+
+Changing the System 1 model is changing one id, after it has passed the evals. The interface also leaves room for
+open-weight decision models on your own GPU.
+
+**What OpenRouter adds, and what to watch:**
+- One key, one balance, and every model side by side in the same evaluation.
+- One more party in the path. Requests carry `provider.data_collection: "deny"` where the model allows it, so only
+  providers that don't keep or train on requests are used.
+- One more hop. Latency is measured through OpenRouter, from where the hub runs, never taken from a vendor's page.
+- A model can be served by several providers, with different features and speeds. The provider is pinned with the
+  model.
 
 ## Privacy
 
@@ -322,10 +338,9 @@ for other System One models, including open-weight ones on your own GPU, once th
   values); the names of your machines, datasets and runs as options; the candidates found in the sentence; and,
   when it diagnoses a failure, the error tail.
 - **Never:** images (although Jev can read them), annotations, weights, checkpoints, file contents or keys.
-- **TypeSafe** hosts in the US. Its policy says it doesn't train on customer requests, and zero data retention is an
-  enterprise option. We read its data processing terms before real use. The privacy page lists it next to what
-  Claude sees.
-- **Your TypeSafe key** is kept like the Claude key: encrypted with `MODELLAB_SECRET_KEY`, only the last 4
+- **OpenRouter and the model's provider** both receive the request. We read their data terms before real use, ask
+  for providers that don't retain requests, and the privacy page lists both next to what Claude sees.
+- **Your OpenRouter key** is kept like the Claude key: encrypted with `MODELLAB_SECRET_KEY`, only the last 4
   characters shown, never sent back to the browser.
 
 ## Build order
@@ -352,7 +367,8 @@ Each step ships on its own and is useful without the next.
 
 1. **Naming**: the program on each GPU PC is also called "the agent". Keep calling it the "machine agent" wherever
    both could be meant, or rename it in the web app (for example "runner")?
-2. **TypeSafe access**: Jev is in early access. Do we have a key yet? Until we do, the Claude adapter stands in.
+2. **OpenRouter for Claude too?** System 1 goes through OpenRouter. Yeti's chat stays on Anthropic's SDK with your
+   Claude key; moving it is a rewrite of something that works, for one fewer key. Proposed: not now.
 3. **Standing permissions**: which fixes, if any, may a search apply on its own at first? Proposed: none until the
    failure catalog has been tried on real failures, then out-of-memory retries first.
 4. **Sources beyond Hugging Face**: Roboflow Universe (it needs its own key), GitHub releases, arXiv?
@@ -367,3 +383,6 @@ Each step ships on its own and is useful without the next.
   [Jev's weak spots](https://docs.typesafe.ai/model-jaggedness/jev-1.13),
   [launch post](https://typesafe.ai/blog/introducing-system-one-models-and-jev).
 - Independent notes: [Simon Willison on Jev](https://simonwillison.net/2026/Sep/21/jev/).
+- OpenRouter: [Jev and the Decisions API](https://openrouter.ai/docs/guides/community/jev),
+  [structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs),
+  [provider selection and data policy](https://openrouter.ai/docs/guides/routing/provider-selection).
