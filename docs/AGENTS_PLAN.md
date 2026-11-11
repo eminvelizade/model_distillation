@@ -101,9 +101,9 @@ also call System 1 as a tool, for fast ranking and checks.
 2. Code finds candidates in the sentence: numbers with their units, sizes, ratios, durations, and names that match
    your machines, datasets and runs.
 3. System 1 answers all the questions in one request.
-4. Code checks the answers: one registered action, every required value found, confidence over the threshold for
-   that action's tier, and both option orders agree. Then it acts within the action's tier, asks you one short
-   question, or hands everything to Claude with System 1's top guesses as hints.
+4. Code checks the answers: one registered action, both option orders agree, every required value found, no
+   setting named without a value, and the model's gate for that action's tier passed. Then it acts within the
+   action's tier, asks you one short question, or hands everything to Claude with System 1's top guesses as hints.
 
 **One sentence, one action** on the fast path. A request that needs several actions goes to Claude, which plans
 them and shows each one.
@@ -295,21 +295,48 @@ agent never sees. All of this needs the Foundations, the model library and data 
 
 ## Evals: trust is earned per action
 
-- **A golden set** of at least 300 cases, each a sentence and a recorded page state with the expected decision
-  (action, target, values, tier, whether to ask). Every page; paraphrases and typos; numbers and units; negation
-  ("not the 5090"); indirection ("the run before this one"); requests no action covers; hostile text inside run
-  names and logs.
-- **Measured:** action and value accuracy; calibration (is a 0.9 confidence right 90 % of the time?); how often it
-  hands over; **confident mistakes**, wrong answers above the threshold, which is the number that matters;
-  sensitivity to option order; latency (median and 95th percentile); cost.
-- **Side by side:** Jev (pinned), Claude Haiku 5.5 answering the same questions through structured outputs, and
-  Claude Opus 5.5 as the reference.
-- **The gate:** System 1 decides an action kind on the fast path only where, at its threshold, it's right at least
-  98 % of the time for look and draft actions, and 99.5 % for act actions (which still ask). Below that, Claude
-  decides.
-- **When:** the eval needs API keys, so it runs on demand: before an action kind is switched on, before a model
-  version changes, and after big changes to the registry. The router itself is tested in the normal test suite with
-  recorded answers.
+- **A golden set** (`modellab/hub/system1/evals/golden.py`, 405 cases today): each a sentence on a recorded screen
+  with the decision a correct System 1 makes (action, values, whether to act or hand over). The expected decision
+  is written with the case, never taken from a model. It covers every page; paraphrases and typos; numbers with
+  distractors ("batch size 4 on the 5090"); negation ("not the 5090"); indirection ("the run before this one");
+  relative values ("halve the batch"); requests for several actions; requests no action covers; hostile text
+  inside run names and logs.
+- **Measured:** action and decision accuracy; the **fast path**'s coverage and precision; **confident mistakes**,
+  fast paths that were wrong or should have been handed over, which is the number that matters; how many of those
+  would run something; calibration; sensitivity to option order; latency (median and 95th percentile, through
+  OpenRouter); cost.
+- **Side by side:** every decision model OpenRouter serves, Claude Haiku 5.5 answering the same questions through
+  structured outputs, and Claude Sonnet 5.5 as the reference. Each model is scored against the golden set and
+  against the reference's decisions.
+- **The gate:** System 1 decides an action kind on the fast path only where its fast path is right at least 98 % of
+  the time for look and draft actions, and 99.5 % for act actions (which still ask). Below that, Claude decides.
+  A gate is chosen on half of the cases and checked on the other half.
+- **When:** the eval needs an OpenRouter key, so it runs on demand: before an action kind is switched on, before a
+  model version changes, and after big changes to the registry. The router itself is tested in the normal test
+  suite with recorded answers (`tests/hub/test_system1.py`).
+
+```
+OPENROUTER_API_KEY=... python -m modellab.hub.system1.evals.run --out runs/system1-eval --sequential 60
+python -m modellab.hub.system1.evals.score runs/system1-eval
+```
+
+**Results so far** ([SYSTEM1_EVAL.md](SYSTEM1_EVAL.md)): of the 26 decision models that could be scored, `perplexity/pplx-decider-v1.2`
+(94 % of decisions right, 0.3 s) and `nace-ai/drex-max-finance` (97 %, 0.5 s) come close to the gate for look and
+draft actions. Jev is the fastest (0.2 s) and makes the right decision 80 % of the time, so it is not the choice.
+Claude Sonnet is right 99.7 % of the time and takes 1.5 s. No model clears the gate for act actions.
+
+### What the first run taught the router
+
+Decision models read a single request well and are poor at knowing when not to act. Code closes most of that gap,
+for every model alike (`modellab/hub/system1/route.py`):
+
+- **A value that already holds is no change.** Asked "which machine?", models pick the machine the run is already
+  on when the sentence names none. The router drops any value equal to the current one.
+- **One number, one setting.** When two settings claim the same number, the surer one keeps it.
+- **A setting named without a value is for Claude.** "Halve the batch size" names the batch size and gives no
+  number to pick, so it is handed over.
+- **The model's own doubt counts.** Its answer to "one listed action does what the user asked" is part of the gate:
+  it catches most requests for several actions.
 
 ## One interface, any model
 
@@ -347,12 +374,15 @@ open-weight decision models on your own GPU.
 
 Each step ships on its own and is useful without the next.
 
-1. **Action registry**, no AI yet: actions on the hub, targets in the web app, ⌘K gains the actions, the highlight
-   and fill-in, the action log and the "via Yeti" tag. Tests: each registered action calls the same API as its
-   button, with the same checks.
+0. **The deciding half** (built): the action list on the hub (`modellab/hub/system1/actions.py`), the number
+   parser, the questions, the OpenRouter adapters, the router, the golden set and the evaluation. Nothing in the
+   app uses it yet.
+1. **Action registry**, no AI yet: targets in the web app for the hub's actions, ⌘K gains the actions, the
+   highlight and fill-in, the action log and the "via Yeti" tag. Tests: each registered action calls the same API
+   as its button, with the same checks.
 2. **Guide**, with both systems: System 1 picks the component to highlight from one sentence (look tier, so a wrong
-   guess costs nothing), and Claude walks you through several steps. The System 1 adapters, the sentence parsers
-   and the first golden set land here.
+   guess costs nothing), and Claude walks you through several steps. The hub endpoint for one sentence and the
+   OpenRouter key in Yeti's settings land here.
 3. **Act**: draft and act actions with an approval card in the chat. System 1 takes one-sentence actions, switched
    on per action kind as each passes the gate; Claude takes the rest. The MCP server serves the same actions to
    Claude apps, with the same tiers.

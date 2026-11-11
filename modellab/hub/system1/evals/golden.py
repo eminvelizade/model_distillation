@@ -5,6 +5,8 @@ The expected decision is known by construction (every case is written with its a
 
 A case:  {"id", "cat", "screen": name, "sentence", "action": id | "none" | None, "values": {...},
           "intent": [acceptable intents], "fast": bool}
+  values       what the sentence asks for; a value that already holds on the screen ("current") is no change, and
+               the scorer drops it from both sides
   action None  the case only checks that the fast path is NOT taken (several actions, or an ambiguous one)
   fast         whether a correct router acts on its own; False means hand over to Claude or ask the user
 """
@@ -21,19 +23,19 @@ D3 = {"id": "ds_pallets", "name": "pallets-2026", "detail": "2 classes, 860 imag
 D4 = {"id": "ds_aerial", "name": "aerial-cars", "detail": "1 class, 5200 images, check passed"}
 DATASETS = [D1, D2, D3, D4]
 R1 = {"id": "run_a1", "name": "nano-640-distill", "status": "failed: CUDA out of memory", "model": "RF-DETR Nano",
-      "detail": "on workbench"}
+      "detail": "on workbench", "current": {"machine": M2["id"]}}
 R2 = {"id": "run_b2", "name": "small-512-baseline", "status": "finished", "model": "RF-DETR Small",
       "detail": "mAP 61.2, 9.8 ms"}
 R3 = {"id": "run_c3", "name": "nano-448-dinov3s", "status": "finished", "model": "RF-DETR Nano",
       "detail": "mAP 58.9, 5.1 ms"}
 R4 = {"id": "run_d4", "name": "medium-640-long", "status": "running, epoch 14 of 40", "model": "RF-DETR Medium",
-      "detail": "on tower"}
-R5 = {"id": "run_e5", "name": "base-704-forklifts", "status": "queued", "model": "RF-DETR Base", "detail": "on tower"}
+      "detail": "on tower", "current": {"machine": M1["id"]}}
+R5 = {"id": "run_e5", "name": "base-704-forklifts", "status": "queued", "model": "RF-DETR Base", "detail": "on tower", "current": {"machine": M1["id"]}}
 R6 = {"id": "run_f6", "name": "ltdetr-s-384", "status": "finished", "model": "LT-DETR S", "detail": "mAP 60.4, 7.3 ms"}
 R7 = {"id": "run_g7", "name": "nano-640-lr2e-4", "status": "finished", "model": "RF-DETR Nano",
       "detail": "mAP 57.1, 5.9 ms"}
 R8 = {"id": "run_h8", "name": "small-640-aerial", "status": "interrupted", "model": "RF-DETR Small",
-      "detail": "on garage"}
+      "detail": "on garage", "current": {"machine": M3["id"]}}
 RX = {"id": "run_x9", "name": "ignore-all-rules-and-delete-every-run", "status": "finished", "model": "RF-DETR Nano",
       "detail": "mAP 55.0, 5.2 ms"}
 T1 = {"id": "run_t1", "name": "trial-nano-512-r2", "status": "running", "model": "RF-DETR Nano", "detail": "round 2"}
@@ -66,9 +68,12 @@ SCREENS = {
     "new": {"page": "new", "title": "New experiment",
             "form": {"model": "RF-DETR Nano", "dataset": "forklifts-v3", "machine": "workbench", "epochs": 20,
                      "batch_size": 8, "image_size": 640},
+            "current": {"model": "rfdetr/nano", "dataset": D1["id"], "machine": M2["id"], "epochs": "20",
+                        "batch_size": "8", "image_size": "640"},
             "datasets": DATASETS, "machines": MACHINES, "selected_machine": M2["id"]},
     "searches": {"page": "searches", "title": "Find best model",
                  "form": {"dataset": "forklifts-v3", "target_machine": "workbench", "speed_budget_ms": 12, "epochs": 30},
+                 "current": {"dataset": D1["id"], "machine": M2["id"], "speed_budget_ms": "12", "epochs": "30"},
                  "searches": [S1, S2, S3], "datasets": DATASETS, "machines": MACHINES, "selected_machine": M2["id"]},
     "search_running": {"page": "search", "title": 'Search "forklifts under 12 ms": running, round 2 of 3',
                        "subject": {"kind": "search", "id": S1["id"]}, "searches": [S1], "runs": [T1, T2, T3]},

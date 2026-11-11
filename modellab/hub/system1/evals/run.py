@@ -17,6 +17,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -39,7 +40,27 @@ def slug(model: str) -> str:
     return model.replace("/", "__").replace(":", "_")
 
 
+class Pace:
+    """At most `rpm` requests a minute, across threads (OpenRouter caps some models for new accounts)."""
+
+    def __init__(self, rpm: float | None):
+        self.gap, self.next, self.lock = (60.0 / rpm if rpm else 0.0), 0.0, threading.Lock()
+
+    def wait(self) -> None:
+        if not self.gap:
+            return
+        with self.lock:
+            now = time.monotonic()
+            due = max(now, self.next)
+            self.next = due + self.gap
+        time.sleep(max(0.0, due - now))
+
+
+PACE = Pace(None)
+
+
 def ask(client: OpenRouter, model: str, chat: bool, case: dict) -> dict:
+    PACE.wait()
     state, q = questions.build(case["sentence"], golden.SCREENS[case["screen"]])
     r = (client.decide_chat if chat else client.decide)(model, state, q)
     return {"id": case["id"], "answers": r.answers, "seconds": round(r.seconds, 4), "cost": r.cost,
@@ -97,12 +118,15 @@ def main(argv=None) -> int:
     ap.add_argument("--workers", type=int, default=6, help="requests in flight per model")
     ap.add_argument("--parallel", type=int, default=3, help="models asked at the same time")
     ap.add_argument("--sequential", type=int, default=0, help="also time N cases one request at a time")
+    ap.add_argument("--rpm", type=float, help="at most this many requests a minute, over all models in this run")
     ap.add_argument("--no-retention", action="store_true", help="only providers that don't keep or train on data")
     a = ap.parse_args(argv)
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
         print("set OPENROUTER_API_KEY", file=sys.stderr)
         return 2
+    global PACE
+    PACE = Pace(a.rpm)
     out = Path(a.out)
     client = OpenRouter(key, provider={"data_collection": "deny"} if a.no_retention else None)
     cases = golden.cases()[: a.limit] if a.limit else golden.cases()
@@ -111,7 +135,7 @@ def main(argv=None) -> int:
     (out / "models.json").write_text(json.dumps(
         {m["id"]: {"name": m.get("name"), "price_in": m["pricing"].get("prompt"), "context": m.get("context_length"),
                    "dated": m.get("canonical_slug")} for m in listed}, indent=1))
-    models = [(m, False) for m in (a.models.split(",") if a.models else [m["id"] for m in listed]) if m]
+    models = [(m, False) for m in ([m["id"] for m in listed] if a.models is None else a.models.split(",")) if m]
     models += [(m, True) for m in a.chat.split(",") if m]
     (out / "meta.json").write_text(json.dumps({"cases": len(cases), "chat": [m for m, c in models if c],
                                               "when": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())}))

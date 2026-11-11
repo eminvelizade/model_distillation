@@ -9,7 +9,9 @@ its own is the first: the fast path's precision and how much of the work it cove
 Words used in the report:
   decision   the action, and every value the action needs, both right
   fast path  taken when the router (route.py) would act without Claude: one action, both option orders agree, the
-             required values found, and the least certain answer at or above the threshold
+             required values found, no setting named without a value, and whatever gate is being tried
+  gate       p: the least certain answer the decision relies on; fits: the model's own answer to "one listed
+             action does what the user asked"; complete: its answer to "nothing needs asking"
   precision  of the fast paths taken, how many were right and were meant to be fast; the rest are confident mistakes
   coverage   of the cases meant for the fast path, how many it took and got right
 """
@@ -22,7 +24,7 @@ import statistics
 from pathlib import Path
 
 from .. import actions as A
-from ..route import route
+from ..route import changes, route
 from . import golden
 from .run import slug
 
@@ -41,29 +43,38 @@ def judge(case: dict, answers: dict | None) -> dict:
     screen = golden.SCREENS[case["screen"]]
     if not answers:
         return {"answered": False, "action_ok": False, "decision_ok": False, "intent_ok": False, "gate": False,
-                "conf": None, "agree": False, "complete": None, "action": None, "values": {}, "p_action": None}
-    d = route(answers, screen, threshold=0.0)
+                "conf": None, "agree": False, "complete": None, "action": None, "values": {}, "p_action": None, "fits": None, "tier": None}
+    d = route(answers, screen, threshold=0.0, sentence=case["sentence"])
+    fits = answers.get("fits") or {}
     want = case["action"]
     action_ok = want is None or d.action == want
-    decision_ok = action_ok and (want in (None, A.NONE) or _same(want, d.values, case["values"]))
+    decision_ok = action_ok and (want in (None, A.NONE) or _same(want, d.values, changes(case["values"], screen)))
     return {"answered": True, "action": d.action, "values": d.values, "action_ok": action_ok,
             "decision_ok": decision_ok, "intent_ok": d.intent in case["intent"], "gate": d.fast, "conf": d.confidence,
             "agree": (answers.get("action_rev") or {}).get("pick") == (answers.get("action") or {}).get("pick"),
-            "complete": (answers.get("complete") or {}).get("pick"), "p_action": (answers.get("action") or {}).get("p")}
+            "complete": (answers.get("complete") or {}).get("pick"), "p_action": (answers.get("action") or {}).get("p"),
+            "fits": fits.get("p") if fits.get("p") is not None else (None if fits.get("pick") is None else float(fits["pick"])),
+            "tier": A.BY_ID[d.action].tier if d.action in A.BY_ID else None}
 
 
-def fast_path(cases, judged, threshold, need_complete=False):
-    """(taken, right, coverage, precision) of the fast path at a threshold."""
-    taken = right = 0
+def fast_path(cases, judged, threshold, need_complete=False, min_fits=None):
+    """The fast path under one gate: how often it is taken, right, and wrong."""
+    taken = right = risky = 0
     meant = sum(c["fast"] for c in cases)
     for c, j in zip(cases, judged):
         if not j["gate"] or (j["conf"] is not None and j["conf"] < threshold):
             continue
         if need_complete and j["complete"] is False:
             continue
+        if min_fits is not None and (j["fits"] is None or j["fits"] < min_fits):
+            continue
         taken += 1
-        right += c["fast"] and j["decision_ok"]
-    return taken, right, right / meant if meant else 0.0, right / taken if taken else 1.0
+        ok = c["fast"] and j["decision_ok"]
+        right += ok
+        risky += not ok and j["tier"] in ("act", "careful")
+    return {"threshold": threshold, "need_complete": need_complete, "min_fits": min_fits, "taken": taken,
+            "mistakes": taken - right, "risky": risky, "coverage": right / meant if meant else 0.0,
+            "precision": right / taken if taken else 1.0}
 
 
 def _pct(xs, q):
@@ -102,16 +113,24 @@ def score_model(cases, rows: dict, ref: dict | None, timings: list[float] | None
         "served_by": next((r.get("served_by") for r in rows.values() if r.get("served_by")), None),
         "by_cat": {},
     }
-    sweep = {}
-    for t in THRESHOLDS if out["probabilities"] else (0.0,):
-        for nc in (False, True):
-            taken, right, cov, prec = fast_path(cases, judged, t, nc)
-            sweep[(t, nc)] = {"threshold": t, "need_complete": nc, "taken": taken, "mistakes": taken - right,
-                              "coverage": cov, "precision": prec}
-    out["plain"] = sweep[(0.0, False)]
-    ok = [s for s in sweep.values() if s["precision"] >= GATE and s["taken"]]
+    sweep = [fast_path(cases, judged, t, nc, mf)
+             for t in (THRESHOLDS if out["probabilities"] else (0.0,))
+             for nc in (False, True) for mf in (None, 0.5, 0.7, 0.9)]
+    out["plain"] = sweep[0]
+    ok = [s for s in sweep if s["precision"] >= GATE and s["taken"]]
     out["best"] = max(ok, key=lambda s: (s["coverage"], -s["threshold"])) if ok else None
-    out["sweep"] = [s for (t, nc), s in sweep.items() if not nc]
+    out["sweep"] = sweep
+    # the gate above was chosen on the cases it is scored on; choose it on every other case and score it on the rest
+    tune, test = list(range(0, n, 2)), list(range(1, n, 2))
+    sub = lambda idx: ([cases[i] for i in idx], [judged[i] for i in idx])  # noqa: E731
+    tuned = [fast_path(*sub(tune), t, nc, mf)
+             for t in (THRESHOLDS if out["probabilities"] else (0.0,))
+             for nc in (False, True) for mf in (None, 0.5, 0.7, 0.9)]
+    ok = [g for g in tuned if g["precision"] >= GATE and g["taken"]]
+    out["held_out"] = None
+    if ok:
+        g = max(ok, key=lambda g: (g["coverage"], -g["threshold"]))
+        out["held_out"] = fast_path(*sub(test), g["threshold"], g["need_complete"], g["min_fits"])
     for cat in sorted({c["cat"] for c in cases}):
         idx = [i for i, c in enumerate(cases) if c["cat"] == cat]
         fast_meant = [i for i in idx if cases[i]["fast"]]
@@ -180,27 +199,40 @@ def report(out: Path, reference: str) -> str:
          "## Ranking", "",
          f"Sorted by how much of the fast-path work a model covers while its fast path stays at least "
          f"{100 * GATE:.0f} % right. \"never\" means no threshold reaches {100 * GATE:.0f} %.", "",
-         "| model | decision right | fast path: coverage at the gate | threshold | confident mistakes there | "
-         "agrees with the reference | median | 95th pct | cost per request |",
-         "|---|---|---|---|---|---|---|---|---|"]
+         "| model | decision right | fast path: coverage at the gate | gate | mistakes there (that would run something) | "
+         "held out: coverage, precision | agrees with the reference | median | 95th pct | cost per request |",
+         "|---|---|---|---|---|---|---|---|---|---|"]
     for m, s in order:
         b = s["best"]
         cov = f(b["coverage"]) if b else "never"
-        thr = ("n/a" if not b else "none needed" if b["threshold"] == 0 else f"{b['threshold']:g}"
-               ) + (" + complete" if b and b["need_complete"] else "")
+        thr = "n/a" if not b else " + ".join(
+            ([f"p ≥ {b['threshold']:g}"] if b["threshold"] else [])
+            + ([f"fits ≥ {b['min_fits']:g}"] if b["min_fits"] is not None else [])
+            + (["complete"] if b["need_complete"] else [])) or "none needed"
         cost = "n/a" if s["cost"] is None else f"${s['cost']:.6f}"
         L.append(f"| `{m}`{' (chat)' if s['chat'] else ''} | {f(s['decision'])} | {cov} | {thr} | "
-                 f"{b['mistakes'] if b else 'n/a'} of {b['taken'] if b else 'n/a'} | {f(s.get('agree_ref'))} | "
+                 f"{(str(b['mistakes']) + ' of ' + str(b['taken']) + ' (' + str(b['risky']) + ')') if b else 'n/a'} | "
+                 f"{(f(h['coverage']) + ', ' + f(h['precision'])) if (h := s['held_out']) else 'n/a'} | "
+                 f"{f(s.get('agree_ref'))} | "
                  f"{ms(s['p50'])} | {ms(s['p95'])} | {cost} |")
-    L += ["", "## Without a threshold", "",
+    L += ["", "- **Gate**: what the fast path requires beyond the router's own checks. `p`: the least certain answer; "
+          "`fits`: the model's own answer to \"one listed action does what the user asked\"; `complete`: its answer "
+          "to \"nothing needs asking\".",
+          "- **Mistakes (that would run something)**: fast paths that were wrong or should have been handed over; in "
+          "brackets, those whose action is in the act or careful tier. The rest only open or fill something in.",
+          "- **Held out**: the gate chosen on every other case, scored on the remaining half.",
+          "- **Median and 95th percentile**: one request at a time on a warm connection where a model was timed "
+          "alone (" + ", ".join(f"`{m.split('/')[-1]}`" for m, s in order if s["timed_alone"]) + "); otherwise "
+          "measured with 6 requests in flight. Both include the network between this computer and OpenRouter."]
+    L += ["", "## Without a gate", "",
           "What each model does when every structurally valid answer is acted on. Mistakes here are fast paths "
           "taken that were wrong or should have been handed over.", "",
           "| model | answered | action right | decision right | intent right | fast paths taken | mistakes | "
-          "precision | option orders disagree | calibration error |", "|---|---|---|---|---|---|---|---|---|---|"]
+          "of them act or careful | precision | option orders disagree | calibration error |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for m, s in order:
         p = s["plain"]
         L.append(f"| `{m}` | {f(s['answered'], 0)} | {f(s['action'])} | {f(s['decision'])} | {f(s['intent'])} | "
-                 f"{p['taken']} | {p['mistakes']} | {f(p['precision'])} | {f(s['order_disagree'])} | "
+                 f"{p['taken']} | {p['mistakes']} | {p['risky']} | {f(p['precision'])} | {f(s['order_disagree'])} | "
                  f"{f(s['ece'], 3, False) if s['ece'] is not None else 'no probabilities'} |")
     cats = sorted({c["cat"] for c in cases}, key=lambda k: -sum(c["cat"] == k for c in cases))
     top = [m for m, _ in order[:8]]

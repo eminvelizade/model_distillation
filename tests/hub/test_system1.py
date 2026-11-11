@@ -81,6 +81,21 @@ def test_route_takes_the_fast_path_only_when_everything_holds():
     # a required value that wasn't found: on the queue, "cancel it" names no run
     q = route(_ans(intent="do", action="run.cancel", action_rev="run.cancel", run=NOT_SAID), golden.SCREENS["queue"])
     assert not q.fast and q.reason == "missing run"
+    # a setting named without a value asks for thinking: "halve the batch size" has no number to pick
+    vague = _ans(intent="do", action="run.clone_edit", action_rev="run.clone_edit", run=NOT_SAID)
+    assert route(vague, scr, sentence="copy this recipe so I can edit it").fast
+    assert route(vague, scr, sentence="halve the batch size and retry").reason == "names batch_size without a value"
+    assert route(vague, scr, sentence="run it again on a faster machine").reason == "names machine without a value"
+    assert route(vague | _ans(intent="show"), scr, sentence="how do I change the batch size?").fast
+    # the machine the run is already on is no change; and one number states one setting
+    same = good | _ans(machine="mach_31bc")
+    assert route(same, scr).values == {"run": "run_a1", "batch_size": "4"}
+    twice = good | _ans(epochs=("4", 0.7))
+    assert route(twice, scr).values == {"run": "run_a1", "machine": "mach_7f2a", "batch_size": "4"}
+    assert route({k: v | {"p": None} for k, v in twice.items()}, scr).reason == "one number was read as two settings"
+    # the model's own doubt that one action covers the request
+    assert not route(good | {"fits": {"pick": False, "p": 0.2}}, scr, min_fits=0.5).fast
+    assert route(good | {"fits": {"pick": True, "p": 0.8}}, scr, min_fits=0.5).fast
     # a chat model gives no probabilities: nothing to hold against the threshold
     chat = {k: v | {"p": None} for k, v in good.items()}
     assert route(chat, scr).fast and route(chat, scr).confidence is None

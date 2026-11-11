@@ -11,12 +11,14 @@ Answers have one shape either way: {question: {"pick": option | bool | None, "p"
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 
 import httpx2 as httpx  # the hub's Claude SDK already depends on it
 
 BASE = "https://openrouter.ai"
+REFUSED = re.compile(r'refused to answer question \\?"([\w.]+)')
 SYSTEM = """You route one sentence typed by a user of ModelLab, a web app for training and comparing vision models.
 You get the sentence, what is on the user's screen, and a set of questions. Answer every question by picking exactly
 one of its option keys; the options' descriptions say what each key means. For a yes/no question answer true or false.
@@ -68,7 +70,7 @@ class OpenRouter:
                     err = f"error in reply: {json.dumps(data.get('error') if isinstance(data, dict) else data)[:300]}"
                 else:
                     err = f"HTTP {r.status_code}: {r.text[:300]}"
-                    if r.status_code not in (408, 429, 500, 502, 503, 524, 529):
+                    if r.status_code not in (408, 429, 500, 502, 503, 524, 529) or REFUSED.search(err):
                         return None, dt, err
             if attempt < retries:
                 time.sleep(1.5 * 2 ** attempt)
@@ -78,8 +80,14 @@ class OpenRouter:
     def decide(self, model: str, state: dict, questions: dict) -> Result:
         data, dt, err = self._post("/api/alpha/decisions", {"model": model, "state": state, "questions": questions})
         if err and "state must be" in err:  # a few models read the state as plain text only
-            data, dt, err = self._post("/api/alpha/decisions", {"model": model, "questions": questions,
-                                                                "state": json.dumps(state, ensure_ascii=False)})
+            state = json.dumps(state, ensure_ascii=False)
+            data, dt, err = self._post("/api/alpha/decisions", {"model": model, "state": state, "questions": questions})
+        refused = []
+        while err and (m := REFUSED.search(err)) and m.group(1) in questions and len(refused) < 4:
+            refused.append(m.group(1))  # one refused question fails the whole request: ask again without it
+            questions = {k: v for k, v in questions.items() if k != m.group(1)}
+            data, more, err = self._post("/api/alpha/decisions", {"model": model, "state": state, "questions": questions})
+            dt += more
         if err:
             return Result(seconds=dt, error=err)
         out = {}
@@ -95,6 +103,8 @@ class OpenRouter:
                 out[name] = {"pick": None if p is None else p >= 0.5, "p": p, "probs": None}
             else:  # a refusal, or a type we didn't ask for
                 out[name] = {"pick": None, "p": None, "probs": None}
+        for name in refused:
+            out[name] = {"pick": None, "p": None, "probs": None}
         u = data.get("usage") or {}
         return Result(out, dt, u.get("cost"), u.get("input_tokens"), u.get("output_tokens"),
                       f"{data.get('model')} via {data.get('provider')}")

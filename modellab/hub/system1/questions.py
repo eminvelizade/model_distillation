@@ -42,7 +42,8 @@ def build(sentence: str, screen: dict) -> tuple[dict, dict]:
 
     screen: {"page": kind, "title": str, "subject": {"kind", "id"} | None, "form": {...} | None,
              "selected_machine": id | None, "runs"|"searches"|"machines"|"datasets": [{"id", "name", ...}]}
-    Entity lists hold only what is on screen, in the order shown.
+    Entity lists hold only what is on screen, in the order shown. "current" (the form's values) and a run's own
+    "current" are for the router, not for the model: they never enter the state.
     """
     kind = screen["page"]
     offered = A.on_page(kind)
