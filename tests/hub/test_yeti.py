@@ -281,7 +281,7 @@ def test_chat_runs_tools_and_streams(hub, monkeypatch):  # noqa: F811
     b = first["body"]
     assert b["model"] == "claude-opus-5-5" and b["output_config"] == {"effort": "medium"} and b["fallbacks"] == "default"
     assert b["thinking"] == {"type": "adaptive", "display": "updates"} and b["cache_control"] == {"type": "ephemeral"}
-    assert b["system"][0]["cache_control"] == {"type": "ephemeral"} and "You are Yeti" in b["system"][0]["text"]
+    assert b["system"][0]["cache_control"] == {"type": "ephemeral"} and "You are Bloom" in b["system"][0]["text"]
     assert all(t["eager_input_streaming"] for t in b["tools"]) and "temperature" not in b
     betas = first["headers"]["anthropic-beta"]
     assert "server-side-fallback-2026-07-01" in betas and "thinking-display-updates-2026-08-18" in betas
@@ -306,7 +306,7 @@ def test_chat_speaks_as_the_chosen_mascot(hub, monkeypatch):  # noqa: F811
     ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "who are you?"}], "mascot": "mochi"}))
     assert ev[-1]["type"] == "done"
     system = fake.requests[1]["body"]["system"][0]["text"]
-    assert system.startswith("You are Dr. Mochi,") and "lab coat" in system and "You are Yeti" not in system
+    assert system.startswith("You are Dr. Mochi,") and "lab coat" in system and "You are Bloom" not in system
     assert "{" not in system.split("# The ModelLab guide")[0]  # every placeholder filled in
     assert u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "hi"}], "mascot": "clippy"}).status_code == 422
 
@@ -317,10 +317,19 @@ def test_each_mascot_has_its_own_voice():
     for key, (name, _, _) in yeti.MASCOTS.items():
         head = yeti.system_prompt(key).split("# The ModelLab guide")[0]
         assert head.startswith(f"You are {name},") and "{" not in head
-    # the plush ones are warm and light; Rime, the snow golem, is calm and never gushes
-    assert "- Be warm and light. A touch of snowy personality is welcome; clarity comes first." in yeti.system_prompt("yeti")
+    # Bloom (the default) and the plush ones are warm and light; Rime, the snow golem, is calm and never gushes
+    assert yeti.system_prompt() == yeti.system_prompt("bloom")
     rime = yeti.system_prompt("rime").split("# The ModelLab guide")[0]
     assert "warm and light" not in rime and "no exclamation marks" in rime and "fully helpful" in rime
+    bloom = yeti.system_prompt("bloom").split("# The ModelLab guide")[0]
+    assert "fluffy white plush cub" in bloom and "- Be warm and light. A touch of gentle, patient encouragement is welcome; clarity comes first." in bloom
+    # the web app's list of mascots and the hub's are the same (a new mascot must be added to both)
+    import re
+    from pathlib import Path
+    web = Path(yeti.__file__).parents[1] / "web/src/components/yeti/mascots.ts"
+    kinds = re.findall(r'kind: "(\w+)", name: "([^"]+)"', web.read_text())
+    assert dict(kinds) == {k: v[0] for k, v in yeti.MASCOTS.items()}
+    assert set(yeti.Mascot.__args__) == set(yeti.MASCOTS)
 
 
 def test_chat_errors_and_haiku_settings(hub, monkeypatch):  # noqa: F811

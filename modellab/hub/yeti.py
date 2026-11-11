@@ -58,9 +58,10 @@ PAGE_KINDS = {"run", "search", "machine", "searches", "machines", "leaderboard",
 ITEM_RE = re.compile(r"^[A-Za-z0-9_.-]{1,100}:[A-Za-z0-9_.-]{1,64}$")
 PATH_RE = re.compile(r"[^A-Za-z0-9/_.:,=&?%-]")
 
-# The assistant is one of ModelLab's plush mascots; the user picks which one in the chat's settings (Yeti by default).
+# The assistant is one of ModelLab's mascots; the user picks which one in the chat's settings (Bloom by default).
 MASCOTS = {   # name, what you look like, and how you talk
-    "yeti": ("Yeti", "a small, friendly snow creature", "Be warm and light. A touch of snowy personality is welcome"),
+    "bloom": ("Bloom", "a small, round, fluffy white plush cub with sky-blue ears and a tuft of blue fur on his head",
+              "Be warm and light. A touch of gentle, patient encouragement is welcome"),
     "mochi": ("Dr. Mochi", "a small orange plush scientist in a white lab coat and round glasses",
               "Be warm and light. A touch of lab-coat enthusiasm for a good experiment is welcome"),
     "bop": ("Bop", "a small cobalt-blue plush bean wearing headphones",
@@ -72,7 +73,7 @@ MASCOTS = {   # name, what you look like, and how you talk
              "Be calm and brief, with a quiet, slightly mysterious air: plain words, no jokes, no exclamation marks, no "
              "gushing. You never show much emotion, but you are kind and fully helpful"),
 }
-Mascot = Literal["yeti", "mochi", "bop", "twinkle", "pip", "rime"]
+Mascot = Literal["bloom", "mochi", "bop", "twinkle", "pip", "rime"]
 
 PERSONA = """You are {name}, the assistant built into ModelLab: a personal R&D lab where the user trains, distills and \
 benchmarks object detectors on their own GPU machines. You look like {look}; your job is to \
@@ -105,8 +106,8 @@ where to click.
 - {tone}; clarity comes first."""
 
 
-def system_prompt(mascot: str = "yeti") -> str:
-    name, look, tone = MASCOTS.get(mascot, MASCOTS["yeti"])
+def system_prompt(mascot: str = "bloom") -> str:
+    name, look, tone = MASCOTS.get(mascot, MASCOTS["bloom"])
     return PERSONA.format(name=name, look=look, tone=tone) + "\n\n# The ModelLab guide\n\n" + yeti_tools.guide_text()
 
 
@@ -266,7 +267,7 @@ class ChatMsg(BaseModel):
 class ChatIn(BaseModel):
     messages: list[ChatMsg] = Field(min_length=1, max_length=400)
     page: dict | None = None
-    mascot: Mascot = "yeti"
+    mascot: Mascot = "bloom"
 
 
 def page_note(c: sa.Connection, user: dict, page) -> str | None:
@@ -343,7 +344,7 @@ def _tool_result(block, out: yeti_tools.Output) -> dict:
 
 
 def run_chat(client: anthropic.Anthropic, engine: sa.Engine, user: dict, model_id: str, effort: str,
-             messages: list[dict], mascot: str = "yeti") -> Iterator[dict]:
+             messages: list[dict], mascot: str = "bloom") -> Iterator[dict]:
     """The tool loop. Yields events for the browser: text deltas, tool activity, progress notes, then done or error."""
     caps = MODELS[model_id]
     kw: dict = {"model": model_id, "max_tokens": MAX_TOKENS, "messages": messages, "tools": yeti_tools.api_tools(),

@@ -306,7 +306,7 @@ function ConnectView() {
   );
 }
 
-/** Which plush mascot is the assistant: its look and name everywhere, and who Claude speaks as. Saved in this browser. */
+/** Which mascot is the assistant: its look and name everywhere, and who Claude speaks as. Saved in this browser. */
 function MascotPicker() {
   const { kind } = useMascot();
   const [poke, setPoke] = useState<string | null>(null);

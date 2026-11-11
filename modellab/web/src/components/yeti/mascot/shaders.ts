@@ -44,13 +44,25 @@ uniform mat3 uEarM[2];
 uniform vec3 uArmA;
 uniform vec3 uArmB;
 uniform float uArmOn;
-uniform vec4 uPetal[3];     // tuft lobes: direction, length
-uniform vec3 uCurl[3];      // ...and which way each curls
-uniform vec3 uPetalRoot;    // where the tuft grows from
 uniform float uSway;
 varying vec3 vPos;
 
 struct Mat { vec3 alb; float fuzz; float ink; };   // dye colour, fuzz cover (none on thread), embroidery thread
+// the fur at a point above the fabric (for a mascot with a real pile: see FUR in RENDER)
+struct Fur {
+  float gap;    // how far it is to the nearest fur (0 or less: inside the pile)
+  float len;    // how deep the pile is here,
+  float h;      // ...and how far up it this point is (0: at the fabric, 1: at the tips)
+  float top;    // how far up the fibre through this point reaches (fibres differ; 0 where embroidery leaves none)
+  float under;  // how much taller the pile round it stands (pile pulled down by stitches lies in a hollow, in the shade)
+  vec3 n;       // which way is out
+  vec3 root;    // where that fibre is rooted (fibres lean and wander, so not straight below)
+  vec3 dir;     // which way it runs here
+  vec3 alb;     // its colour here (tips can be paler than roots)
+  float fine;   // fibres across one unit of fabric
+  float gloss;  // how silky
+  float ink;    // embroidery thread on the fabric below (then dir is the way the thread runs)
+};
 
 const float PI = 3.14159265;
 const vec3 INK = vec3(0.012, 0.011, 0.016);
@@ -86,6 +98,7 @@ float seam(float dist, float depth, float width) { return depth * exp(-(dist * d
 // noise that stays smooth when magnified (its slope is continuous, so no grid shows) and is mip-mapped when minified;
 // q is in noise cells, lod is this pixel's level for it
 float snoise(vec3 q, float lod) {
+  if (lod >= 1.0) return textureLod(uNoise, q / 128.0, lod).r;
   vec3 x = q + 0.5;
   vec3 i = floor(x), f = fract(x);
   float sm = textureLod(uNoise, (i + f * f * (3.0 - 2.0 * f) - 0.5) / 128.0, 0.0).r;
@@ -147,57 +160,6 @@ float eyeDomes(vec3 p) {
 `;
 
 // ---- the characters: each defines its plush (skinM) and its plastic parts (solid)
-export const YETI = /* glsl */ `
-// the body: a superellipse of revolution fitted to the photo of the plush (half-width 1)
-float bodySdf(vec3 p) {
-  vec2 xz = vec2(p.x, p.z / 0.9);
-  float rho = length(xz), hh = p.y - 0.68;
-  float w = smoothstep(-0.45, 0.45, hh);
-  float n = mix(3.4, 2.2, w), B = mix(0.72, 0.9, w);
-  vec2 q = max(vec2(rho, abs(hh) / B), 1e-4);
-  vec2 qn = pow(q, vec2(n));
-  float r = pow(qn.x + qn.y, 1.0 / n);
-  vec2 g = pow(r, 1.0 - n) * (qn / q) / vec2(1.0, B);
-  float d = (r - 1.0) / max(length(g), 1e-3);
-  float zz = p.z * p.z;
-  d *= mix(1.0, 0.9, zz / max(p.x * p.x + zz, 1e-5));
-  return smax(d, -p.y + 0.02, 0.26);
-}
-float skinM(vec3 p, out Mat m, bool full) {
-  m = Mat(uMain, 1.0, 0.0);
-  float d = bodySdf(p) + seam(p.z + 0.04, 0.006, 0.02);   // where the front and back panels are sewn together
-  if (full) stitchFace(p, m, uBlushC, true);
-  // panda ears: thick rounded discs with a cupped front, set into the upper corners of the head
-  for (int i = 0; i < 2; i++) {
-    vec3 q = uEarM[i] * (p - uEarC[i]);
-    float disc = sdEllipsoid(q, vec3(0.235, 0.22, 0.12));
-    float cup = sdEllipsoid(q - vec3(0.0, 0.025, 0.13), vec3(0.15, 0.14, 0.085));
-    addPart(d, m, smax(disc, -cup, 0.05), Mat(uAccent, 1.0, 0.0), 0.05);
-  }
-  // the tuft: one soft flame of plush, curling over like a cowlick
-  vec3 v = p - uPetalRoot;
-  if (dot(v, v) < 1.0) {
-    float dt = 1e3;
-    for (int i = 0; i < 3; i++) {
-      vec3 dir = uPetal[i].xyz, a = uPetalRoot + dir * 0.02;
-      float L = uPetal[i].w, r0 = i == 0 ? 0.17 : 0.135;
-      vec3 b = a + dir * L * 0.55;
-      vec3 c = b + normalize(dir + uCurl[i]) * L * 0.5;
-      dt = smin(dt, smin(sdRoundCone(p, a, b, r0, r0 * 0.66), sdRoundCone(p, b, c, r0 * 0.66, r0 * 0.4), 0.05), 0.12);
-    }
-    addPart(d, m, dt, Mat(uAccent, 1.0, 0.0), 0.07);
-  } else d = min(d, length(v) - 0.65);   // (a safe bound: the tuft reaches no further than 0.65 from its root)
-  // the waving arm, with a pad on the paw
-  if (uArmOn > 0.5) {
-    vec3 a = mix(uMain, uAccent, 1.0 - smoothstep(0.05, 0.085, distance(p, uArmB + vec3(0.0, 0.02, 0.12))));
-    addPart(d, m, sdRoundCone(p, uArmA, uArmB, 0.15, 0.135), Mat(a, 1.0, 0.0), 0.03);
-  }
-  return d;
-}
-float solid(vec3 p, out vec3 col, out float rough) { col = vec3(0.0); rough = 0.3; return 1e3; }
-float casters(vec3 p) { return 1e3; }
-`;
-
 export const MOCHI = /* glsl */ `
 // Dr. Mochi, the scientist: a soft gumdrop in a white lab coat, with round glasses and a pen in the breast pocket.
 // (The glasses, buttons and pen were placed on the surface by solving this same shape numerically.)
@@ -419,12 +381,186 @@ float solid(vec3 p, out vec3 col, out float rough) {
 float casters(vec3 p) { return 1e3; }
 `;
 
+export const BLOOM = /* glsl */ `
+#define FUR
+// Bloom: a round, fluffy white cub with furry sky-blue ears and a tuft of the same long blue fur, modelled on a photo of the real
+// plush. A camera and this shape were fitted to the photo's outline, eyes, mouth and ears, and the colours were sampled
+// from it. He's the one mascot with a real pile: FUR switches RENDER to draw his fur as a volume of fibres.
+const float PILE = 0.05;                         // how far the body's pile stands off its fabric
+const vec3 EAR_R = vec3(0.165, 0.165, 0.05);     // an ear's fabric: a thick disc on the head, facing forward,
+const float EAR_PILE = 0.075;                    // ...in the tuft's fur, cut shorter
+const vec3 TUFT_C = vec3(0.0, 1.73, 0.2);        // the tuft: a small core lying across the crown,
+const float TUFT_W = 0.15, TUFT_R = 0.06;        // (a capsule: half its length, and its radius)
+const float TUFT_PILE = 0.3;                     // ...and long fibres all round it
+const float FACE_R = 0.947;                      // the face is laid out on the body's surface: longitude x this, and height
+const float EYE_TILT = 0.17;                     // the eyes lean outward at the top
+const vec3 THREAD = vec3(0.061, 0.059, 0.073);    // embroidery thread: a soft black (the tone curve deepens it)
+// (the noise is read in a turned frame: its cells would show as squares on a flat part that faces along an axis, as the ears do)
+const mat3 TWIST = mat3(0.8, -0.6, 0.0, 0.36, 0.48, -0.8, 0.48, 0.64, 0.6);
+// the body's fabric: a superellipse of revolution with a flat base (the photo's outline, less the pile), and which way
+// is out (worked out with it, so the pile needs no numeric normals)
+float bodyD(vec3 p, out vec3 n) {
+  float rho = length(p.xz), hh = p.y - 0.694;
+  float w = smoothstep(-0.45, 0.45, hh);
+  float e = mix(1.98, 2.33, w), B = mix(0.804, 1.036, w);
+  vec2 q = max(vec2(rho, abs(hh) / B), 1e-4);
+  vec2 qn = pow(q, vec2(e));
+  float r = pow(qn.x + qn.y, 1.0 / e);
+  vec2 g = pow(r, 1.0 - e) * (qn / q) / vec2(1.0, B);
+  float gl = max(length(g), 1e-3);
+  float d = (r - 1.0) / gl + PILE, fl = 0.02 + PILE - p.y;
+  float h = clamp(0.5 + 0.5 * (fl - d) / 0.313, 0.0, 1.0);
+  n = normalize(mix(vec3(g.x * p.x, g.y * sign(hh) * rho, g.x * p.z) / (gl * max(rho, 1e-4)), vec3(0.0, -1.0, 0.0), h));
+  return mix(d, fl, h) + 0.313 * h * (1.0 - h);
+}
+// the fabric (pile = 0), or the fabric with that share of its pile on it (the fur casts shadows too)
+float bloomD(vec3 p, float pile) {
+  vec3 n;
+  float d = bodyD(p, n) - pile * PILE;
+  for (int i = 0; i < 2; i++) {
+    vec3 q = uEarM[i] * (p - uEarC[i]);
+    d = smin(d, sdEllipsoid(q, EAR_R) - pile * EAR_PILE, 0.04);
+  }
+  vec3 v = p - TUFT_C;
+  v.x -= clamp(v.x, -TUFT_W, TUFT_W);
+  return smin(d, length(v) - TUFT_R - pile * TUFT_PILE, 0.1);
+}
+float skinM(vec3 p, out Mat m, bool full) { m = Mat(uMain, 0.0, 0.0); return bloomD(p, 0.0); }
+float pileD(vec3 p) { return bloomD(p, 0.5); }
+// the embroidery, on the face's chart: two oval eyes and a small mouth (a short bar, flat below)
+vec2 eyeQ(vec2 q, int i) { return rot2(i == 0 ? -EYE_TILT : EYE_TILT) * (q - uEye[i].xy); }   // in an eye's own frame
+float barD(vec2 q) {
+  vec2 m = q - uNose.xy;
+  return max(length(vec2(max(abs(m.x) - uNose.z + uNose.w, 0.0), m.y)) - uNose.w, -0.6 * uNose.w - m.y);
+}
+float eyesD(vec2 q) { return min(eyeD(uEye[0].xy + eyeQ(q, 0), uEye[0]), eyeD(uEye[1].xy + eyeQ(q, 1), uEye[1])); }
+float stitchD(vec2 q) { return min(barD(q), eyesD(q)); }
+// how much of a pixel a stitched shape covers, from its distance; 'wide' is how wide the shape is (one thinner than a
+// pixel only ever covers that share of it, so a small view shows a faint mouth, not a heavy one)
+float inked(float d, float wide) { return clamp(0.5 - d / gPix, 0.0, min(1.0, wide / gPix)); }
+// the fur at p: the distance to the fabric, and the pile there
+float furM(vec3 p, out Fur f) {
+  vec3 n;
+  float d = bodyD(p, n);
+  // the body: a long white pile that lies down, combed away from the crown
+  float len = PILE, lean = 2.0, stray = 0.3, curl = 0.04, grain = 17.0, body = 1.0, tufty = 0.0;
+  vec3 pull = normalize(vec3(p.x, 0.0, p.z) * 0.3 - vec3(0.0, 1.0, 0.0)), alb = uMain, tip = uMain;
+  f.fine = 80.0; f.gloss = 0.5;
+  // the ears: blue all over, in the same fur as the tuft, cut shorter
+  for (int i = 0; i < 2; i++) {
+    vec3 q = uEarM[i] * (p - uEarC[i]);
+    if (dot(q, q) > 0.16) continue;
+    float de = sdEllipsoid(q, EAR_R);
+    float w = clamp(0.5 + 0.5 * (de - d) / 0.04, 0.0, 1.0), e = 1.0 - w;
+    d = mix(de, d, w) - 0.04 * w * e;
+    n = mix(n, normalize(q / (EAR_R * EAR_R)) * uEarM[i], e);
+    pull = mix(pull, normalize(vec3(q.xy, 0.0) + 1e-4) * uEarM[i], e);
+    len = mix(len, EAR_PILE, e);
+    lean = mix(lean, 0.35, e); stray = mix(stray, 0.5, e); curl = mix(curl, 0.03, e); grain = mix(grain, 46.0, e);
+    alb = mix(alb, uExtra * 0.9, e);
+    tip = mix(tip, mix(uExtra, vec3(1.0), 0.4), e);
+    f.fine = mix(f.fine, 105.0, e); f.gloss = mix(f.gloss, 0.8, e);
+    tufty = max(tufty, e);
+    body *= w;
+  }
+  n = normalize(n);
+  vec3 s = p - n * d;                                  // the fabric below this point
+  float h = d / len, gap = d - len;
+  // the tuft: long, fine, tangled fibres fanning out of a small core on the crown, lying over the head's own fur
+  vec3 v = p - TUFT_C;
+  if (dot(v, v) < 0.3) {
+    vec3 axis = vec3(clamp(v.x, -TUFT_W, TUFT_W), 0.0, 0.0);
+    float dt = length(v - axis) - TUFT_R;
+    gap = min(gap, dt - TUFT_PILE);
+    if (dt < TUFT_PILE && d >= len) {                  // (above the head's pile: the two don't mix)
+      n = normalize(v - axis + vec3(0.0, 0.04, 0.0));
+      s = TUFT_C + axis + n * 0.2;                     // (its fibres are told apart by their direction from the core)
+      h = dt / TUFT_PILE;
+      pull = normalize(vec3(v.x * 2.0 + 0.25 * sin(uSway * 0.7), -0.35, v.z * 2.0 + 0.15 * sin(uSway * 0.9 + 1.0)));
+      len = TUFT_PILE; lean = 0.35; stray = 0.5; curl = 0.03; grain = 46.0;
+      alb = uExtra * 0.9; tip = mix(uExtra, vec3(1.0), 0.4);
+      f.fine = 105.0; f.gloss = 0.8;
+      body = 0.0; tufty = 1.0;
+    }
+    d = smin(d, dt, 0.06);
+  }
+  f.n = n; f.len = len; f.h = h; f.gap = gap; f.ink = 0.0; f.top = 0.0; f.under = 0.0; f.root = s; f.dir = n; f.alb = alb;
+  if (gap > 0.0 && d > max(0.01, 0.3 * gPix)) return d;   // (not in the pile: the march only needs the distances)
+  // how the pile lies: locks of fibres lean together, turned a little off the way it was combed; curly pile wanders
+  float lock = snoise(TWIST * s * grain + 3.0, 0.0);
+  vec3 lay = pull - n * dot(pull, n);
+  lay = dot(lay, lay) > 1e-5 ? normalize(lay) : normalize(cross(n, vec3(0.31, 0.2, 0.93)));
+  float turn = 0.5 * stray * (sin(dot(s, vec3(11.0, 7.0, 9.0))) + sin(dot(s, vec3(-8.0, 13.0, 6.0)) + 1.7));
+  vec3 side = cross(n, lay);
+  lay = lay * cos(turn) + side * sin(turn);
+  side = cross(n, lay);
+  float hc = clamp(h, 0.0, 1.0);
+  float reach = lean * len * (0.75 + 0.5 * lock);
+  float wave = curl * len * sin(hc * 6.0 + lock * 37.0 + dot(s, vec3(53.0, 37.0, 41.0)));
+  f.root = TWIST * (s - lay * reach * hc * (0.4 + 0.6 * hc) - side * wave * hc);
+  f.dir = normalize(n * len + lay * reach * (0.4 + 1.2 * hc) + side * wave);
+  f.top = mix(0.55 + 0.45 * lock, 0.3 + 0.3 * lock + 0.34 * snoise(s * 11.0 + 5.0, 0.0), tufty);   // (the tuft and ears are ragged: their locks differ a lot, and stop short of the longest fibres)
+  // the face: embroidery (no pile on it, and the stitches pull the pile down round them) and a blush sprayed on the fur
+  if (body > 0.5 && s.z > 0.3 && s.y > 0.4 && s.y < 1.1) {
+    vec2 q = vec2(atan(s.x, s.z) * FACE_R, s.y);
+    float press = smoothstep(0.0, 0.085, stitchD(q + vec2(0.0, 0.018)));   // (a few fibres from above lie over the edge)
+    f.under = 0.8 * f.top * (1.0 - press);
+    f.top *= press;
+    for (int i = 0; i < 2; i++) {
+      vec2 b = rot2(i == 0 ? 0.35 : -0.35) * (q - uBlush[i].xy) / (uBlush[i].w * vec2(1.0, 0.72));
+      float k = exp(-0.69 * dot(b, b));
+      alb = mix(alb, alb * mix(vec3(1.0), uBlushC, 0.4), k);
+      tip = mix(tip, tip * mix(vec3(1.0), uBlushC, 0.85), k);
+    }
+    if (d < 0.03) {                                    // the thread itself, on the fabric
+      float fray = 0.007 * (1.0 - smoothstep(0.5, 1.5, gPix * 300.0)) * (snoise(vec3(q * 300.0, 1.0), 0.0) - 0.5);   // stitched edges are a little ragged
+      f.ink = max(inked(eyesD(q) + fray, (uEyeMode > 0.5 ? 0.76 : 2.0) * uEye[0].z), inked(barD(q) + fray, 2.0 * uNose.w));
+      if (f.ink > 0.0) {
+        // satin stitch: the eyes are filled in rows that zigzag, with a border sewn round the edge; the mouth is
+        // sewn across. The thread runs along 'dir', and the rows show as shallow grooves.
+        vec3 eu = normalize(vec3(s.z, 0.0, -s.x)), ev = cross(n, eu);
+        vec2 td = vec2(0.0, 1.0);
+        float groove = 1.0;
+        float rows = 1.0 - smoothstep(0.35, 1.0, gPix / 0.0125);
+        for (int i = 0; i < 2; i++) {
+          vec2 e = eyeQ(q, i);
+          float ed = ellipseD(e, vec2(0.0), uEye[i].zw);
+          if (ed > 0.004) continue;
+          float row = e.y / 0.0125;
+          td = normalize(vec2(1.0, fract(e.x / 0.024 + 0.5 * floor(row)) < 0.5 ? 0.55 : -0.55));
+          groove = 0.5 + 0.5 * cos(6.2832 * row);
+          if (ed > -0.013) {                           // the border: sewn across the edge
+            td = normalize(e / (uEye[i].zw * uEye[i].zw));
+            groove = 0.5 + 0.5 * cos(atan(e.x, e.y) * 60.0);
+          }
+          td = rot2(i == 0 ? EYE_TILT : -EYE_TILT) * td;
+        }
+        if (abs(q.x - uNose.x) < uNose.z + 0.01 && abs(q.y - uNose.y) < uNose.w * 2.0 + 0.01) groove = 0.5 + 0.5 * cos(q.x / 0.007 * 6.2832);
+        f.dir = normalize(eu * td.x + ev * td.y);
+        f.alb = THREAD * mix(1.0, mix(0.45, 1.25, groove), rows);
+        f.gloss = rows;
+        f.top = 0.0;
+        return d - 0.016 * f.ink;
+      }
+    }
+  }
+  f.alb = mix(alb, tip, smoothstep(0.55, 1.0, hc / max(f.top, 0.05)));
+  return d;
+}
+float solid(vec3 p, out vec3 col, out float rough) { col = vec3(0.0); rough = 0.3; return 1e3; }   // (no plastic parts)
+float casters(vec3 p) { return 1e3; }
+`;
+
 export const RENDER = /* glsl */ `
 float skinD(vec3 p) { Mat m; return skinM(p, m, false); }
 float solidD(vec3 p) { vec3 c; float r; return solid(p, c, r); }
 float mapD(vec3 p) { return min(skinD(p), solidD(p)); }
+#ifdef FUR
+float shadowD(vec3 p) { return pileD(p); }   // (fur casts its shadow from part-way up the pile)
+#else
 // (thin casters like glasses frames are thickened a little here, so the shadow march can't step over them in places)
 float shadowD(vec3 p) { return min(skinD(p), casters(p) - 0.012); }
+#endif
 vec3 skinNormal(vec3 p) {
   const vec2 k = vec2(1.0, -1.0);
   const float h = 0.0015;
@@ -543,6 +679,64 @@ void fabricTexture(vec3 p, inout vec3 N, out float grain, out float crush) {
     }
   }
 }
+#ifdef FUR
+// ---- fur, as real as we can: a pile of fibres standing off the fabric, drawn as a volume (Kajiya & Kay 1989). Each
+// fibre is a cell of the noise read at the fibre's root, so the pattern runs along the fibre however it leans; it's
+// there where the noise is above a level that rises toward the tip, so fibres taper and differ in length. Rays are
+// marched through the pile a fibre's width at a time and each fibre met covers part of the pixel, which gives the
+// soft outline, the depth and the locks for free. Where fibres are smaller than a pixel their average is used, so
+// nothing shimmers.
+const float FUR_OPACITY = 1.5;                  // how much of the light a fibre's width of fibre stops
+const vec3 FUR_SHADE = vec3(0.8, 0.93, 1.0);    // the tint a pale pile takes in its own shade (the photo's: a cool blue),
+const vec3 FUR_FLOOR = vec3(0.7, 0.92, 1.15);   // ...and the light that comes up off the floor (the photo's blue blanket)
+// how much of the noise is above a level (its values are near enough normal: mean 0.5, deviation 0.18)
+float above(float level) {
+  float z = abs(level - 0.5) / 0.18, q = exp(-0.5 * z * z) / (1.64 * z + sqrt(0.76 * z * z + 4.0));
+  return level > 0.5 ? q : 1.0 - q;
+}
+float fibres(Fur f, float h, float lod) {
+  if (h >= 1.0) return 0.0;
+  float hs = h / max(f.top, 1e-3);
+  // locks of fibres, which end at the lock's own height; and a few single fibres that stand a little clear of them
+  float level = hs < 1.0 ? 0.3 + 0.62 * hs * hs : 9.0, wisp = f.top > 0.3 ? 0.9 + 0.25 * max(h - f.top, 0.0) : 9.0;
+  float mean = 1.0 - (1.0 - above(level)) * (1.0 - above(wisp));
+  if (lod >= 1.5) return mean;
+  float fine = snoise(f.root * f.fine * 2.9 + 11.0, max(lod + 1.5, 0.0));
+  float n = 0.5 + (0.66 * snoise(f.root * f.fine, max(lod, 0.0)) + 0.34 * fine - 0.5) * 1.3;
+  return mix(max(smoothstep(level - 0.09, level + 0.09, n), smoothstep(wisp - 0.03, wisp + 0.03, fine)), mean, smoothstep(0.0, 1.5, lod));
+}
+// one light on a fibre under 'cover' of pile (0: a tip in the open, 1: a root). Direct light thins out with depth,
+// faster when it comes in low; what the pile stops comes back scattered, deeper in colour ('again'). The fibre itself
+// is lit as a thin cylinder: brightest side-on, with a silky highlight (Kajiya & Kay), and it glows when lit from
+// behind (light passes through pale fibres).
+vec3 furLight(vec3 L, vec3 Lc, Fur f, vec3 V, float cover, vec3 again, float sh) {
+  float NoL = dot(f.n, L);
+  float w = 0.45 + 0.4 * lum(f.alb), wrap = clamp((NoL + w) / (1.0 + w), 0.0, 1.0);   // (the paler the pile, the further round the light gets)
+  float reach = exp(-1.6 * cover / max(0.7 * NoL + 0.3, 0.1));
+  float TL = dot(f.dir, L), TV = dot(f.dir, V);
+  float sL = sqrt(max(1.0 - TL * TL, 0.0)), sV = sqrt(max(1.0 - TV * TV, 0.0));
+  vec3 diff = f.alb * mix(again, vec3(1.0), reach) * wrap * mix(1.0, sL, 0.3);
+  float spec = 0.22 * f.gloss * pow(max(sL * sV - TL * TV, 0.0), 40.0) * reach * wrap;
+  float thru = 0.35 * pow(max(dot(-V, L), 0.0), 3.0) * (1.0 - cover) * (1.0 - cover);
+  return Lc * (diff + spec + f.alb * thru) * sh;
+}
+// a fibre's colour: the key light's share comes back in 'key' (the studio's shadow falls on it afterwards, once per
+// pixel), the rest is returned
+vec3 shadeFur(vec3 p, Fur f, float cover, vec3 V, out vec3 key) {
+  vec3 again = 0.85 * pow(f.alb, vec3(0.75)) * FUR_SHADE;
+  float occ = mix(0.55, 1.0, smoothstep(-0.05, 0.45, p.y + 0.25 * f.n.y));   // the floor hides the underside
+  vec3 env = mix(uGround * FUR_FLOOR, uSky, dot(f.n, uUp) * 0.5 + 0.5);
+  key = furLight(uKey, uKeyCol, f, V, cover, again, mix(0.75, 1.0, occ));
+  return f.alb * env * occ * mix(again, vec3(1.0), exp(-1.6 * cover))
+       + furLight(uFill, uFillCol, f, V, cover, again, mix(0.5, 1.0, occ)) + furLight(uBack, uBackCol, f, V, cover, again, occ);
+}
+// embroidery: satin thread, glossy along its length (f.dir)
+vec3 shadeThread(vec3 p, Fur f, vec3 V, out vec3 key) {
+  float TH = dot(f.dir, normalize(uKey + V)), TF = dot(f.dir, normalize(uFill + V)), g = 0.035 * mix(0.5, 1.0, f.gloss);
+  key = uKeyCol * max(dot(f.n, uKey), 0.0) * (f.alb + g * pow(max(1.0 - TH * TH, 0.0), 16.0));
+  return f.alb * skyIrr(f.n) + uFillCol * max(dot(f.n, uFill), 0.0) * (f.alb + g * pow(max(1.0 - TF * TF, 0.0), 16.0));
+}
+#endif
 #ifdef SNOW
 // ---- snow, as real as we can: packed grains of ice, nearly white. Light goes into snow and scatters a long way before
 // it comes back out, so the shadow line is soft and the light that crept round it comes back blue (ice absorbs a little
@@ -683,13 +877,64 @@ void main() {
   vec3 tl = min(t0, t1), th = max(t0, t1);
   float t = max(max(max(tl.x, tl.y), tl.z), 0.0), tf = min(min(th.x, th.y), th.z);
   if (t >= tf) discard;
+  vec3 V = -rd;
+  vec3 Cp = vec3(0.0);   // premultiplied
+  float A = 0.0;
+  bool hit = false;
+#ifdef FUR
+  // march up to the pile and then through it, a fibre's width at a time: each fibre met on the way covers part of the
+  // pixel (front to back), until the pixel is covered or the fabric underneath is reached
+  bool inside = false, seen = false;
+  vec3 Ck = vec3(0.0), sp = vec3(0.0), sn = vec3(0.0, 1.0, 0.0);   // the key light's share; where the fur's surface is
+  vec3 key = vec3(0.0), col = vec3(0.0);
+  float lift = 0.0, depth = 0.0;
+  for (int i = 0; i < 200; i++) {
+    vec3 p = ro + rd * t;
+    if (p.y < 0.0) break;                                  // the floor
+    gPix = t * uPix;
+    Fur f;
+    float d = furM(p, f);
+    bool fabric = d < 0.3 * gPix;
+    if (f.gap > 0.0 && !fabric) {                          // not in the pile yet (or out of it again)
+      inside = false;
+      t += max(f.gap * 0.8, 0.5 * gPix);
+      if (t > tf) break;
+      continue;
+    }
+    float ds = min(max(0.7 * gPix, min(0.3 / f.fine, 0.12 * f.len)), 0.25 * f.len);
+    if (!inside && !fabric) { inside = true; t += ds * ign(gl_FragCoord.xy); continue; }   // (so the steps don't show as rings)
+    float c = fabric ? 1.0 : fibres(f, f.h, log2(max(gPix, ds) * f.fine) + 0.5);
+    if (c > 0.003) {
+      float a = 1.0;
+      if (fabric) {                                        // the fabric itself: bare only where it's embroidered
+        col = shadeFur(p, f, f.top + f.under, V, key);
+        if (f.ink > 0.0) { vec3 k2; col = mix(col, shadeThread(p, f, V, k2), f.ink); key = mix(key, k2, f.ink); }
+      } else {
+        a = 1.0 - exp(-c * ds * f.fine * FUR_OPACITY);
+        if (!seen || (1.0 - A) * a > 0.02) col = shadeFur(p, f, max(f.top - f.h, 0.0) + f.under, V, key);   // (a faint fibre takes the light of the one before)
+      }
+      float A1 = A + (1.0 - A) * a;
+      if (!seen || (A < 0.5 && A1 >= 0.5)) { seen = true; sp = p; sn = f.n; lift = max(0.55 - f.h, 0.0) * f.len; depth = d; }
+      Cp += (1.0 - A) * a * col; Ck += (1.0 - A) * a * key; A = A1;
+      if (fabric) { hit = true; break; }
+      if (A > 0.985) break;
+    }
+    t += min(ds, max(0.9 * d, 0.3 * gPix));
+    if (t > tf) break;
+  }
+  if (seen) {    // the studio's shadow on the key light, and the creases: once per pixel, where the fur's surface is
+    float sh = mix(1.0, mix(0.4, 1.0, softShadow(sp + sn * (lift + 0.012), uKey, 3.0)), smoothstep(-0.1, 0.25, dot(sn, uKey)));   // (fur lets light through)
+    float ao = calcAO(sp - sn * depth, sn);
+    Cp = Cp * mix(0.6, 1.0, ao) + Ck * sh * mix(0.75, 1.0, ao);
+    if (A > 0.985) { Cp /= A; A = 1.0; }
+  }
+#else
 #ifdef SNOW
   const float FUZZ = 0.003;  // (snow has a crisp edge: this is only enough to smooth it)
 #else
   const float FUZZ = 0.016;  // how far the fuzz stands off the fabric
 #endif
   // 1. trace to the surface, noting the first near miss of the fabric on the way: its fuzzy edge, in front
-  bool hit = false;
   float prevD = 1e9, prevT = t, nmD = 1e9, nmT = 0.0;
   for (int i = 0; i < 120; i++) {
     vec3 p = ro + rd * t;
@@ -702,9 +947,6 @@ void main() {
     t += max(d * 0.9, 0.3 * px);
     if (t > tf) break;
   }
-  vec3 V = -rd;
-  vec3 Cp = vec3(0.0);   // premultiplied
-  float A = 0.0;
   if (hit) {
     vec3 p = ro + rd * t;
     gPix = t * uPix;
@@ -754,6 +996,7 @@ void main() {
     Cp = hc * cov + Cp * (1.0 - cov);
     A = cov + A * (1.0 - cov);
   }
+#endif
   vec4 o = vec4(0.0);
   if (A >= 0.003) o = vec4(toSRGB(clamp(neutralTone(Cp / A * uExposure), 0.0, 1.0)) * A, A);
 #ifdef SNOW

@@ -479,7 +479,7 @@ def disconnect(client_id: str, request: Request, user: dict = Depends(auth.curre
 
 # ---------------------------------------------------------------- the consent page
 
-# Yeti, the plush mascot: a 160 px still of the 3D one (see tools/mascot/README.md)
+# Bloom, the default mascot: a 160 px still of the 3D one (see tools/mascot/README.md)
 YETI_IMG = ('<img src="data:image/webp;base64,' + base64.b64encode(Path(__file__).with_name("yeti.webp").read_bytes()).decode()
             + '" width="84" height="84" alt="">')
 

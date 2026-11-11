@@ -191,9 +191,9 @@ results: why a search recommended its model, why a run scored what it did or fai
 show, how two runs differ, what a machine's failing checks mean. Pages with something to explain make Yeti wave once
 with a short offer, and "Explain" buttons sit next to recommendations, results, figures, failures and checks.
 
-The assistant is one of six mascots, drawn live in 3D: five plush ones (Yeti, the default, Dr. Mochi, Bop, Twinkle
-and Pip) and Rime, a tall, quiet snow golem with frost drifting round him. Pick one under **Your assistant** in its
-settings (saved in that browser). Its look and name change everywhere, and Claude answers as that
+The assistant is one of six mascots, drawn live in 3D: Bloom (the default), a fluffy white cub with real fur, modelled
+on a photo of a plush; four plush ones (Dr. Mochi, Bop, Twinkle and Pip); and Rime, a tall, quiet snow golem with
+frost drifting round him. Pick one under **Your assistant** in its settings (saved in that browser). Its look and name change everywhere, and Claude answers as that
 character (Rime answers calmly and briefly, and never gushes). How they're drawn: [tools/mascot](../tools/mascot/README.md).
 
 Yeti runs on Claude, with each user's own Claude account. Two ways, set up in Yeti's settings (the sliders icon):
@@ -218,6 +218,9 @@ runner-up. The answer streams back with each tool it used, linked to its page.
 What Claude sees: only what the tools return when you ask (run, search and machine names, settings, metrics, log
 tails, PCA and attention figures). Never datasets, images, annotations or checkpoints. Yeti can't start, change or
 delete anything.
+
+Next, Yeti goes hands-on: it highlights what to click, acts when you approve, fixes failed runs and finds datasets and
+models online. Plan: [AGENTS_PLAN.md](AGENTS_PLAN.md).
 
 ## 9. Updates
 

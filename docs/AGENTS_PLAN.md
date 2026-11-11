@@ -1,0 +1,365 @@
+# Agents: Yeti, hands-on
+
+> Status: plan. Today Yeti reads and explains, and never changes anything ([HUB.md](HUB.md#8-yeti-the-assistant)).
+> This plan lets it act on the platform. Where agents sit among ModelLab's three parts: [PLATFORM.md](PLATFORM.md).
+
+**In one sentence:** you say what you want in one sentence; a fast System One model picks the component and the
+action, ModelLab highlights it and fills it in, and nothing runs without your approval. Anything bigger than one step
+goes to Claude, which plans it.
+
+## What changes
+
+| you say | today | next |
+|---|---|---|
+| "How do I add a dataset?" | Yeti explains the steps | Yeti highlights each component to click, in turn |
+| "Why did this run fail?" | explains the error | explains it and offers the fix, ready to apply |
+| "Re-run this with batch size 4 on the 5090" | tells you where to click | opens Clone & edit with batch 4 and the RTX 5090 filled in; one tap queues it |
+| "Could distilling DINOv3 into the Nano beat the Small at the same speed?" | discusses it | drafts the search that answers it, runs it when you approve, explains the outcome |
+| "Find a forklift detection dataset" | can't help yet | finds candidates online with their licence and size, and imports the one you pick |
+
+## Decisions
+
+| topic | decision |
+|---|---|
+| Job | Help you develop: guide, act, fix, collaborate, find. Agents never go around the harness: every action is one the web app can take too. |
+| Two systems | **System 1**: a System One model (TypeSafe AI's Jev, a pinned version) for fast, bounded decisions: which action, which component, which option. **System 2**: Claude, the Yeti engine that exists today, for open-ended work: plans, recipes, diagnosis, search, explanations. |
+| One sentence | One sentence → one System 1 request, with all its questions answered in parallel → one decision: act, show, ask you, or hand over to Claude. |
+| Clicking | The agent doesn't click pixels or read the page. It picks from registered actions; the web app highlights the matching component, fills it in, and calls the same API the button calls. |
+| Values | Numbers, sizes, names and dates are found in the sentence by code. System 1 only picks among those candidates, and the hub validates them as it does for the web app. |
+| Approval | By tier: **look** never asks, **draft** leaves the last click to you, **act** takes one tap (or a standing permission you grant), **careful** always asks. Some things are never in reach. |
+| Trust | System 1 decides an action kind on its own only after it passes our evals for that kind. TypeSafe's own benchmarks don't count. |
+| Accounts | Your own keys, encrypted on the hub: a TypeSafe key for System 1, and the Claude key Yeti already uses for System 2. Without a TypeSafe key, Claude stands in for System 1 (slower). |
+| Privacy | System 1 sees your sentence and what's on screen (component labels, names, current values). Never images, annotations, weights, checkpoints or file contents. Listed on the privacy page. |
+| Claude apps | The same actions and tiers are served through the MCP server. |
+| Record | Every action is logged with the sentence, the decision, its confidence and who approved it. What an agent starts is tagged "via Yeti" (or with the Claude app's name). |
+
+## Two systems
+
+The split follows Kahneman's fast, intuitive System 1 and slow, deliberate System 2. Most of what an assistant
+decides while you work is a quick choice between known options; a few things need real thinking.
+
+### System 1: a System One model
+
+**What it is.** "System One model" is TypeSafe AI's name for a decision model; the first one, Jev, opened in early
+access in September 2026. It reads a state (text, JSON or images) and a set of typed questions, and answers each one
+with probabilities instead of text:
+- **Choice**: which of up to 255 options, each given with a description;
+- **Score**: a level on an ordered scale;
+- **Noul**: the probability that a statement is true.
+
+All questions in a request are answered in parallel, so ten questions take about as long as one. TypeSafe quotes 70
+to 500 ms end to end, and $0.042 per million input tokens with output free: about a hundredth of a cent for one of
+our requests.
+
+**Why it fits.** Picking a component and an action is a bounded choice. The answer can only be one of the options we
+list, so it's always well-formed, and the probabilities say how sure it is: confident means act or show; unsure
+means ask you or hand over to Claude.
+
+**What it can't do.** Write text, explain, or produce a value it wasn't given as an option. TypeSafe's own notes say
+Jev is weak at numbers, dates, counting, indirection ("the run before the one that failed"), long irrelevant state
+and adversarial text, and that it leans toward the first option. ModelLab is full of numbers, so code reads them
+(below).
+
+**What isn't verified.** TypeSafe's speed, cost and accuracy figures come from its own benchmarks, scored against the
+answers of two large LLMs rather than a ground truth. We measure it on our own tasks before trusting it
+([Evals](#evals-trust-is-earned-per-action)).
+
+**Access.** Early access, a hosted API in the US, proprietary weights. We pin a version (`jev-1.14.0` today): the
+`jev-latest` alias moves with every release, and its answers move with it.
+
+### System 2: Claude
+
+The Yeti engine as it is today (`modellab/hub/yeti.py`): your Claude account, the tool loop and the explanations,
+plus the write tools from this plan. It takes everything open-ended: ideas, plans of several steps, recipes,
+failures nobody has seen before, web search, explanations, and every request System 1 isn't sure about. Claude can
+also call System 1 as a tool, for fast ranking and checks.
+
+### One sentence, step by step
+
+```
+ "re-run this with batch size 4 on the 5090"               on the page of a run that ran out of GPU memory
+                      │
+                      ▼
+ the hub: what's on screen, plus candidates found by code  machines: RTX 5090, RTX A4000 · numbers: 4, 5090
+                      │
+                      ▼
+ System 1: one request, every question in parallel         action: clone & edit 0.97 · machine: RTX 5090 0.99
+                      │                                    batch: 4 0.98 · complete: yes 0.93
+                      ▼
+ code: one action, every value found, confident enough, both option orders agree?
+           │ yes                                           │ no
+           ▼                                               ▼
+ Clone & edit opens with batch 4 and the RTX 5090          Claude takes over, with System 1's guesses
+ filled in and highlighted. "Queue it?" One tap.           as hints, or Yeti asks you one short question
+```
+
+1. The web app sends the sentence and what's on screen: the page, the ids of the components registered on it, the
+   form values and the selected machine. The hub looks the names up itself, as Yeti's page note does today.
+2. Code finds candidates in the sentence: numbers with their units, sizes, ratios, durations, and names that match
+   your machines, datasets and runs.
+3. System 1 answers all the questions in one request.
+4. Code checks the answers: one registered action, every required value found, confidence over the threshold for
+   that action's tier, and both option orders agree. Then it acts within the action's tier, asks you one short
+   question, or hands everything to Claude with System 1's top guesses as hints.
+
+**One sentence, one action** on the fast path. A request that needs several actions goes to Claude, which plans
+them and shows each one.
+
+### The questions
+
+| question | type | options |
+|---|---|---|
+| `intent` | Choice | show me how · do it · explain · plan an idea · find online · just talk |
+| `action` | Choice | the actions registered on this page plus the global ones, each with its description, plus "none of these" |
+| `target` | Choice | when an action appears on several rows: the rows on screen (which run, which dataset) |
+| `machine`, `dataset`, `run`, … | Choice | your machines, the datasets on the machine, the runs on screen, plus "not said" |
+| one per value the action needs | Choice | the candidates code found in the sentence, plus "not said" |
+| `fits` | Noul | "One of the listed actions does what the user asked." |
+| `complete` | Noul | "The request says everything needed to do it." |
+
+For the sentence above, the request has this shape (field names as in TypeSafe's docs):
+
+```json
+{"model": "jev-1.14.0",
+ "state": {"sentence": "re-run this with batch size 4 on the 5090",
+           "page": "run nano-640-distill, failed: CUDA out of memory", "selected_machine": "RTX A4000"},
+ "questions": {
+   "action":   {"type": "choice", "instructions": "Which action does the user ask for?",
+                "criteria": {"run.clone_edit": "Copy this run's recipe into New experiment, change it, run it again",
+                             "run.requeue": "Run this exact run again, unchanged",
+                             "run.cancel": "Stop this run", "none": "None of these"}},
+   "machine":  {"type": "choice", "instructions": "Which machine should it run on?",
+                "criteria": {"m-5090": "RTX 5090", "m-a4000": "RTX A4000", "not_said": "Not said"}},
+   "batch":    {"type": "choice", "instructions": "Which batch size does the user ask for?",
+                "criteria": {"4": "4", "5090": "5090", "not_said": "Not said"}},
+   "complete": {"type": "noul", "instructions": "The request says everything needed to do it."}}}
+```
+
+**Rules for good answers**, from TypeSafe's notes on Jev's weak spots:
+- **Parse, then choose.** Code finds the candidate values; System 1 only chooses among them.
+- **Keep the state lean**: only what's on screen. No logs or long lists, since unrelated text costs accuracy.
+- **Check the order.** The `action` question is asked twice in the same request, with the options in opposite
+  orders; it adds little, since questions are answered in parallel. The fast path needs both answers to agree.
+- **One pinned version.** Thresholds are tuned for one version; a new version reruns the evals before it's switched
+  on.
+
+## The action registry: how the agent clicks
+
+The agent never clicks pixels or reads the DOM. Every interactive part of the web app registers what it does and
+where it is:
+
+- **Actions** (hub, typed): an id, a description (what System 1 reads), parameters with their options where they
+  can be listed, a tier, the hub API it calls, and how it's undone.
+- **Targets** (web app): the button, field, card or row that shows an action, registered with a hook like the
+  `useYetiPage` hook pages use today.
+
+When the agent acts, ModelLab scrolls the target into view, highlights it, fills in its fields, and calls the same
+API the button calls. You see it happen where you would have done it yourself. The hub re-checks every action
+exactly as if you had clicked, so an agent can't do anything you couldn't.
+
+One registry serves three front ends: ⌘K (whose Actions group gains every registered action), Yeti (System 1's
+options and Claude's tools) and the MCP server (write tools for Claude apps). A new page or button registers its
+actions as part of being built, the way pages register Yeti's page context today.
+
+The first actions, from today's API:
+
+| action | tier | what it calls |
+|---|---|---|
+| open a page, run, search or machine | look | the router |
+| show where something is | look | the highlight |
+| compare results | look | Compare |
+| fill in a form (New experiment, Find best model, Add dataset) | draft | the form |
+| clone a run with changes | draft | Clone & edit (`/?clone=<id>`) |
+| queue a run | act | `POST /api/runs` |
+| re-queue or cancel a run | act | `POST /api/runs/{id}/requeue`, `…/cancel` |
+| start a search | act, or careful above your agent GPU-hour limit | `POST /api/searches` |
+| cancel a search | act | `POST /api/searches/{id}/cancel` |
+| export a model | act | `POST /api/runs/{id}/export` |
+| add, import or re-check a dataset; fetch weights; run the self-check | act | `POST /api/machines/{id}/commands` |
+| delete a run (and its files on the machine), delete a search | careful | `DELETE /api/runs/{id}`, `DELETE /api/searches/{id}` |
+| remove a dataset from a machine's list | careful | `POST /api/machines/{id}/commands` |
+
+Later, the import paths and the architecture editor's edits (swap, insert or remove a block) are registered the same
+way, so the agent can drive them too.
+
+## Approval tiers
+
+| tier | what it does | approval | examples |
+|---|---|---|---|
+| **look** | changes nothing | never asks | open pages, highlight, compare, explain |
+| **draft** | prepares a change; nothing runs | you press the real button | fill in a form, clone & edit, draft a recipe or a search, prepare a fix |
+| **act** | runs something reversible, inside its budget | one tap in the chat, or a standing permission you grant | queue, re-queue, cancel, start a search, add or re-check a dataset, export |
+| **careful** | can't be undone, costs a lot, or brings in something from outside | always asks, with a summary of what and how much; never a standing permission | delete files, downloads from the internet, anything above your agent GPU-hour limit, third-party code (in the sandbox) |
+| **never** | things only you do, by hand | not in the registry | users, pairing and removing machines, releases and signing, keys, a shell on a PC |
+
+- **System 1 alone never goes past draft without your tap.** A fast wrong guess costs a highlight, not a run.
+- **Only you give instructions.** Actions come from your words or your approval. Run names, logs, dataset cards and
+  web pages are data: text in them can't trigger an action, whichever system reads it.
+- **An agent GPU-hour limit** (set in Yeti's settings) caps what one approval can start; anything above it is
+  careful.
+- **Standing permissions** are narrow ("retry my search trials that ran out of memory, with the fix"), apply only to
+  failures that code matched exactly (never to a guess), are listed in Yeti's settings, can be revoked, and are off
+  by default.
+- **Careful actions from Claude apps** wait for approval in ModelLab itself, because a Claude app may be set to allow
+  tools without asking.
+- **Undo** is offered where the action has one: a queued run can be cancelled, a removed dataset added back.
+
+## What Yeti does
+
+### Guide: show me
+
+"How do I add a dataset?" → Machines → the machine → **Add dataset** → **Browse**. Yeti highlights each component
+in turn, with a short caption, and waits for you to click it. Claude's answers can carry "show me" links that do the
+same.
+
+How it looks, following [DESIGN.md](../modellab/web/DESIGN.md): a ring in the accent colour with a soft lift
+shadow eases in and holds still, with no sparkles; the mascot turns to look at it; with reduced motion, only the
+ring. The caption is announced to screen readers. On a phone, one step at a time.
+
+### Act: one sentence
+
+- "Re-run this with batch size 4 on the 5090": Clone & edit opens with batch 4 and the RTX 5090 filled in and
+  highlighted. "Queue it?"
+- "Cancel everything queued on the A4000": the queued runs are listed. One tap.
+- "Compare the two best Nano runs": Compare opens with both.
+- "Export the winner": the export button on the recommendation is highlighted. One tap.
+
+### Fix: when something fails
+
+Yeti watches failed and interrupted runs, failed search trials, dataset check errors, failed machine self-checks,
+and failed updates and exports.
+
+1. **Known failures, matched by code.** A catalog of failure signatures, each with its fix as a registered action:
+   out of GPU memory (half the batch, and twice the gradient accumulation where the trainer supports it, so the
+   effective batch stays the same); too many open files (the "received 0 items of ancdata" DataLoader crash) or too
+   little shared memory; a full disk; a dataset folder that moved; a driver older than 570; a weight file that
+   fails its hash check; a loss that turns NaN.
+2. **Near matches, by System 1**: the error tail against the catalog, as a Choice with "none of these", when no
+   signature matches exactly.
+3. **New failures, by Claude**: it reads the logs with today's tools, explains what happened, and proposes a fix as
+   an action or a recipe change.
+
+The fix shows where the failure does (on the run, the machine or the dataset) as a card with its component
+highlighted; one tap applies it. Whether the retry worked is recorded next to the catalog entry, which we curate by
+hand.
+
+**In loops.** Today a failed trial drops out of its round. With a standing permission, a search applies a known fix
+and retries the trial once, inside its GPU-hour cap. The trial and the search's explanation say what changed, since
+a trial with a different batch size isn't identical to its siblings.
+
+### Collaborate: ideas in your own words
+
+"I think distilling DINOv3 into the Nano could beat the Small at the same speed."
+
+1. Claude turns the idea into a plan: the question, what runs where (a search or an experiment), the estimated GPU
+   hours (from past runs of similar models), and which result would answer the question.
+2. The plan appears in the real forms (Find best model, New experiment) with the fields it filled highlighted. You
+   change anything you like.
+3. You approve. It runs as ordinary runs; Yeti watches, fixes what it can, and explains the outcome against the
+   question.
+4. The idea, its runs and the answer stay together: the first step toward the research loops in
+   [PLATFORM.md](PLATFORM.md#loops).
+
+### Find: datasets, models and papers online
+
+"Find a forklift detection dataset." "Find a ViT-S backbone pretrained on aerial images."
+
+1. Claude searches the Hugging Face Hub first (models and datasets, through the Hub's search API), and the web
+   (Claude's web search tool) for papers and released weights.
+2. Candidates come back with their licence, gating, size, format, task, downloads and last update. On long lists,
+   System 1 scores relevance to trim them quickly.
+3. You pick one. It's imported through the harness's import paths ([PHASE2_PLAN.md](PHASE2_PLAN.md#model-library)):
+   pinned to a revision, safetensors preferred, the mapping step for datasets, then conversion, splits, fingerprint
+   and the dataset check. Files download to the machine you choose, never to the hub.
+4. It shows up in the dataset picker or the model library, ready to use.
+
+Downloads are careful actions, shown with their size and licence first. Licences are shown as written and never
+judged by System 1. Third-party code runs only in the sandbox, and the Hugging Face token stays a hub secret the
+agent never sees. All of this needs the Foundations, the model library and data import from
+[PHASE2_PLAN.md](PHASE2_PLAN.md), so it comes last.
+
+## Speed and cost
+
+- **Fast path:** from your sentence to a highlighted, filled-in component in under 0.7 s at the median and 1.5 s at
+  the 95th percentile. TypeSafe quotes 70 to 500 ms; the rest is the hub and the browser.
+- **Claude path:** as today, streamed with progress notes.
+- **Cost:** a System 1 request of about 3,000 tokens costs about $0.0001. Claude stays billed to your Claude account,
+  as today.
+
+## Evals: trust is earned per action
+
+- **A golden set** of at least 300 cases, each a sentence and a recorded page state with the expected decision
+  (action, target, values, tier, whether to ask). Every page; paraphrases and typos; numbers and units; negation
+  ("not the 5090"); indirection ("the run before this one"); requests no action covers; hostile text inside run
+  names and logs.
+- **Measured:** action and value accuracy; calibration (is a 0.9 confidence right 90 % of the time?); how often it
+  hands over; **confident mistakes**, wrong answers above the threshold, which is the number that matters;
+  sensitivity to option order; latency (median and 95th percentile); cost.
+- **Side by side:** Jev (pinned), Claude Haiku 5.5 answering the same questions through structured outputs, and
+  Claude Opus 5.5 as the reference.
+- **The gate:** System 1 decides an action kind on the fast path only where, at its threshold, it's right at least
+  98 % of the time for look and draft actions, and 99.5 % for act actions (which still ask). Below that, Claude
+  decides.
+- **When:** the eval needs API keys, so it runs on demand: before an action kind is switched on, before a model
+  version changes, and after big changes to the registry. The router itself is tested in the normal test suite with
+  recorded answers.
+
+## Without a TypeSafe key
+
+System 1 is an interface, `decide(state, questions) → answers`, with two adapters: TypeSafe's API, and Claude
+(Haiku 5.5 by default) answering the same questions through structured outputs, with each answer limited to the
+listed options. Claude gives a pick without calibrated probabilities, so its thresholds come from the evals, and it
+faces the same gate. Without a TypeSafe key the fast path still works, only slower. The interface also leaves room
+for other System One models, including open-weight ones on your own GPU, once they pass the same evals.
+
+## Privacy
+
+- **System 1 receives:** your sentence; the page; the components registered on screen (labels, ids, current
+  values); the names of your machines, datasets and runs as options; the candidates found in the sentence; and,
+  when it diagnoses a failure, the error tail.
+- **Never:** images (although Jev can read them), annotations, weights, checkpoints, file contents or keys.
+- **TypeSafe** hosts in the US. Its policy says it doesn't train on customer requests, and zero data retention is an
+  enterprise option. We read its data processing terms before real use. The privacy page lists it next to what
+  Claude sees.
+- **Your TypeSafe key** is kept like the Claude key: encrypted with `MODELLAB_SECRET_KEY`, only the last 4
+  characters shown, never sent back to the browser.
+
+## Build order
+
+Each step ships on its own and is useful without the next.
+
+1. **Action registry**, no AI yet: actions on the hub, targets in the web app, ⌘K gains the actions, the highlight
+   and fill-in, the action log and the "via Yeti" tag. Tests: each registered action calls the same API as its
+   button, with the same checks.
+2. **Guide**, with both systems: System 1 picks the component to highlight from one sentence (look tier, so a wrong
+   guess costs nothing), and Claude walks you through several steps. The System 1 adapters, the sentence parsers
+   and the first golden set land here.
+3. **Act**: draft and act actions with an approval card in the chat. System 1 takes one-sentence actions, switched
+   on per action kind as each passes the gate; Claude takes the rest. The MCP server serves the same actions to
+   Claude apps, with the same tiers.
+4. **Fix**: the failure catalog, fix cards on failed runs, datasets and machine checks, and self-healing search
+   trials with a standing permission.
+5. **Collaborate**: idea → plan → drafts in the real forms → approval → watch → explanation, with each idea kept
+   together with its runs.
+6. **Find**: Hugging Face and web search, candidate cards, and imports through the model library and data import,
+   after their Foundations.
+
+## Open questions
+
+1. **Naming**: the program on each GPU PC is also called "the agent". Keep calling it the "machine agent" wherever
+   both could be meant, or rename it in the web app (for example "runner")?
+2. **TypeSafe access**: Jev is in early access. Do we have a key yet? Until we do, the Claude adapter stands in.
+3. **Standing permissions**: which fixes, if any, may a search apply on its own at first? Proposed: none until the
+   failure catalog has been tried on real failures, then out-of-memory retries first.
+4. **Sources beyond Hugging Face**: Roboflow Universe (it needs its own key), GitHub releases, arXiv?
+5. **Mascots**: should a mascot's character change how it acts (Rime asking fewer questions)? Proposed: no, only how
+   it talks.
+
+## Sources
+
+- TypeSafe AI: [System One models](https://docs.typesafe.ai/concepts/system-one),
+  [Choice questions](https://docs.typesafe.ai/primitives/choice),
+  [models and limits](https://docs.typesafe.ai/models),
+  [Jev's weak spots](https://docs.typesafe.ai/model-jaggedness/jev-1.13),
+  [launch post](https://typesafe.ai/blog/introducing-system-one-models-and-jev).
+- Independent notes: [Simon Willison on Jev](https://simonwillison.net/2026/Sep/21/jev/).
