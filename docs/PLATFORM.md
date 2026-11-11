@@ -30,6 +30,9 @@ ModelLab has three parts:
 You can always use the harness directly, through the web app. Agents and loops add speed and scale on top of it,
 never a second way around it.
 
+All three write to one **notebook**: the lab's memory of what was asked, what was tried and what was learned
+([The notebook](#the-notebook)).
+
 ## Rules that hold the parts together
 
 1. **The harness is the ground truth.** Every action an agent takes is a hub API call the web app makes too. Every
@@ -44,6 +47,8 @@ never a second way around it.
    beats the best comparable one by more than the seed noise.
 5. **Data stays on your machines.** Agents and loops see names, settings, metrics and logs; never images,
    annotations, weights or checkpoints.
+6. **What the lab learns is written down.** A question, its runs and its answer are kept together in the notebook,
+   including the ideas that didn't work, so nobody (you, an agent or a loop) tries the same thing twice unknowingly.
 
 **Naming.** "Agents" here means the AI assistants. The program on each GPU PC, called "the agent" in the code and in
 [HUB.md](HUB.md), is the **machine agent** wherever both could be meant. Code names stay as they are
@@ -72,6 +77,14 @@ The assistants that help you develop: Bloom and the other mascots, one engine wi
 
 The tools to build and improve models, and the guarantees that make their results trustworthy.
 
+**Where it's going.** Two capabilities matter most, because they set what agents and loops can reach:
+- **Every major model.** Today the harness trains two detector families. It becomes general: any major vision model
+  (from Hugging Face `transformers` and `timm`, or your own upload) is described by one model spec and trained,
+  distilled, evaluated and exported the same way.
+- **Changing the architecture.** Swapping, inserting, removing and rewriting blocks is a core capability of the
+  harness, not an extra: it is what turns tuning existing models into research on new ones. Every variant is a
+  recorded, fingerprinted version, so its results stay comparable.
+
 **Today:**
 - **Engine**: recipes of chained stages (`finetune`, `distill`, `eval`, `features`, `speed`), sweeps and templates;
   RF-DETR and LT-DETR detectors with DINOv2 / DINOv3 teachers.
@@ -84,8 +97,9 @@ The tools to build and improve models, and the guarantees that make their result
 - **Foundations**: the model spec, a task layer, a general trainer, environments per model family, a sandbox,
   secrets, a live machine channel, and every feature as a hub API. New: the **action registry**, so every button's
   action is also there for ⌘K, Yeti and Claude apps.
-- **Model library** (Hugging Face models, uploads), **Data** (Hugging Face datasets, a viewer), the **architecture
-  editor**, classification and segmentation.
+- **Model library**: any major vision model, from Hugging Face or uploaded.
+- **Architecture editor**: edit a model block by block, or build one from scratch.
+- **Data** (Hugging Face datasets, a viewer), classification and segmentation.
 - **Phase 3**: cloud GPUs and clusters.
 
 ## Loops
