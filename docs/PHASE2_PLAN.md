@@ -7,7 +7,9 @@
 > [PLATFORM.md](PLATFORM.md).
 
 The long-term goal is a playground for deep-learning R&D on vision models: bring any model, change its architecture,
-fine-tune or distill it, and let ModelLab find the best variant.
+fine-tune or distill it, and let ModelLab find the best variant. Two harness capabilities carry that goal: support
+for **every major vision model**, not only today's two detector families, and **changing a model's architecture**
+([PLATFORM.md](PLATFORM.md#harness)).
 
 **Until v1.0, ModelLab is a personal tool**: one owner, their own GPU machines, nothing published or sold. Accounts
 for outside users, billing, licensing and launch work wait until a release is meant for others.
@@ -23,7 +25,8 @@ your machines.
 | Use | A personal tool until v1.0. No billing, sign-up or licensing work before a public release. |
 | Job | Find the most accurate detector that fits a speed budget, with comparisons you can trust. |
 | Tasks | Object detection first. Classification and segmentation next; language and vision-language models later. |
-| Models | Every model in the catalog (RF-DETR, LT-DETR; DINOv2 and DINOv3 teachers). Any Hugging Face model or custom code comes later, with a sandbox. |
+| Models | Today, every model in the catalog (RF-DETR, LT-DETR; DINOv2 and DINOv3 teachers). The harness becomes general: any major vision model from Hugging Face, uploads and custom code (in a sandbox), all through one model spec. |
+| Architecture | Changing a model's architecture is a core capability of the harness: block-level edits, recorded as fingerprinted versions. |
 | Data | Stays on your machines. The hub receives metrics, logs, names and fingerprints, but never images, annotations or weights. |
 | Compute | Your own Linux GPU machines, as in v0.1. Cloud GPUs and clusters are phase 3. |
 | AI assistant | Yeti, on each user's own Claude account: an API key from their Claude Console account (stored encrypted on the hub) for the in-app chat, or a Claude app connected to ModelLab's MCP server with OAuth. Read-only first, then hands-on: a System One model for fast one-sentence actions and Claude for the rest ([AGENTS_PLAN.md](AGENTS_PLAN.md)). |
@@ -173,6 +176,10 @@ Updates in whatever order is most useful. Item 1 belongs to the agents part of M
 5. **[Architecture editor](#architecture-editor)**.
 6. **Classification and segmentation.**
 
+The model library and the architecture editor are the two that widen what the lab can research, so they move ahead
+of the others whenever there's a choice. Alongside them, the **notebook** ([PLATFORM.md](PLATFORM.md#the-notebook))
+grows from the first idea Yeti turns into experiments.
+
 ### Foundations
 
 - **Model spec.** A model becomes a versioned, fingerprinted description instead of a fixed catalog entry:
@@ -234,6 +241,9 @@ Updates in whatever order is most useful. Item 1 belongs to the agents part of M
 - **Viewer:** sample images with their boxes or masks, class balance, and the spread of box sizes.
 
 ### Architecture editor
+
+One of the harness's most important capabilities: it is what lets the lab produce new models instead of only tuning
+existing ones.
 
 - **Block-level editing:** swap, insert, remove or change blocks in backbone → neck → head; build a model from
   scratch with a library of blocks; write custom Python modules (sandboxed) for anything else.

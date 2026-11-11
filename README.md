@@ -109,13 +109,19 @@ By part ([how they fit together](docs/PLATFORM.md)):
   and finds datasets and models online.
 
 **Harness: the rest of the R&D playground** ([plan](docs/PHASE2_PLAN.md))
-- Any vision model from Hugging Face (`transformers`, `timm`), or your own upload.
-- An architecture editor: swap backbones and heads, add or change layers, or build a model from scratch.
+- Every major vision model, not only today's detectors: from Hugging Face (`transformers`, `timm`), or your own
+  upload.
+- Changing the architecture, a core capability: swap backbones and heads, add or change layers, or build a model
+  from scratch.
 - Hugging Face datasets with a viewer; classification and segmentation.
 
 **Loops**
 - Faster and wider searches, failed trials that fix themselves, and research loops where the agent picks the next
   experiments from the last results.
+
+**Notebook**
+- The lab's memory: each question with its runs and its answer, including what didn't work, read by you, the agents
+  and the loops.
 
 **Phase 3**: cloud GPUs, and clusters (sharing machines with teammates by invitation).
 

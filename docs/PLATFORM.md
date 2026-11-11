@@ -121,8 +121,26 @@ a loop may try, how it spreads its budget, when it stops, and what counts as a r
    the model library and the editor exist.
 4. **Research loops**: a question in your words and a budget. Each round, the agent proposes the next experiments
    from the last results, and you can step in at any point. A loop keeps its question, its runs and its answer
-   together, as a notebook entry.
+   together, as an entry in [the notebook](#the-notebook), and reads earlier entries before it proposes anything.
 5. **More compute**: cloud GPUs and clusters (phase 3) let a loop run wider.
+
+## The notebook
+
+The lab's memory. Runs and searches already record *what* ran; the notebook records *why*, and what came of it.
+
+- **An entry** is a question or an idea in your words, the runs and searches that tested it, the answer with its
+  evidence (the comparable results, the seed noise), and a status: open, answered, or dropped, with the reason.
+- **Who writes it.** You, at any time. Agents, when an idea becomes experiments
+  ([Collaborate](AGENTS_PLAN.md#collaborate-ideas-in-your-own-words)) or a failure gets a fix that worked. Loops, one
+  entry per search or research loop. Entries written by an agent or a loop say so, and you can edit them.
+- **Who reads it.** You, as a searchable history of the lab. Agents, before they plan, so they can say "we tried a
+  larger input size on this dataset, and here is what it cost". Loops, before they propose the next round.
+- **Honest by construction.** An entry links to its runs instead of copying their numbers, so the answer always
+  shows the harness's own results, with their fingerprints and "not comparable" flags. Negative results are kept.
+- **Private like everything else.** Entries hold text, names, settings and metrics, and live on the hub with your
+  runs. Never images, annotations or weights.
+
+To be planned in detail. The first step comes with Collaborate, which already keeps an idea with its runs.
 
 ## Where things are written down
 
@@ -131,3 +149,4 @@ a loop may try, how it spreads its budget, when it stops, and what counts as a r
 | Agents | [AGENTS_PLAN.md](AGENTS_PLAN.md) | [HUB.md §8](HUB.md#8-yeti-the-assistant) |
 | Harness | [PHASE2_PLAN.md](PHASE2_PLAN.md), [HUB_PLAN.md](HUB_PLAN.md) | [HUB.md](HUB.md), [MODELLAB.md](MODELLAB.md) |
 | Loops | this file, and [PHASE2_PLAN.md §1](PHASE2_PLAN.md#1-find-my-best-model-automated-search) | [HUB.md §7](HUB.md#7-find-my-best-model) |
+| Notebook | this file | not built yet |

@@ -257,8 +257,12 @@ a trial with a different batch size isn't identical to its siblings.
    change anything you like.
 3. You approve. It runs as ordinary runs; Yeti watches, fixes what it can, and explains the outcome against the
    question.
-4. The idea, its runs and the answer stay together: the first step toward the research loops in
+4. The idea, its runs and the answer stay together as an entry in the lab's
+   [notebook](PLATFORM.md#the-notebook): the first step toward the research loops in
    [PLATFORM.md](PLATFORM.md#loops).
+
+Before it plans, Claude reads the notebook's earlier entries on the same dataset and models, so it can say "we
+tried that, and here is what happened" instead of running it again.
 
 ### Find: datasets, models and papers online
 
@@ -340,7 +344,7 @@ Each step ships on its own and is useful without the next.
 4. **Fix**: the failure catalog, fix cards on failed runs, datasets and machine checks, and self-healing search
    trials with a standing permission.
 5. **Collaborate**: idea → plan → drafts in the real forms → approval → watch → explanation, with each idea kept
-   together with its runs.
+   together with its runs as the first notebook entries.
 6. **Find**: Hugging Face and web search, candidate cards, and imports through the model library and data import,
    after their Foundations.
 
