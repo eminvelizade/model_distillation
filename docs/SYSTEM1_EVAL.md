@@ -63,6 +63,23 @@ Sonnet's 1.3 points down are five cases; the questions changed for it too, and n
   models and `cloudflare/clairic` could not take the questions.
 - Both runs together cost $10.12, most of it Sonnet.
 
+## Failures: does it recognise a known failure?
+
+A failed run's error is matched against the failure catalogue by patterns first. When none matches, the decision
+model is asked which known failure the error shows, or none (`modellab/hub/system1/evals/failures.py`). On 41 error
+messages that no pattern matches (27 showing one of eight known failures in other words, 14 unrelated errors),
+`liquid/d1-ultra` did this:
+
+| the pick must be at least this sure | known failures found | wrong diagnoses | unrelated errors left alone |
+|---|---|---|---|
+| 0.5 | 27 of 27 | 1 | 13 of 14 |
+| 0.7 | 25 of 27 | 0 | 14 of 14 |
+| 0.8 | 23 of 27 | 0 | 14 of 14 |
+| 0.9 | 20 of 27 | 0 | 14 of 14 |
+
+The hub uses 0.75. A near match is shown as "looks like a known failure" and its fix still waits for a press. It
+is one run on 41 messages written by one author: enough to pick a threshold, not to trust it blindly.
+
 ## Second run in full
 
 405 golden cases (292 meant for the fast path, 113 meant to be handed over), 28 models through OpenRouter. Reference: `anthropic/claude-sonnet-5.5`.

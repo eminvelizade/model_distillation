@@ -245,6 +245,24 @@ Say what to do in one sentence and the assistant does it, usually in under a sec
 
 ![One sentence fills in Clone & edit](screenshots/hub_12_one_sentence_clone_edit.png)
 
+### Fixes for known failures
+
+A failed or interrupted run's page shows a card when the failure is one ModelLab knows: what happened, what the fix
+changes, and one button.
+
+- **Out of GPU memory:** the button opens New experiment with the run's recipe, half the batch and (on RF-DETR)
+  twice the gradient accumulation, so the effective batch stays the same. You press Run.
+- **Too many open files, too little shared memory, a driver problem:** it runs the machine's self-check, which shows
+  the limit and the command that fixes it.
+- **A full disk, a missing dataset folder, missing weights, a NaN loss, an interrupted run:** it opens the machine,
+  re-checks the dataset, fetches the weights, halves the learning rate, or re-queues.
+
+An error that matches no pattern is shown to the decision model once (with an OpenRouter key set), and the card then
+says "Looks like a known failure". A run started from a fix is tagged `fix:<failure>`; the card says how often that
+fix has worked for you. Anything else is for "Why did it fail?", which asks Claude as before.
+
+![A known failure and its fix](screenshots/hub_15_fix_card.png)
+
 Next: fixing failed runs, turning ideas into experiments, and finding datasets and models online. Plan and what is
 built: [AGENTS_PLAN.md](AGENTS_PLAN.md).
 

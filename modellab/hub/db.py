@@ -170,6 +170,13 @@ agent_log = sa.Table(
     Column("outcome_note", Text), Column("outcome_time", Float),
 )
 
+diagnoses = sa.Table(
+    "diagnoses", md,  # what the decision model made of a failed run's error, asked once (system1/failures.py)
+    Column("run_id", String(80), primary_key=True),
+    Column("signature", String(32)),  # a catalogue id, or "none"
+    Column("confidence", Float), Column("model", String(64)), Column("created", Float),
+)
+
 oauth_clients = sa.Table(
     "oauth_clients", md,  # Claude apps registered for the MCP connector (OAuth dynamic client registration)
     Column("id", String(64), primary_key=True),

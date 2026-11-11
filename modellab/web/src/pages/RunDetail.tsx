@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowUpRight, Calendar, Check, Copy, CopyPlus, Database, FileText, GitCompareArrows, HardDrive, Loader2, RotateCcw, Server, Square, Timer, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Calendar, Check, Copy, CopyPlus, Database, FileText, GitCompareArrows, HardDrive, Loader2, RotateCcw, Server, Square, Timer, Trash2, Wrench, X } from "lucide-react";
 import { api, fmt } from "../api";
 import { Button, Callout, Card, cx, LogView, Modal, PageHeader, ProgressBar, Segmented, sparkleBurst, StatusPill, Switch, Tag, TermTab, Toast, Yaml, inputCls, relTime, usePoll } from "../ui";
 import { useSession } from "../session";
 import ExportPanel from "../components/Export";
 import ExplainButton from "../components/yeti/ExplainButton";
 import { useYetiPage } from "../components/yeti/YetiContext";
+import { Diagnosis, useCarryOut } from "../agent";
 
 function Kpi({ label, value, sub, hero }: { label: string; value: string; sub?: string; hero?: boolean }) {
   return (
@@ -116,6 +117,57 @@ function Detail({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
+const FIX_LABEL: Record<string, (target: string) => string> = {
+  "run.clone_edit": () => "Open the fix in New experiment", "run.requeue": () => "Re-queue the run",
+  "machine.selfcheck": (t) => `Run the self-check on ${t}`, "dataset.recheck": (t) => `Re-check ${t}`,
+  "weights.fetch": (t) => `Fetch the weights on ${t}`, "nav.open_machine": (t) => `Open ${t}`,
+};
+
+/** A failure the catalogue knows (modellab/hub/system1/failures.py): what happened, and its fix one press away. The fix
+ *  is carried out like any other action of this page: a draft opens Clone & edit filled in, the rest run on the press. */
+function FixCard({ runId }: { runId: string }) {
+  const [d, setD] = useState<Diagnosis | null>(null);
+  const [state, setState] = useState<{ s: "idle" | "working" | "done" | "failed"; note?: string }>({ s: "idle" });
+  const carry = useCarryOut();
+  useEffect(() => { setD(null); setState({ s: "idle" }); api.diagnosis(runId).then(setD).catch(() => undefined); }, [runId]);
+  if (!d?.known) return null;
+  const fix = d.fix;
+  const apply = async () => {
+    if (!fix) return;
+    setState({ s: "working" });
+    try { setState({ s: "done", note: await carry(fix) }); } catch (e) { setState({ s: "failed", note: (e as Error).message }); }
+  };
+  const rec = d.record;
+  return (
+    <div className="animate-fade rounded-2xl border border-line bg-surface p-4 shadow-soft sm:p-5">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"><Wrench className="h-4 w-4" /></span>
+        <div className="min-w-0 flex-1 basis-64">
+          <div className="text-2xs font-medium text-subtle">{d.source === "model" ? "Looks like a known failure" : "Known failure"}</div>
+          <div className="text-[14.5px] font-semibold text-fg">{d.title}</div>
+          <p className="mt-0.5 text-[13px] text-muted">{d.explain}</p>
+          {!!fix?.changes?.length && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {fix.changes.map((c) => (
+                <span key={c.name} className="rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent">{c.label} <span className="font-mono">{c.value}</span></span>
+              ))}
+            </div>
+          )}
+          {(fix?.note || d.no_fix) && <p className="mt-2 text-xs text-subtle">{fix?.note ?? d.no_fix}</p>}
+          {rec && rec.applied > 0 && <p className="mt-1 text-xs text-subtle">This fix has been tried {rec.applied} time{rec.applied > 1 ? "s" : ""} here: {rec.worked} worked{rec.failed ? `, ${rec.failed} failed again` : ""}.</p>}
+          {state.s === "done" && <p className="mt-2 flex items-center gap-1.5 text-xs text-muted"><Check className="h-3 w-3 text-emerald-500" />{state.note}</p>}
+          {state.s === "failed" && <p className="mt-2 text-xs text-rose-600 dark:text-rose-300">That didn't work: {state.note}</p>}
+        </div>
+        {fix && state.s !== "done" && (
+          <Button variant="primary" disabled={state.s === "working"} onClick={apply}>
+            {state.s === "working" ? <Loader2 className="animate-spin" /> : <Wrench />}{(FIX_LABEL[fix.action ?? ""] ?? (() => "Apply the fix"))(fix.target ?? "it")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function RunDetail() {
   const { id = "" } = useParams();
   const { data: r, refresh } = usePoll(() => api.run(id), 3000, [id]);
@@ -172,6 +224,8 @@ export default function RunDetail() {
           <pre className="scroll-thin mt-1 max-h-48 overflow-auto whitespace-pre font-mono text-[11.5px] leading-relaxed">{r.error_tail}</pre>
         </Callout>
       )}
+
+      {hub && (r.status === "failed" || r.status === "interrupted") && <FixCard runId={r.id} />}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-5">

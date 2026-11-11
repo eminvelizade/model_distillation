@@ -238,6 +238,7 @@ export const api = {
   decide: (sentence: string, page: YetiPage | null) => post("/api/assistant/decide", { sentence, page }).then(j<import("./agent").Decision>),
   actionOutcome: (id: string, outcome: "approved" | "declined" | "done" | "failed", note?: string) =>
     post(`/api/assistant/actions/${id}`, { outcome, note }).then(j<{ result: string }>),
+  diagnosis: (runId: string) => fetch(`/api/runs/${runId}/diagnosis`).then(j<import("./agent").Diagnosis>),
   actions: () => fetch("/api/actions").then(j<{ actions: { id: string; title: string; tier: string; needs: string }[]; pages: Record<string, string> }>),
   yetiDisconnect: (clientId: string) => send("DELETE", `/api/assistant/apps/${clientId}`).then(j<{ apps: YetiSettings["connector"]["apps"] }>),
 

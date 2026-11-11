@@ -121,11 +121,13 @@ function applyFill(r: Recipe, f: Record<string, string>): Recipe {
     if (f.model && n.type === "distill") n.student = f.model;
     if (f.epochs && num(f.epochs)) n.budget = { ...(n.budget ?? {}), epochs: num(f.epochs) };
     if (f.batch_size && num(f.batch_size)) n.batch_size = num(f.batch_size);
+    if (f.grad_accum && num(f.grad_accum)) n.grad_accum = num(f.grad_accum);
     if (f.image_size && num(f.image_size)) n.image_size = num(f.image_size);
     if (f.lr && num(f.lr)) n.lr = num(f.lr);
     return n;
   });
-  return { ...r, stages, ...(f.dataset ? { dataset: f.dataset } : {}) };
+  const tags = f.tag && !(r.tags ?? []).includes(f.tag) ? [...(r.tags ?? []), f.tag] : r.tags;
+  return { ...r, stages, tags, ...(f.dataset ? { dataset: f.dataset } : {}) };
 }
 
 function StageCard({ st, idx, stages, cat, vars, main, onChange, onRemove, onMove }: {
@@ -258,6 +260,8 @@ function StageCard({ st, idx, stages, cat, vars, main, onChange, onRemove, onMov
           <Field label="Budget: epochs" yeti={y("epochs")}><NumberInput value={budget.epochs} onChange={(v) => setBudget("epochs", v)} placeholder={String(cat.default_epochs[st.type])} /></Field>
           <Field label="Budget: wall-clock cap (min)"><NumberInput value={budget.minutes} onChange={(v) => setBudget("minutes", v)} placeholder="none" /></Field>
           <Field label="Batch size" yeti={y("batch_size")}><NumberInput value={st.batch_size} onChange={(v) => set("batch_size", v)} placeholder={st.type === "distill" ? "32" : "8"} /></Field>
+          {st.type === "finetune" && !isLT && <Field label="Gradient accumulation" hint="steps per update: batch × this is the effective batch" yeti={y("grad_accum")}>
+            <NumberInput value={st.grad_accum} onChange={(v) => set("grad_accum", v)} placeholder="1" /></Field>}
         </>}
         <Field label="Dataset">
           <Select value={st.dataset ?? ""} onChange={(v) => set("dataset", v || undefined)}>

@@ -173,3 +173,83 @@ def test_the_registry_is_served(hub):  # noqa: F811
     by = {a["id"]: a for a in r["actions"]}
     assert by["run.delete"]["needs"] == "confirm" and by["run.cancel"]["needs"] == "tap" and by["nav.open_page"]["needs"] == "none"
     assert by["run.clone_edit"]["pages"] == ["run", "queue", "leaderboard"] and "leaderboard" in r["pages"]
+
+
+# ---------------------------------------------------------------- Fix
+
+def failed_run(app, u, agent, mid, error, yaml=None, status="failed"):
+    from conftest import RECIPE as R
+
+    rid = u.post("/api/runs", json={"yaml": yaml or R, "machine_id": mid}).json()["run_ids"][0]
+    assert agent.post("/agent/v1/claim").json()["run"]["id"] == rid
+    body = {"run": {"status": status, "error_tail": error, "current_stage": "f"}, "stages": [{"name": "f", "status": "failed"}]}
+    assert agent.post(f"/agent/v1/runs/{rid}/events", json=body).status_code == 200
+    return rid
+
+
+OOM = "Traceback (most recent call last):\n  File \"train.py\", line 212\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.31 GiB"
+BATCH8 = RECIPE.replace("model: rfdetr/nano,", "model: rfdetr/nano, batch_size: 8, lr: 0.0002,")
+
+
+def test_known_failures_get_a_fix_that_is_a_registered_action(hub, monkeypatch):  # noqa: F811
+    from modellab.hub.system1 import actions, failures
+
+    failures.check()
+    for s in failures.CATALOG:  # every fix names a registered action
+        fix = s.fix({"run_id": "r", "run_name": "n", "machine_id": "m", "dataset": "d", "error": "modellab weights fetch rfdetr/nano",
+                     "resolved": {"stages": [{"name": "f", "type": "finetune", "model": "rfdetr/nano", "batch_size": 8, "lr": 1e-4}]}})
+        assert fix and fix["action"] in actions.BY_ID, s.id
+    u, agent, mid, fake = setup(hub, monkeypatch)
+    rid = failed_run(hub, u, agent, mid, OOM, BATCH8)
+    d = u.get(f"/api/runs/{rid}/diagnosis").json()
+    assert d["known"] and d["signature"] == "oom" and d["title"] == "Out of GPU memory" and d["source"] == "catalog"
+    f = d["fix"]
+    assert f["action"] == "run.clone_edit" and f["tier"] == "draft" and f["needs"] == "none" and f["target"] == "t"
+    assert f["values"] == {"run": rid, "batch_size": "4", "grad_accum": "2"} and f["extra"] == {"tag": "fix:oom"}
+    assert [c["value"] for c in f["changes"]] == ["8 → 4", "1 → 2"]
+    assert d["record"] == {"applied": 0, "worked": 0, "failed": 0} and not fake.seen  # matched by code: no model asked
+    # a run started from the fix carries its tag, and the record counts how it went
+    fixed = u.post("/api/runs", json={"yaml": BATCH8.replace("name: t", "name: t\ntags: ['fix:oom']"), "machine_id": mid}).json()["run_ids"][0]
+    assert agent.post("/agent/v1/claim").json()["run"]["id"] == fixed
+    agent.post(f"/agent/v1/runs/{fixed}/events", json={"run": {"status": "done"}})
+    assert u.get(f"/api/runs/{rid}/diagnosis").json()["record"] == {"applied": 1, "worked": 1, "failed": 0}
+    # other signatures: a NaN loss halves the learning rate; a batch of 1 has no ready fix; an interrupted run re-queues
+    nan = failed_run(hub, u, agent, mid, "RuntimeError: Loss is NaN, stopping training", BATCH8)
+    f = u.get(f"/api/runs/{nan}/diagnosis").json()["fix"]
+    assert f["values"]["lr"] == "0.0001" and f["changes"][0]["value"] == "0.0002 → 0.0001"
+    one = failed_run(hub, u, agent, mid, OOM, RECIPE.replace("model: rfdetr/nano,", "model: rfdetr/nano, batch_size: 1,"))
+    d = u.get(f"/api/runs/{one}/diagnosis").json()
+    assert d["known"] and d["fix"] is None and "No ready fix" in d["no_fix"]
+    cut = failed_run(hub, u, agent, mid, "", status="interrupted")
+    d = u.get(f"/api/runs/{cut}/diagnosis").json()
+    assert d["signature"] == "interrupted" and d["fix"]["action"] == "run.requeue" and d["fix"]["needs"] == "tap"
+    files = failed_run(hub, u, agent, mid, "RuntimeError: received 0 items of ancdata")
+    d = u.get(f"/api/runs/{files}/diagnosis").json()
+    assert d["signature"] == "open_files" and d["fix"]["action"] == "machine.selfcheck" and d["fix"]["target"] == "tower"
+    assert d["fix"]["values"] == {"machine": mid}
+    gone = failed_run(hub, u, agent, mid, "FileNotFoundError: /data/tiny/train/_annotations.coco.json missing (expected Roboflow layout train/valid/test)")
+    d = u.get(f"/api/runs/{gone}/diagnosis").json()
+    assert d["fix"]["action"] == "dataset.recheck" and d["fix"]["values"] == {"dataset": "tiny"} and d["fix"]["extra"] == {"machine": mid}
+    ok = finished_run(hub, u, agent, with_figure=False)
+    assert u.get(f"/api/runs/{ok}/diagnosis").json() == {"known": False, "status": "done"}
+
+
+def test_a_near_match_is_asked_once_and_must_be_sure(hub, monkeypatch):  # noqa: F811
+    u, agent, mid, fake = setup(hub, monkeypatch)
+    rid = failed_run(hub, u, agent, mid, "RuntimeError: cuDNN error: CUDNN_STATUS_ALLOC_FAILED while allocating 3 GiB", BATCH8)
+    fake.script = {"failure": "oom", "failure_rev": "oom", "p": 0.95}
+    d = u.get(f"/api/runs/{rid}/diagnosis").json()
+    assert d["known"] and d["signature"] == "oom" and d["source"] == "model" and d["confidence"] == 0.95
+    assert d["fix"]["values"]["batch_size"] == "4"
+    _, state, q = fake.seen[-1]
+    assert "CUDNN_STATUS_ALLOC_FAILED" in state["error"] and set(state) == {"error"}  # the error tail, and nothing else
+    assert "none" in q["failure"]["criteria"] and "interrupted" not in q["failure"]["criteria"]
+    asked = len(fake.seen)
+    assert u.get(f"/api/runs/{rid}/diagnosis").json()["signature"] == "oom" and len(fake.seen) == asked  # remembered
+    # unsure, or the two option orders disagree: no diagnosis, and that is remembered too
+    for script in ({"failure": "disk", "failure_rev": "disk", "p": 0.6}, {"failure": "disk", "failure_rev": "shm", "p": 0.97}):
+        other = failed_run(hub, u, agent, mid, "ValueError: something nobody has seen before")
+        fake.script = script
+        assert u.get(f"/api/runs/{other}/diagnosis").json() == {"known": False, "status": "failed"}
+        n = len(fake.seen)
+        assert u.get(f"/api/runs/{other}/diagnosis").json()["known"] is False and len(fake.seen) == n

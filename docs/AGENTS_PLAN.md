@@ -234,10 +234,19 @@ Yeti watches failed and interrupted runs, failed search trials, dataset check er
 and failed updates and exports.
 
 1. **Known failures, matched by code.** A catalog of failure signatures, each with its fix as a registered action:
-   out of GPU memory (half the batch, and twice the gradient accumulation where the trainer supports it, so the
-   effective batch stays the same); too many open files (the "received 0 items of ancdata" DataLoader crash) or too
-   little shared memory; a full disk; a dataset folder that moved; a driver older than 570; a weight file that
-   fails its hash check; a loss that turns NaN.
+
+   | failure | fix |
+   |---|---|
+   | out of GPU memory | Clone & edit with half the batch, and twice the gradient accumulation on RF-DETR, so the effective batch stays the same |
+   | too many open files ("received 0 items of ancdata"), too little shared memory, a driver that is too old or not working | run the machine's self-check, which shows the limit and the command that fixes it |
+   | a full disk | open the machine's page, which shows the free space |
+   | a dataset folder that is missing or incomplete | re-check the dataset on that machine |
+   | missing model weights | fetch them on that machine |
+   | a loss that turns NaN | Clone & edit with half the learning rate, when the recipe sets one |
+   | an interrupted run | re-queue it: finished stages are kept |
+
+   Where no fix can be worked out (a batch of 1, a default learning rate), the card says so and Claude takes it.
+   A weight file that fails its hash check is not in the catalog yet.
 2. **Near matches, by System 1**: the error tail against the catalog, as a Choice with "none of these", when no
    signature matches exactly.
 3. **New failures, by Claude**: it reads the logs with today's tools, explains what happened, and proposes a fix as
@@ -400,8 +409,12 @@ Each step ships on its own and is useful without the next.
 evaluation found for it: the least certain answer at 0.7 or more, and "asks for more than one thing" at 0.5 or
 less (`modellab/hub/system1/service.py`). Through the hub a decision takes about a quarter of a second.
 
-4. **Fix**: the failure catalog, fix cards on failed runs, datasets and machine checks, and self-healing search
-   trials with a standing permission.
+4. **Fix** (the run page built): a catalogue of nine known failures (`modellab/hub/system1/failures.py`), each
+   with its fix as a registered action; a failed run's page shows the diagnosis and the fix one press away
+   (`GET /api/runs/{id}/diagnosis`). An error no pattern matches goes to the decision model once, as "which of
+   these, or none"; its pick is shown as "looks like". A run started from a fix carries the tag `fix:<signature>`,
+   and the card says how often that fix worked. Not built: fix cards on dataset checks and machine checks, the
+   weight-file hash check, and self-healing search trials (they need standing permissions).
 5. **Collaborate**: idea → plan → drafts in the real forms → approval → watch → explanation, with each idea kept
    together with its runs as the first notebook entries.
 6. **Find**: Hugging Face and web search, candidate cards, and imports through the model library and data import,

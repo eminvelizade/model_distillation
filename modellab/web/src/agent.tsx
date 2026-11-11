@@ -16,7 +16,13 @@ export interface Decision {
   id?: string; fast: boolean; action?: string; tier?: "look" | "draft" | "act" | "careful"; intent?: string | null;
   needs?: "none" | "tap" | "confirm"; show?: boolean; values?: Record<string, string>; extra?: Record<string, any>;
   title?: string; target?: string | null; changes?: { name: string; label: string; value: string }[];
-  confidence?: number | null; reason?: string | null; tell?: string; ms?: number;
+  confidence?: number | null; reason?: string | null; tell?: string; ms?: number; note?: string;
+}
+
+/** A failed run's diagnosis (the hub's failure catalogue) and its fix, a decision this page can carry out. */
+export interface Diagnosis {
+  known: boolean; status: string; signature?: string; title?: string; explain?: string; source?: "catalog" | "model";
+  confidence?: number | null; fix?: Decision | null; no_fix?: string | null; record?: { applied: number; worked: number; failed: number };
 }
 
 export const PATHS: Record<string, string> = {
@@ -115,7 +121,7 @@ export function Highlighter() {
 
 // ---------------------------------------------------------------- carrying a decision out
 
-const FIELDS = ["model", "dataset", "epochs", "batch_size", "image_size", "lr", "speed_budget_ms", "gpu_hours"];
+const FIELDS = ["model", "dataset", "epochs", "batch_size", "grad_accum", "image_size", "lr", "speed_budget_ms", "gpu_hours"];
 /** The settings a decision changes, as a form reads them from its address (`?fill=`). */
 export function fillOf(values: Record<string, string>): Record<string, string> {
   return Object.fromEntries(FIELDS.filter((k) => values[k] !== undefined).map((k) => [k, values[k]]));
@@ -126,10 +132,11 @@ export function readFill(params: URLSearchParams): Record<string, string> | null
     return f && typeof f === "object" ? f : null;
   } catch { return null; }
 }
-const withFill = (path: string, values: Record<string, string>, clone?: string, machine = false) => {
+const withFill = (path: string, values: Record<string, string>, clone?: string, machine = false, tag?: string) => {
   const q = new URLSearchParams();
   if (clone) q.set("clone", clone);
-  q.set("fill", JSON.stringify({ ...fillOf(values), ...(machine && values.machine ? { machine: values.machine } : {}) }));
+  // tag: a run started from a known failure's fix says so (fix:<signature>), so the hub can count how fixes go
+  q.set("fill", JSON.stringify({ ...fillOf(values), ...(machine && values.machine ? { machine: values.machine } : {}), ...(tag ? { tag } : {}) }));
   q.set("n", String(Date.now())); // the same request twice fills in twice
   return `${path}?${q}`;
 };
@@ -174,7 +181,7 @@ export function useCarryOut() {
         nav(withFill("/", v)); highlight(fields(filled)); done = "Filled in New experiment"; break;
       case "run.clone_edit":
         if (v.machine) setMachineId(v.machine);
-        nav(withFill("/", v, v.run)); highlight(fields(filled));
+        nav(withFill("/", v, v.run, false, x.tag)); highlight(fields(filled));
         done = `Cloned ${d.target ?? "the run"} into New experiment`; break;
       case "search.fill":
         nav(withFill("/search", v, undefined, true)); highlight(fields(filled)); done = "Filled in Find best model"; break;

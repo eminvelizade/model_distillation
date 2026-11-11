@@ -6,6 +6,7 @@
     POST   /api/assistant/decide           {sentence, page} → a decision the web app carries out, or a hand-over
     POST   /api/assistant/actions/{id}     what became of a decision: approved, declined, done or failed
     GET    /api/assistant/actions          the user's recent decisions (the action log)
+    GET    /api/runs/{id}/diagnosis        a failed run: the known failure it shows, and the fix as a decision
 
 The web app says which page the user is on and which rows it shows; every name, status and number the model reads
 is looked up here, from the hub's own data. The decision names an action and its values and is never carried out
@@ -27,7 +28,7 @@ from modellab import catalog
 from modellab.hub import auth, db, model, search
 
 from . import actions as A
-from . import questions
+from . import failures, questions
 from .providers import OpenRouter
 from .route import Decision, route
 
@@ -38,6 +39,9 @@ GATE = {"threshold": 0.7, "max_several": 0.5}
 # "Where do I export this?" only rings a button: a wrong guess costs nothing, so showing asks for less certainty.
 # On the golden set every "show" decision at or above this was the right button (13 of 13: a small sample).
 SHOW_THRESHOLD = 0.5
+# A near match of a failure is a suggestion on a card ("looks like"), applied only when the user presses its button.
+# Measured on 41 errors (evals/failures.py; docs/SYSTEM1_EVAL.md, "Failures"): no wrong diagnosis at 0.7 or above.
+NEAR_THRESHOLD = 0.75
 MAX_SENTENCE = 300  # longer than this is not a one-action request: it goes to Claude
 NEEDS = {"look": "none", "draft": "none", "act": "tap", "careful": "confirm"}
 LABELS = {"batch_size": "Batch size", "epochs": "Epochs", "image_size": "Image size", "lr": "Learning rate",
@@ -421,3 +425,73 @@ def recent(request: Request, limit: int = 30, user: dict = Depends(auth.current_
     return {"actions": [{**{k: r[k] for k in ("id", "created", "sentence", "page_kind", "model", "fast", "action", "tier",
                                               "intent", "confidence", "reason", "ms", "outcome", "outcome_note")},
                          "values": db.loads(r["values_json"], {})} for r in rows]}
+
+
+# ---------------------------------------------------------------- Fix: a failed run's diagnosis and its fix
+
+def _record(c: sa.Connection, uid: str, sig: str) -> dict:
+    """How runs started from this fix went (they carry the tag fix:<signature>)."""
+    tag = f'"{failures.FIX_TAG}{sig}"'
+    rows = c.execute(sa.select(db.runs.c.status).where(db.runs.c.owner_id == uid, db.runs.c.tags.like(f"%{tag}%"))).scalars().all()
+    return {"applied": len(rows), "worked": sum(s == "done" for s in rows), "failed": sum(s == "failed" for s in rows)}
+
+
+def _fix_decision(c: sa.Connection, user: dict, cfg, sig: failures.Signature, ctx: dict) -> tuple[dict | None, str | None]:
+    """The signature's fix as a decision the web app can carry out, or why there is none."""
+    fix = sig.fix(ctx)
+    if not fix:
+        return None, "No ready fix for this one: ask the assistant to look at the logs."
+    act = A.BY_ID[fix["action"]]
+    target = ctx["run_name"]
+    if act.subject == "machine" or act.id == "nav.open_machine":
+        try:
+            target = model.get_machine(c, user, ctx["machine_id"])["name"]
+        except HTTPException:
+            return None, "The machine this run was on is gone."
+        if act.id == "dataset.recheck":
+            target = ctx["dataset"]
+    return {"fast": True, "action": act.id, "tier": act.tier, "needs": NEEDS[act.tier], "title": act.title,
+            "target": target, "values": fix["values"], "extra": fix["extra"], "changes": fix["changes"],
+            "note": fix["note"]}, None
+
+
+@router.get("/runs/{rid}/diagnosis")
+def diagnosis(rid: str, request: Request, user: dict = Depends(auth.current_user)):
+    engine, cfg = request.app.state.engine, request.app.state.cfg
+    with engine.begin() as c:
+        r = model.get_run(c, user, rid)
+        if r["status"] not in ("failed", "interrupted"):
+            return {"known": False, "status": r["status"]}
+        error = (r.get("error_tail") or "").strip()
+        stages = model._stage_rows(c, rid)
+        ctx = {"run_id": rid, "run_name": r["name"], "resolved": db.loads(r["resolved"], {}), "error": error,
+               "failed_stage": next((s["name"] for s in stages if s["status"] == "failed"), r.get("current_stage")),
+               "machine_id": r.get("machine_id"), "dataset": r.get("dataset")}
+        try:
+            w = model.machine_weights(model.get_machine(c, user, r["machine_id"]))
+            ctx.update(known_weights=list(w), missing_weights=[k for k, v in w.items() if not v.get("present")])
+        except HTTPException:
+            ctx["machine_id"] = None
+        sig = failures.BY_ID["interrupted"] if r["status"] == "interrupted" else failures.match(error)
+        source, conf = "catalog", None
+        cached = None if sig else c.execute(sa.select(db.diagnoses).where(db.diagnoses.c.run_id == rid)).mappings().first()
+        key = None if sig or cached or not error else load_key(c, user["id"], cfg)["api_key"]
+    if cached and cached["signature"] in failures.BY_ID:
+        sig, source, conf = failures.BY_ID[cached["signature"]], "model", cached["confidence"]
+    elif key:  # no pattern matched: does the decision model see a known failure in it? Asked once per run.
+        state, q = failures.near_question(error)
+        res = make_provider(key).decide(MODEL, state, q)
+        if not res.error:
+            sig, conf = failures.near_pick(res.answers, NEAR_THRESHOLD)
+            source = "model"
+            with engine.begin() as c:
+                db.upsert(c, db.diagnoses, {"run_id": rid, "signature": sig.id if sig else "none", "confidence": conf,
+                                            "model": MODEL, "created": time.time()}, ["run_id"])
+    if not sig:
+        return {"known": False, "status": r["status"]}
+    with engine.begin() as c:
+        fix, why = _fix_decision(c, user, cfg, sig, ctx)
+        record = _record(c, user["id"], sig.id)
+    return {"known": True, "status": r["status"], "signature": sig.id, "title": sig.title, "explain": sig.explain,
+            "source": source, "confidence": None if conf is None else round(conf, 3), "fix": fix, "no_fix": why,
+            "record": record}
