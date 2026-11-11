@@ -246,6 +246,8 @@ Say what to do in one sentence and the assistant does it, usually in under a sec
 
 ![One sentence fills in Clone & edit](screenshots/hub_12_one_sentence_clone_edit.png)
 
+![Claude drafts a quick test run and offers to queue it](screenshots/hub_16_claude_drafts.png)
+
 ### Fixes for known failures
 
 A failed or interrupted run's page shows a card when the failure is one ModelLab knows: what happened, what the fix

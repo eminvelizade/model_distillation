@@ -264,7 +264,7 @@ def test_claude_drafts_and_proposes_through_the_registry(hub, monkeypatch):  # n
 
     u, agent, mid, _ = setup(hub, monkeypatch)
     rid = finished_run(hub, u, agent, with_figure=False)
-    use = lambda name, **inp: {"type": "tool_use", "id": "toolu_" + name[:5] + str(len(inp)), "name": name, "input": inp}  # noqa: E731
+    use = lambda tool, **inp: {"type": "tool_use", "id": "toolu_" + tool[:5] + str(len(inp)), "name": tool, "input": inp}  # noqa: E731
     fake = FakeClaude([
         sse_message([use("draft_experiment", machine_id=mid, dataset="tiny", model="rfdetr/nano", epochs=1, name="nano-1ep-test")], "tool_use"),
         sse_message([use("propose_action", action="run.queue"), use("propose_action", action="run.delete", run_id=rid),
