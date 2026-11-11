@@ -67,7 +67,8 @@ def _req(p: Param) -> Param:
 
 ACTIONS: tuple[Action, ...] = (
     # look: changes nothing
-    Action("nav.open_page", "Open a page", "Go to one of the app's main pages", "look", ("*",),
+    Action("nav.open_page", "Open a page", "Go to one of the app's main pages (leaderboard, runs, new experiment, find best model, machines, compare, "
+           "team)", "look", ("*",),
            (Param("page", "page", "Which page does the user want to open?", required=True),)),
     Action("nav.open_run", "Open a run", "Open the page of one run, with its logs, metrics and figures", "look",
            ("queue", "leaderboard", "compare", "search"), (RUN,)),
@@ -85,15 +86,17 @@ ACTIONS: tuple[Action, ...] = (
            "Fill in the Find best model form (dataset, target machine, speed budget, budgets) without starting it",
            "draft", ("searches",), (DATASET, MACHINE, BUDGET, EPOCHS, GPU_H)),
     Action("run.clone_edit", "Clone & edit a run",
-           "Copy a run's recipe into New experiment so it can be changed (batch size, epochs, image size, learning "
-           "rate, machine) and run again", "draft", ("run", "queue", "leaderboard"),
+           "Run a run again WITH a change: copy its recipe into New experiment so the batch size, epochs, image "
+           "size, learning rate or machine can be changed. Use this whenever the sentence changes any setting or "
+           "names another machine", "draft", ("run", "queue", "leaderboard"),
            (RUN, MACHINE, BATCH, EPOCHS, SIZE, LR), subject="run"),
     Action("dataset.fill_add", "Add a dataset", "Open Add dataset on a machine, to register a dataset folder",
            "draft", ("machine", "machines"), (MACHINE,), subject="machine"),
     # act: runs something reversible
     Action("run.queue", "Queue the experiment", "Queue the experiment that is filled in on the New experiment form",
            "act", ("new",), api="POST /api/runs", undo="cancel the run"),
-    Action("run.requeue", "Re-queue a run", "Run the exact same run again, unchanged", "act", ("run", "queue"),
+    Action("run.requeue", "Re-queue a run", "Run the exact same run again with nothing changed: same settings, same machine. Not for a request "
+           "that changes anything", "act", ("run", "queue"),
            (RUN,), api="POST /api/runs/{id}/requeue", undo="cancel the run", subject="run"),
     Action("run.cancel", "Cancel a run", "Stop a run that is queued or running", "act", ("run", "queue"), (RUN,),
            api="POST /api/runs/{id}/cancel", undo="re-queue the run", subject="run"),

@@ -320,10 +320,12 @@ OPENROUTER_API_KEY=... python -m modellab.hub.system1.evals.run --out runs/syste
 python -m modellab.hub.system1.evals.score runs/system1-eval
 ```
 
-**Results so far** ([SYSTEM1_EVAL.md](SYSTEM1_EVAL.md)): of the 26 decision models that could be scored, `perplexity/pplx-decider-v1.2`
-(94 % of decisions right, 0.3 s) and `nace-ai/drex-max-finance` (97 %, 0.5 s) come close to the gate for look and
-draft actions. Jev is the fastest (0.2 s) and makes the right decision 80 % of the time, so it is not the choice.
-Claude Sonnet is right 99.7 % of the time and takes 1.5 s. No model clears the gate for act actions.
+**Results so far** ([SYSTEM1_EVAL.md](SYSTEM1_EVAL.md)), after two runs: of the 25 decision models that could be
+scored,  (95 % of decisions right, 0.3 s),  (96 %, 0.2 s) and
+ (97 %, 0.5 s) come within reach of the gate for look and draft actions; on held-out
+cases their fast paths are 96 to 98 % right, just under it. Jev makes the right decision 92 % of the time, so it
+is not the choice. Claude Sonnet is right 98 % of the time and takes 1.5 s. No model clears the gate for act
+actions.
 
 ### What the first run taught the router
 

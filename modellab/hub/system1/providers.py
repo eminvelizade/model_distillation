@@ -1,8 +1,11 @@
 """decide(state, questions) → answers, through OpenRouter.
 
-One key reaches both kinds of model:
+One OpenRouter key reaches both kinds of model:
   decision models  (Jev and the like)  POST /api/alpha/decisions    probabilities for every option
   chat models      (Claude, …)         POST /api/v1/chat/completions, structured outputs: one pick per question
+
+Claude can also be asked directly, with an Anthropic API key (class Claude): the same questions through the
+Messages API's structured outputs, without OpenRouter in between.
 
 Answers have one shape either way: {question: {"pick": option | bool | None, "p": float | None, "probs": {...} | None}}.
 `p` is the probability of the pick; chat models give none (p is None), so they can only be trusted by measurement.
@@ -110,12 +113,9 @@ class OpenRouter:
                       f"{data.get('model')} via {data.get('provider')}")
 
     # chat models --------------------------------------------------------------------------------------------------
-    def decide_chat(self, model: str, state: dict, questions: dict, max_tokens: int = 600,
+    def decide_chat(self, model: str, state: dict, questions: dict, max_tokens: int = 1500,
                     extra: dict | None = None) -> Result:
-        props = {}
-        for name, q in questions.items():
-            props[name] = {"type": "boolean"} if q["type"] == "noul" else {"type": "string", "enum": list(q["criteria"])}
-        schema = {"type": "object", "properties": props, "required": list(props), "additionalProperties": False}
+        schema = _schema(questions)
         body = {"model": model, "max_tokens": max_tokens, "temperature": 0,
                 "messages": [{"role": "system", "content": SYSTEM},
                              {"role": "user", "content": json.dumps({"state": state, "questions": questions},
@@ -129,11 +129,71 @@ class OpenRouter:
             picks = json.loads(data["choices"][0]["message"]["content"])
         except (KeyError, IndexError, TypeError, ValueError):
             return Result(seconds=dt, error="no JSON object in the reply")
-        out = {}
-        for name, q in questions.items():
-            v = picks.get(name)
-            ok = isinstance(v, bool) if q["type"] == "noul" else v in q["criteria"]
-            out[name] = {"pick": v if ok else None, "p": None, "probs": None}
+        out = _read_picks(picks, questions)
         u = data.get("usage") or {}
         return Result(out, dt, u.get("cost"), u.get("prompt_tokens"), u.get("completion_tokens"),
                       f"{data.get('model')} via {data.get('provider')}")
+
+
+def _schema(questions: dict) -> dict:
+    props = {n: {"type": "boolean"} if q["type"] == "noul" else {"type": "string", "enum": list(q["criteria"])}
+             for n, q in questions.items()}
+    return {"type": "object", "properties": props, "required": list(props), "additionalProperties": False}
+
+
+def _read_picks(picks: dict, questions: dict) -> dict:
+    out = {}
+    for name, q in questions.items():
+        v = picks.get(name)
+        ok = isinstance(v, bool) if q["type"] == "noul" else v in q["criteria"]
+        out[name] = {"pick": v if ok else None, "p": None, "probs": None}
+    return out
+
+
+# What each Claude model accepts for "answer at once": thinking can't simply be switched off on every model.
+CLAUDE_THINKING = {"claude-haiku-5-5": {"type": "disabled"}, "claude-sonnet-5-5": {"type": "between_tools"}}
+CLAUDE_PRICE = {"claude-haiku-5-5": (0.10, 0.50), "claude-sonnet-5-5": (2.0, 10.0), "claude-opus-5-5": (4.0, 20.0)}
+
+
+class Claude:
+    """Claude through Anthropic's own API. The key comes from the caller, or from the environment
+    (ANTHROPIC_API_KEY) when none is given."""
+
+    def __init__(self, key: str | None = None, timeout: float = 60.0):
+        import anthropic  # the hub's Claude SDK; imported here so decision models need no SDK
+
+        self.sdk = anthropic
+        self.client = anthropic.Anthropic(api_key=key, timeout=timeout, max_retries=2)
+
+    def close(self) -> None:
+        self.client.close()
+
+    def decide(self, model: str, state: dict, questions: dict, effort: str = "low") -> Result:
+        kwargs = {}
+        if model in CLAUDE_THINKING:
+            kwargs["thinking"] = CLAUDE_THINKING[model]
+        t0 = time.perf_counter()
+        try:
+            r = self.client.messages.create(
+                model=model, max_tokens=1024, system=SYSTEM,
+                messages=[{"role": "user", "content": json.dumps({"state": state, "questions": questions},
+                                                                 ensure_ascii=False)}],
+                output_config={"effort": effort, "format": {"type": "json_schema", "schema": _schema(questions)}},
+                **kwargs)
+        except self.sdk.RateLimitError as e:
+            return Result(seconds=time.perf_counter() - t0, error=f"rate limited: {e.message}"[:300])
+        except self.sdk.APIStatusError as e:
+            return Result(seconds=time.perf_counter() - t0, error=f"HTTP {e.status_code}: {e.message}"[:300])
+        except self.sdk.APIConnectionError as e:
+            return Result(seconds=time.perf_counter() - t0, error=f"connection: {e}"[:300])
+        dt = time.perf_counter() - t0
+        if r.stop_reason != "end_turn":  # a refusal or a cut-off answer is no answer
+            return Result(seconds=dt, error=f"stopped with {r.stop_reason}")
+        try:
+            picks = json.loads(next(b.text for b in r.content if b.type == "text"))
+        except (StopIteration, ValueError):
+            return Result(seconds=dt, error="no JSON object in the reply")
+        price = CLAUDE_PRICE.get(model)
+        cost = (r.usage.input_tokens * price[0] + r.usage.output_tokens * price[1]) / 1e6 if price else None
+        return Result(_read_picks(picks, questions), dt, cost, r.usage.input_tokens, r.usage.output_tokens,
+                      f"{r.model} via Anthropic")

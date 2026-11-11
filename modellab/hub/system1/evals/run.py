@@ -4,7 +4,8 @@
     python -m modellab.hub.system1.evals.score runs/system1-eval          # the report
 
 Decision models come from OpenRouter's own list (output modality "decisions", pinned ids only); chat models are
-named with --chat and answer the same questions through structured outputs. Answers are written one JSON line per
+named with --chat and answer the same questions through structured outputs. A chat model written
+"anthropic:claude-sonnet-5-5" is asked on Anthropic's own API with ANTHROPIC_API_KEY, not through OpenRouter. Answers are written one JSON line per
 case to <out>/raw/<model>.jsonl; a second run asks only for what is missing, so it can be resumed.
 
 Latency is measured here, around each request on a warm connection, so it includes the network between this
@@ -27,6 +28,17 @@ from ..providers import OpenRouter
 from . import golden
 
 CHAT = ("anthropic/claude-sonnet-5.5", "anthropic/claude-haiku-5.5")
+DIRECT = "anthropic:"  # "anthropic:claude-sonnet-5-5" asks Claude on Anthropic's API, with ANTHROPIC_API_KEY
+_claude = None
+
+
+def claude():
+    global _claude
+    if _claude is None:
+        from ..providers import Claude
+
+        _claude = Claude()
+    return _claude
 
 
 def decision_models(client: OpenRouter) -> list[dict]:
@@ -62,7 +74,10 @@ PACE = Pace(None)
 def ask(client: OpenRouter, model: str, chat: bool, case: dict) -> dict:
     PACE.wait()
     state, q = questions.build(case["sentence"], golden.SCREENS[case["screen"]])
-    r = (client.decide_chat if chat else client.decide)(model, state, q)
+    if model.startswith(DIRECT):
+        r = claude().decide(model[len(DIRECT):], state, q)
+    else:
+        r = (client.decide_chat if chat else client.decide)(model, state, q)
     return {"id": case["id"], "answers": r.answers, "seconds": round(r.seconds, 4), "cost": r.cost,
             "input_tokens": r.input_tokens, "output_tokens": r.output_tokens, "served_by": r.served_by,
             "error": r.error}
@@ -118,6 +133,7 @@ def main(argv=None) -> int:
     ap.add_argument("--workers", type=int, default=6, help="requests in flight per model")
     ap.add_argument("--parallel", type=int, default=3, help="models asked at the same time")
     ap.add_argument("--sequential", type=int, default=0, help="also time N cases one request at a time")
+    ap.add_argument("--timeout", type=float, default=30.0, help="seconds before one request is given up")
     ap.add_argument("--rpm", type=float, help="at most this many requests a minute, over all models in this run")
     ap.add_argument("--no-retention", action="store_true", help="only providers that don't keep or train on data")
     a = ap.parse_args(argv)
@@ -128,7 +144,7 @@ def main(argv=None) -> int:
     global PACE
     PACE = Pace(a.rpm)
     out = Path(a.out)
-    client = OpenRouter(key, provider={"data_collection": "deny"} if a.no_retention else None)
+    client = OpenRouter(key, timeout=a.timeout, provider={"data_collection": "deny"} if a.no_retention else None)
     cases = golden.cases()[: a.limit] if a.limit else golden.cases()
     listed = decision_models(client)
     (out / "raw").mkdir(parents=True, exist_ok=True)
@@ -137,8 +153,10 @@ def main(argv=None) -> int:
                    "dated": m.get("canonical_slug")} for m in listed}, indent=1))
     models = [(m, False) for m in ([m["id"] for m in listed] if a.models is None else a.models.split(",")) if m]
     models += [(m, True) for m in a.chat.split(",") if m]
-    (out / "meta.json").write_text(json.dumps({"cases": len(cases), "chat": [m for m, c in models if c],
-                                              "when": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())}))
+    meta = json.loads((out / "meta.json").read_text()) if (out / "meta.json").exists() else {"chat": []}
+    chat = meta["chat"] + [m for m, c in models if c and m not in meta["chat"]]  # runs into one folder add up
+    (out / "meta.json").write_text(json.dumps({"cases": len(cases), "chat": chat, "questions": questions.VERSION,
+                                              "when": time.strftime("%Y-%m-%d", time.gmtime())}))
     with ThreadPoolExecutor(a.parallel) as pool:
         for res in pool.map(lambda mc: run_model(client, mc[0], mc[1], cases, out, a.workers), models):
             note = f"  first error: {res['first_error'][:140]}" if res["first_error"] else ""

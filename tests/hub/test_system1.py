@@ -43,7 +43,8 @@ def test_numbers_are_found_with_their_surroundings():
 
 def test_questions_offer_only_what_is_on_screen():
     state, q = questions.build("re-run this with batch size 4 on the 5090", golden.SCREENS["run_failed"])
-    assert state["sentence"].startswith("re-run") and "selected_machine" in state
+    assert state["sentence"].startswith("re-run") and "selected_machine" not in state
+    assert {"several", "fits", "complete"} <= set(q)
     assert list(q["action"]["criteria"]) == list(reversed(q["action_rev"]["criteria"]))
     assert "run.clone_edit" in q["action"]["criteria"] and A.NONE in q["action"]["criteria"]
     assert "search.start" not in q["action"]["criteria"]  # not on a run's page
@@ -96,6 +97,9 @@ def test_route_takes_the_fast_path_only_when_everything_holds():
     # the model's own doubt that one action covers the request
     assert not route(good | {"fits": {"pick": False, "p": 0.2}}, scr, min_fits=0.5).fast
     assert route(good | {"fits": {"pick": True, "p": 0.8}}, scr, min_fits=0.5).fast
+    assert not route(good | {"several": {"pick": True, "p": 0.8}}, scr, max_several=0.5).fast
+    assert route(good | {"several": {"pick": False, "p": 0.1}}, scr, max_several=0.5).fast
+    assert not route(good | {"several": {"pick": True, "p": None}}, scr, max_several=0.5).fast
     # a chat model gives no probabilities: nothing to hold against the threshold
     chat = {k: v | {"p": None} for k, v in good.items()}
     assert route(chat, scr).fast and route(chat, scr).confidence is None
@@ -168,3 +172,31 @@ def test_openrouter_answers_are_read_into_one_shape():
     r = c.decide_chat("anthropic/claude-sonnet-5.5", {"sentence": "requeue"}, q)
     assert r.answers["action"]["pick"] == "run.requeue" and r.answers["action"]["p"] is None
     assert r.answers["complete"]["pick"] is True and r.answers["fits"]["pick"] is None  # not a boolean: dropped
+
+
+def test_claude_is_asked_directly_with_structured_outputs(monkeypatch):
+    """The Anthropic adapter: the same questions as a JSON schema, thinking set per model, picks read back."""
+    from types import SimpleNamespace as NS
+
+    from modellab.hub.system1.providers import Claude
+
+    seen = {}
+
+    def create(**kw):
+        seen.update(kw)
+        return NS(stop_reason="end_turn", model=kw["model"], usage=NS(input_tokens=2000, output_tokens=50),
+                  content=[NS(type="text", text='{"action": "run.requeue", "several": false}')])
+
+    c = Claude(key="test-key")
+    monkeypatch.setattr(c.client.messages, "create", create)
+    q = {"action": {"type": "choice", "instructions": "?", "criteria": {"run.requeue": "again", "none": "none"}},
+         "several": {"type": "noul", "instructions": "?"}}
+    r = c.decide("claude-haiku-5-5", {"sentence": "requeue"}, q)
+    assert r.error is None and r.answers["action"]["pick"] == "run.requeue" and r.answers["several"]["pick"] is False
+    assert seen["thinking"] == {"type": "disabled"} and seen["output_config"]["effort"] == "low"
+    assert seen["output_config"]["format"]["schema"]["properties"]["action"]["enum"] == ["run.requeue", "none"]
+    assert abs(r.cost - (2000 * 0.10 + 50 * 0.50) / 1e6) < 1e-12 and r.served_by == "claude-haiku-5-5 via Anthropic"
+    c.decide("claude-sonnet-5-5", {"sentence": "requeue"}, q)
+    assert seen["thinking"] == {"type": "between_tools"}  # Sonnet 5.5 rejects "disabled"
+    monkeypatch.setattr(c.client.messages, "create", lambda **kw: NS(stop_reason="refusal", content=[], usage=None))
+    assert c.decide("claude-sonnet-5-5", {}, q).error == "stopped with refusal"

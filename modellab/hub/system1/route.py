@@ -48,6 +48,11 @@ def _fits(answers: dict, least: float) -> bool:
     return a.get("p") >= least if a.get("p") is not None else a.get("pick") is True
 
 
+def _several(answers: dict, most: float) -> bool:
+    a = answers.get("several") or {}
+    return a.get("p") > most if a.get("p") is not None else a.get("pick") is True
+
+
 def current(screen: dict, run: str | None = None) -> dict:
     """The values that already hold: the form's, and the chosen run's own (its machine)."""
     cur = dict(screen.get("current") or {})
@@ -62,10 +67,11 @@ def changes(values: dict, screen: dict) -> dict:
 
 
 def route(answers: dict, screen: dict, threshold: float = 0.9, need_complete: bool = False,
-          sentence: str = "", min_fits: float | None = None) -> Decision:
+          sentence: str = "", min_fits: float | None = None, max_several: float | None = None) -> Decision:
     """threshold applies to models that give probabilities; a model without them passes it (its trust comes from
     the evals alone). min_fits holds the model's own answer to "one listed action does what the user asked" to a
-    probability (or, without probabilities, to a yes)."""
+    probability (or, without probabilities, to a yes); max_several does the same for "the sentence asks for more
+    than one thing" (at most this probability, or a no)."""
     intent = _pick(answers, "intent")
     action = _pick(answers, "action") or A.NONE
     act = A.BY_ID.get(action)
@@ -109,6 +115,8 @@ def route(answers: dict, screen: dict, threshold: float = 0.9, need_complete: bo
         d.reason = "names " + ", ".join(vague) + " without a value"
     elif min_fits is not None and not _fits(answers, min_fits):
         d.reason = "one action may not cover the request"
+    elif max_several is not None and _several(answers, max_several):
+        d.reason = "the sentence may ask for several things"
     elif conf is not None and conf < threshold:
         d.reason = "not confident enough"
     elif need_complete and _pick(answers, "complete") is False:

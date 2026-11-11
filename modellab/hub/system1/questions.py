@@ -13,6 +13,7 @@ from __future__ import annotations
 from . import actions as A
 from . import parse
 
+VERSION = 2  # of the questions' wording; results of different versions are not comparable
 NOT_SAID = "not_said"
 INTENTS = {
     "do": "Do something now: run, change, open, cancel, delete, export",
@@ -42,7 +43,8 @@ def build(sentence: str, screen: dict) -> tuple[dict, dict]:
 
     screen: {"page": kind, "title": str, "subject": {"kind", "id"} | None, "form": {...} | None,
              "selected_machine": id | None, "runs"|"searches"|"machines"|"datasets": [{"id", "name", ...}]}
-    Entity lists hold only what is on screen, in the order shown. "current" (the form's values) and a run's own
+    Entity lists hold only what is on screen, in the order shown. The selected machine is left out of the state:
+    no question needs it, and models took it for the machine the user meant. "current" (the form's values) and a run's own
     "current" are for the router, not for the model: they never enter the state.
     """
     kind = screen["page"]
@@ -56,12 +58,8 @@ def build(sentence: str, screen: dict) -> tuple[dict, dict]:
         if rows:
             state[PLURAL[k] + "_on_screen"] = [_describe(k, e, subject.get("kind") == k and subject.get("id") == e["id"])
                                         for e in rows]
-    if screen.get("selected_machine"):
-        name = next((m["name"] for m in screen.get("machines") or [] if m["id"] == screen["selected_machine"]), None)
-        if name:
-            state["selected_machine"] = name
-
-    options = {a.id: a.description for a in offered} | {A.NONE: "None of these actions does what the user asks"}
+    options = {a.id: a.description for a in offered} | {
+        A.NONE: "None of these: a question, small talk, or a request that no listed action carries out"}
     q: dict[str, dict] = {
         "intent": {"type": "choice", "instructions": "What does the user want from the assistant?", "criteria": INTENTS},
         "action": {"type": "choice", "instructions": "Which action is the user's sentence about?", "criteria": options},
@@ -88,6 +86,11 @@ def build(sentence: str, screen: dict) -> tuple[dict, dict]:
             continue  # nothing to pick from: code already knows the answer is "not said"
         crit[NOT_SAID] = "The sentence doesn't say" if p.kind != "run" or name != "run_b" else "No second run is named"
         q[name] = {"type": "choice", "instructions": p.ask, "criteria": crit}
+    q["several"] = {"type": "noul",
+                    "instructions": "The sentence asks for more than one thing to be done.",
+                    "criteria": {"true": "Two or more actions (\"do this, then that\"), or one action on several "
+                                         "items (\"all\", \"both\", \"every\", \"the last two\")",
+                                 "false": "Exactly one action on one item, or no action at all"}}
     q["fits"] = {"type": "noul", "instructions": "One of the listed actions does what the user asked.",
                  "criteria": {"true": "A listed action matches the request",
                               "false": "No listed action matches, or the request needs more than one action"}}
