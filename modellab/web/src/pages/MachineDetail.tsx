@@ -104,7 +104,7 @@ function DatasetRow({ d, verifying, removing, onVerify, onRemove }: { d: Dataset
   const chk = d.check;
   const issues = chk ? [...chk.errors.map((t) => ({ t, bad: true })), ...chk.warnings.map((t) => ({ t, bad: false }))] : [];
   return (
-    <li className={cx("group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-3 py-2.5 transition hover:bg-raised/50", removing && "opacity-50")}>
+    <li data-yeti-row={d.name} className={cx("group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-3 py-2.5 transition hover:bg-raised/50", removing && "opacity-50")}>
       {/* basis: on a phone the counts and buttons wrap below instead of squeezing the name */}
       <div className="min-w-0 flex-1 basis-56">
         <div className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export default function MachineDetail() {
         description={d.online ? `last heartbeat ${relTime(d.last_seen)}` : `offline since ${relTime(d.last_seen)}: is the PC on and the agent running?`}
         actions={<>
           <Button onClick={() => { setMachineId(d.id); nav("/queue"); }}><ListOrdered />Queue</Button>
-          <Button variant="brand" disabled={!!selfcheck} onClick={() => sendSafe("selfcheck")}>{selfcheck ? <Loader2 className="animate-spin" /> : <Stethoscope />}Run self-check</Button>
+          <Button variant="brand" yeti="machine.selfcheck" disabled={!!selfcheck} onClick={() => sendSafe("selfcheck")}>{selfcheck ? <Loader2 className="animate-spin" /> : <Stethoscope />}Run self-check</Button>
           <IconButton title="Rename" className="h-9 w-9" onClick={() => setRename(d.name)}><Pencil /></IconButton>
           <IconButton title="Remove machine" className="h-9 w-9 hover:text-rose-600" onClick={() => setConfirmRemove(true)}><Trash2 /></IconButton>
         </>} />
@@ -286,7 +286,7 @@ export default function MachineDetail() {
             actions={<div className="flex items-center gap-2">
               {datasets.some((x: any) => (x.check?.errors?.length ?? 0) + (x.check?.warnings?.length ?? 0) > 0) &&
                 <ExplainButton label="Explain the issues" focus="datasets" about="the dataset checks" ask="Explain the problems and warnings the dataset check found on this machine, what they mean for training and evaluation, and how to fix them." />}
-              <Button small onClick={() => setAddDs(true)}><Plus />Add dataset</Button></div>}>
+              <Button small yeti="dataset.fill_add" onClick={() => setAddDs(true)}><Plus />Add dataset</Button></div>}>
             {!datasets.length && !adding.length ? <div className="px-5 pb-5 text-[13px] text-subtle">None yet: add the folders this machine trains on.</div> : (
               <ul className="px-2 pb-2">
                 {datasets.map((ds) => (

@@ -17,7 +17,7 @@ function ChecksChip({ m }: { m: Machine }) {
 function MachineCard({ m }: { m: Machine }) {
   const g = m.online ? m.live?.gpus?.[0] : undefined;
   return (
-    <Link to={`/machines/${m.id}`} className="group block min-w-0 rounded-2xl border border-line bg-surface p-4 shadow-soft transition duration-200 hover:-translate-y-px hover:border-accent/30 hover:shadow-lift">
+    <Link to={`/machines/${m.id}`} data-yeti-row={m.id} className="group block min-w-0 rounded-2xl border border-line bg-surface p-4 shadow-soft transition duration-200 hover:-translate-y-px hover:border-accent/30 hover:shadow-lift">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2"><MachineDot m={m} /><span className="truncate text-[14.5px] font-semibold text-fg">{m.name}</span></div>

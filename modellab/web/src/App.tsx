@@ -20,6 +20,7 @@ import SearchPage from "./pages/Search";
 import SearchDetail from "./pages/SearchDetail";
 import { YetiProvider } from "./components/yeti/YetiContext";
 import YetiDock from "./components/yeti/YetiDock";
+import { Highlighter } from "./agent";
 
 function ThemeSwitch() {
   const { dark, set } = useTheme();
@@ -83,7 +84,7 @@ function WorkerWidget({ q }: { q: QueueData | null }) {
 
 function NavItem({ to, label, icon: Icon, badge }: { to: string; label: string; icon: typeof Trophy; badge?: React.ReactNode }) {
   return (
-    <NavLink to={to} end={to === "/"}
+    <NavLink to={to} end={to === "/"} data-yeti-nav={to}
       className={({ isActive }) => cx("group relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition",
         isActive ? "bg-accent-soft text-accent" : "text-muted hover:bg-raised/70 hover:text-fg")}>
       {({ isActive }) => <>
@@ -233,6 +234,7 @@ function Shell() {
       </main>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       {(password || me?.user?.must_change_password) && <ChangePassword forced={!!me?.user?.must_change_password} onClose={() => setPassword(false)} />}
+      <Highlighter />
       <YetiDock />
     </div>
   );

@@ -114,6 +114,13 @@ def test_act_and_careful_actions_wait_for_the_user_and_are_logged(hub, monkeypat
     fake.script = {"intent": "show", "action": "run.export"}
     d3 = u.post("/api/assistant/decide", json={"sentence": "where do I export this?", "page": page}).json()
     assert d3["fast"] and d3["show"] and "extra" not in d3  # showing where a button is needs nothing more
+    # showing asks for less certainty than doing: a wrong ring costs nothing
+    fake.script["p"] = 0.6
+    assert u.post("/api/assistant/decide", json={"sentence": "where do I export this?", "page": page}).json()["fast"]
+    fake.script = {"intent": "do", "action": "run.export", "p": 0.6}
+    assert not u.post("/api/assistant/decide", json={"sentence": "export this model", "page": page}).json()["fast"]
+    fake.script = {"intent": "show", "action": "run.export", "p": 0.4}
+    assert not u.post("/api/assistant/decide", json={"sentence": "where do I export this?", "page": page}).json()["fast"]
     # the hub carried nothing out
     assert u.get(f"/api/runs/{rid}").status_code == 200 and u.get(f"/api/runs/{rid}/exports").json() == []
     assert u.post(f"/api/assistant/actions/{d['id']}", json={"outcome": "approved"}).json() == {"result": "approved"}
@@ -121,7 +128,7 @@ def test_act_and_careful_actions_wait_for_the_user_and_are_logged(hub, monkeypat
     assert u.post("/api/assistant/actions/nope", json={"outcome": "done"}).status_code == 404
     assert u.post(f"/api/assistant/actions/{d['id']}", json={"outcome": "whatever"}).status_code == 422
     log = u.get("/api/assistant/actions").json()["actions"]
-    assert [(a["action"], a["outcome"]) for a in log] == [("run.export", None), ("run.delete", "declined"), ("run.export", "approved")]
+    assert [(a["action"], a["outcome"]) for a in log][-3:] == [("run.export", None), ("run.delete", "declined"), ("run.export", "approved")]
     assert log[-1]["sentence"] == "export this model" and log[-1]["values"] == {"run": rid} and log[-1]["confidence"] == 0.97
 
 

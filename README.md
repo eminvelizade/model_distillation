@@ -103,9 +103,9 @@ Current version: **v0.1** (beta).
 By part ([how they fit together](docs/PLATFORM.md)):
 
 **Agents: Yeti, hands-on** ([plan](docs/AGENTS_PLAN.md))
-- One sentence is enough: a fast System One model, chosen by [our own evaluation](docs/SYSTEM1_EVAL.md), picks the
-  component and the action, ModelLab highlights it and fills it in, and nothing runs without your approval. Claude
-  plans anything bigger.
+- One sentence is enough (built: [how to use it](docs/HUB.md#one-step-actions)): a fast decision model, chosen by
+  [our own evaluation](docs/SYSTEM1_EVAL.md), picks the component and the action, ModelLab highlights it and fills
+  it in, and nothing runs without your approval. Claude takes anything bigger.
 - Yeti guides you by highlighting what to click, fixes failed runs, turns your ideas into experiments and searches,
   and finds datasets and models online.
 

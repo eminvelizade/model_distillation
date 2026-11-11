@@ -22,8 +22,9 @@
   the 95th percentile. Haiku 5.5: 96.6 %, 2.1 s.
 - **Act actions keep their tap.** No model clears 99.5 %.
 
-**Choice for now:** `perplexity/pplx-decider-v1.2` for look and draft actions, with `liquid/d1-ultra` as the faster
-alternative and `nace-ai/drex-max-finance` as the most careful one. None is switched on yet.
+**Chosen:** `liquid/d1-ultra`, the fastest of the three, and it is the model the web app uses now
+([AGENTS_PLAN.md](AGENTS_PLAN.md#build-order)). `perplexity/pplx-decider-v1.2` and `nace-ai/drex-max-finance` remain
+the alternatives: its fast path covers less than theirs (87 % against 96 to 98 %), so more sentences go to Claude.
 
 ## What changed between the runs
 

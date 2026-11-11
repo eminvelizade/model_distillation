@@ -35,6 +35,9 @@ from .route import Decision, route
 # the evaluation before this changes.
 MODEL = "liquid/d1-ultra-20261015"
 GATE = {"threshold": 0.7, "max_several": 0.5}
+# "Where do I export this?" only rings a button: a wrong guess costs nothing, so showing asks for less certainty.
+# On the golden set every "show" decision at or above this was the right button (13 of 13: a small sample).
+SHOW_THRESHOLD = 0.5
 MAX_SENTENCE = 300  # longer than this is not a one-action request: it goes to Claude
 NEEDS = {"look": "none", "draft": "none", "act": "tap", "careful": "confirm"}
 LABELS = {"batch_size": "Batch size", "epochs": "Epochs", "image_size": "Image size", "lr": "Learning rate",
@@ -376,6 +379,8 @@ def decide(body: DecideIn, request: Request, user: dict = Depends(auth.current_u
         out = {"fast": False, "reason": "the decision model didn't answer", "error": res.error[:200]}
     else:
         d = route(res.answers, screen, sentence=sentence, **GATE)
+        if not d.fast and d.intent == "show" and d.reason == "not confident enough":
+            d = route(res.answers, screen, sentence=sentence, **(GATE | {"threshold": SHOW_THRESHOLD}))
         out = {"fast": d.fast, "action": d.action, "intent": d.intent, "values": d.values, "reason": d.reason or None,
                "confidence": None if d.confidence is None else round(d.confidence, 3)}
         if d.action in A.BY_ID:

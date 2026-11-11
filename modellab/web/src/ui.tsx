@@ -23,7 +23,10 @@ export function usePoll<T>(fn: () => Promise<T>, ms: number, deps: unknown[] = [
       if (alive && ms > 0) timer = window.setTimeout(tick, ms);
     };
     tick();
-    return () => { alive = false; window.clearTimeout(timer); };
+    // an action carried out elsewhere (the assistant, ⌘K) refreshes every poll at once
+    const now = () => { fnRef.current().then((d) => alive && setData(d)).catch(() => undefined); };
+    window.addEventListener("modellab:changed", now);
+    return () => { alive = false; window.clearTimeout(timer); window.removeEventListener("modellab:changed", now); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   return { data, error, refresh: () => fnRef.current().then(setData).catch((e) => setError(String(e))) };
@@ -200,9 +203,10 @@ export function StatusPill({ status }: { status: string }) {
 
 // ---------- controls ----------
 
-export function Button({ children, onClick, variant = "secondary", disabled, title, type = "button", small, className }: {
+export function Button({ children, onClick, variant = "secondary", disabled, title, type = "button", small, className, yeti }: {
   children: ReactNode; onClick?: (e: MouseEvent<HTMLButtonElement>) => void; variant?: "primary" | "brand" | "secondary" | "danger" | "ghost"; disabled?: boolean; title?: string;
   type?: "button" | "submit"; small?: boolean; className?: string;
+  yeti?: string; // the action this button carries out (src/agent.tsx): the assistant can ring it and ⌘K can press it
 }) {
   const v = {
     primary: "bg-fg text-canvas shadow-soft hover:bg-fg/85",
@@ -212,7 +216,7 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
     ghost: "text-muted hover:bg-raised hover:text-fg",
   }[variant];
   return (
-    <button type={type} title={title} disabled={disabled} onClick={onClick}
+    <button type={type} title={title} disabled={disabled} onClick={onClick} data-yeti={yeti}
       className={cx("group/btn relative inline-flex select-none items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-[10px] font-medium transition duration-200 active:scale-[.97] disabled:pointer-events-none disabled:opacity-45 [&_svg]:h-[15px] [&_svg]:w-[15px] [&_svg]:shrink-0",
         small ? "h-7 px-2.5 text-xs [&_svg]:!h-3.5 [&_svg]:!w-3.5" : "h-9 px-3.5 text-[13.5px]", v, className)}>
       {variant === "brand" && <span aria-hidden className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/35 to-transparent opacity-0 transition-all duration-700 ease-out group-hover/btn:left-[120%] group-hover/btn:opacity-100" />}
@@ -221,9 +225,9 @@ export function Button({ children, onClick, variant = "secondary", disabled, tit
   );
 }
 
-export function IconButton({ children, onClick, title, disabled, className }: { children: ReactNode; onClick?: () => void; title: string; disabled?: boolean; className?: string }) {
+export function IconButton({ children, onClick, title, disabled, className, yeti }: { children: ReactNode; onClick?: () => void; title: string; disabled?: boolean; className?: string; yeti?: string }) {
   return (
-    <button onClick={onClick} title={title} aria-label={title} disabled={disabled}
+    <button onClick={onClick} title={title} aria-label={title} disabled={disabled} data-yeti={yeti}
       className={cx("inline-flex h-7 w-7 items-center justify-center rounded-lg text-subtle transition hover:bg-raised hover:text-fg disabled:pointer-events-none disabled:opacity-35 [&_svg]:h-[15px] [&_svg]:w-[15px]", className)}>
       {children}
     </button>
@@ -385,9 +389,9 @@ export function Dropdown<T extends string>({ value, options, onChange, label, fo
   );
 }
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
+export function Field({ label, children, hint, yeti }: { label: string; children: ReactNode; hint?: ReactNode; yeti?: string }) {
   return (
-    <label className="block min-w-0">
+    <label className="block min-w-0" data-yeti-field={yeti}>
       <span className="mb-1.5 block text-xs font-medium text-muted">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-2xs text-subtle">{hint}</span>}

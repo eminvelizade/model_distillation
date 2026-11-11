@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { api, streamYeti, YetiEvent, YetiPage, YetiSettings } from "../../api";
 import { currentMascot } from "./mascots";
 import { useSession } from "../../session";
+import { COVERED, Decision, highlight, spotsFor, useCarryOut } from "../../agent";
 
 export interface YetiTool { id: string; label: string; href?: string | null; ok?: boolean; done: boolean }
 export interface YetiMsg {
@@ -17,6 +18,15 @@ export interface YetiMsg {
   streaming?: boolean;
   model?: string;
   usage?: { input: number; output: number; cache_read: number; cache_write: number };
+  /** assistant: a one-sentence action decided by the decision model (no Claude involved), and what became of it */
+  action?: { d: Decision; state: "shown" | "pending" | "working" | "done" | "declined" | "failed"; note?: string };
+}
+
+/** A decision in a sentence: what the chat keeps as the assistant's turn, and what Claude reads later. */
+export function actionText(d: Decision): string {
+  const what = [d.title, d.target].filter(Boolean).join(": ");
+  const changes = (d.changes ?? []).map((c) => `${c.label.toLowerCase()} ${c.value}`).join(", ");
+  return changes ? `${what} (${changes})` : what;
 }
 /** What the current page shows, so "this" means something: pages register it with useYetiPage. */
 export interface YetiPageInfo extends YetiPage { label?: string }
@@ -44,6 +54,9 @@ interface Ctx {
   stop: () => void;
   reset: () => void;
   retry: () => void;
+  /** the user's tap on an action card: carry the action out, or leave it */
+  approve: (msgId: string) => void;
+  decline: (msgId: string) => void;
 }
 
 const C = createContext<Ctx | null>(null);
@@ -54,13 +67,15 @@ function load(key: string): YetiMsg[] {
   try {
     const raw = localStorage.getItem(key);
     const msgs = raw ? (JSON.parse(raw) as YetiMsg[]) : [];
-    return Array.isArray(msgs) ? msgs.map((m) => ({ ...m, streaming: false })) : [];
+    return Array.isArray(msgs) ? msgs.map((m) => ({ ...m, streaming: false,
+      ...(m.action?.state === "working" ? { action: { ...m.action, state: "pending" as const } } : {}) })) : [];
   } catch { return []; }
 }
 
 export function YetiProvider({ children }: { children: ReactNode }) {
-  const { hub, me } = useSession();
+  const { hub, me, machineId } = useSession();
   const loc = useLocation();
+  const carry = useCarryOut();
   const user = me?.user?.username ?? null;
   const available = hub && !!user;
   const storeKey = `yeti-chat:${user ?? ""}`;
@@ -88,6 +103,16 @@ export function YetiProvider({ children }: { children: ReactNode }) {
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
 
   const setOpen = useCallback((v: boolean) => { setOpenState(v); if (v) reloadSettings(); }, [reloadSettings]);
+  // The panel floats over the page: when it covers what it is pointing at, it steps aside so the ring can be seen.
+  // A card that waits for a tap keeps it open (the tap is in the panel).
+  useEffect(() => {
+    const aside = () => {
+      const last = msgsRef.current[msgsRef.current.length - 1];
+      if (!["pending", "working"].includes(last?.action?.state ?? "")) setOpenState(false);
+    };
+    window.addEventListener(COVERED, aside);
+    return () => window.removeEventListener(COVERED, aside);
+  }, []);
 
   const register = useCallback((key: string, page: YetiPageInfo | null, suggestion: YetiSuggestion | null) => {
     setPages((p) => ({ ...p, [key]: { page, suggestion } }));
@@ -136,8 +161,68 @@ export function YetiProvider({ children }: { children: ReactNode }) {
     const u: YetiMsg = { id: uid(), role: "user", text: t, about: opts?.about ?? null };
     const ctx: YetiPage | null = page ? { kind: page.kind, id: page.id, items: page.items, path: page.path, focus: opts?.focus } : null;
     setDraft("");
-    run([...msgsRef.current.filter((m) => !(m.role === "assistant" && m.error && !m.text)), u], ctx, u.id);
-  }, [busy, page, run]);
+    const history = [...msgsRef.current.filter((m) => !(m.role === "assistant" && m.error && !m.text)), u];
+    const claude = () => {
+      if (settings?.connected) { run(history, ctx, u.id); return; }
+      setMessages([...history, { id: uid(), role: "assistant", text: "",
+        error: { code: "auth", message: "That one needs Claude: I can do one-step actions on my own, but questions and plans need a Claude API key." } }]);
+    };
+    // One short sentence goes to the decision model first: it either names one action (carried out here, with the
+    // user's tap where the action needs one) or hands over to Claude. An Explain click is always Claude's.
+    if (!settings?.system1?.connected || opts?.focus || t.length > 300) { claude(); return; }
+    setMessages(history);
+    setBusy(true);
+    (async () => {
+      let d: Decision | null = null;
+      try { d = await api.decide(t, { ...(ctx ?? { kind: "other" }), rows: page?.rows, form: page?.form, machine: machineId ?? undefined }); } catch { /* Claude takes it */ }
+      const say = (m: Partial<YetiMsg>) => setMessages([...history, { id: uid(), role: "assistant", text: "", ...m }]);
+      if (d?.fast && d.action) {
+        const phone = window.matchMedia("(max-width: 639px)").matches;
+        if (d.show) {
+          highlight(spotsFor(d));
+          say({ text: actionText(d), action: { d, state: "shown" } });
+          if (phone) setOpenState(false);
+        } else if (d.needs === "none") {
+          try {
+            const done = await carry(d);
+            say({ text: actionText(d), action: { d, state: "done", note: done } });
+            if (d.id) api.actionOutcome(d.id, "done").catch(() => undefined);
+            if (phone) setOpenState(false);
+          } catch (e) {
+            say({ text: actionText(d), action: { d, state: "failed", note: (e as Error).message } });
+            if (d.id) api.actionOutcome(d.id, "failed", (e as Error).message).catch(() => undefined);
+          }
+        } else {
+          highlight(spotsFor(d));
+          say({ text: actionText(d), action: { d, state: "pending" } });
+        }
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+      if (d?.tell) { say({ text: d.tell.charAt(0).toUpperCase() + d.tell.slice(1) + "." }); return; }
+      claude();
+    })();
+  }, [busy, page, run, settings, machineId, carry]);
+
+  const settle = (id: string, state: NonNullable<YetiMsg["action"]>["state"], note?: string) =>
+    patch(id, (m) => (m.action ? { ...m, action: { ...m.action, state, note } } : m));
+  const approve = useCallback((msgId: string) => {
+    const m = msgsRef.current.find((x) => x.id === msgId);
+    if (!m?.action || m.action.state !== "pending") return;
+    const d = m.action.d;
+    settle(msgId, "working");
+    if (d.id) api.actionOutcome(d.id, "approved").catch(() => undefined);
+    carry(d).then((done) => { settle(msgId, "done", done); if (d.id) api.actionOutcome(d.id, "done").catch(() => undefined); })
+      .catch((e) => { settle(msgId, "failed", (e as Error).message); if (d.id) api.actionOutcome(d.id, "failed", (e as Error).message).catch(() => undefined); });
+  }, [carry]);
+  const decline = useCallback((msgId: string) => {
+    const m = msgsRef.current.find((x) => x.id === msgId);
+    if (!m?.action || m.action.state !== "pending") return;
+    settle(msgId, "declined");
+    highlight([]);
+    if (m.action.d.id) api.actionOutcome(m.action.d.id, "declined").catch(() => undefined);
+  }, []);
 
   const ask = useCallback((question: string, focus?: string, about?: string) => {
     setOpenState(true);
@@ -159,8 +244,8 @@ export function YetiProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(() => ({
     available, open, setOpen, view, setView, settings, reloadSettings, setSettings, page, suggestion, register, unregister,
-    messages, busy, draft, setDraft, send, ask, stop, reset, retry,
-  }), [available, open, setOpen, view, settings, reloadSettings, page, suggestion, register, unregister, messages, busy, draft, send, ask, stop, reset, retry]);
+    messages, busy, draft, setDraft, send, ask, stop, reset, retry, approve, decline,
+  }), [available, open, setOpen, view, settings, reloadSettings, page, suggestion, register, unregister, messages, busy, draft, send, ask, stop, reset, retry, approve, decline]);
   return <C.Provider value={value}>{children}</C.Provider>;
 }
 

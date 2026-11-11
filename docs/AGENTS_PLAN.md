@@ -1,7 +1,7 @@
 # Agents: Yeti, hands-on
 
-> Status: plan. Today Yeti reads and explains, and never changes anything ([HUB.md](HUB.md#8-yeti-the-assistant)).
-> This plan lets it act on the platform. Where agents sit among ModelLab's three parts: [PLATFORM.md](PLATFORM.md).
+> Status: the first steps are built: one-sentence actions work in the web app ([Build order](#build-order) says
+> what is and isn't; [HUB.md](HUB.md#8-yeti-the-assistant) says how to use it). The rest is the plan. Where agents sit among ModelLab's three parts: [PLATFORM.md](PLATFORM.md).
 
 **In one sentence:** you say what you want in one sentence; a fast System One model picks the component and the
 action, ModelLab highlights it and fills it in, and nothing runs without your approval. Anything bigger than one step
@@ -383,17 +383,23 @@ open-weight decision models on your own GPU.
 Each step ships on its own and is useful without the next.
 
 0. **The deciding half** (built): the action list on the hub (`modellab/hub/system1/actions.py`), the number
-   parser, the questions, the OpenRouter adapters, the router, the golden set and the evaluation. Nothing in the
-   app uses it yet.
-1. **Action registry**, no AI yet: targets in the web app for the hub's actions, ⌘K gains the actions, the
-   highlight and fill-in, the action log and the "via Yeti" tag. Tests: each registered action calls the same API
-   as its button, with the same checks.
-2. **Guide**, with both systems: System 1 picks the component to highlight from one sentence (look tier, so a wrong
-   guess costs nothing), and Claude walks you through several steps. The hub endpoint for one sentence and the
-   OpenRouter key in Yeti's settings land here.
-3. **Act**: draft and act actions with an approval card in the chat. System 1 takes one-sentence actions, switched
-   on per action kind as each passes the gate; Claude takes the rest. The MCP server serves the same actions to
-   Claude apps, with the same tiers.
+   parser, the questions, the OpenRouter adapters, the router, the golden set and the evaluation.
+1. **Action registry** (built, except the "via Yeti" tag): the web app's buttons, form fields, rows and sidebar
+   links declare which action they are (`data-yeti…`, `modellab/web/src/agent.tsx`); a ring highlights them; forms
+   fill themselves in from a decision; ⌘K lists the current page's actions and presses the real button; every
+   decision is logged with its sentence, confidence and outcome (`agent_log`).
+2. **Guide** (System 1's half built): "where do I export this?" rings the button. Showing asks for less certainty
+   than doing, since a wrong ring costs nothing. Claude walking you through several steps is not built.
+3. **Act** (built for one sentence): the hub's `POST /api/assistant/decide` builds the screen from its own data,
+   asks the decision model and routes the answer. Look and draft actions happen at once; act and careful actions
+   show a card and wait for one tap; anything else goes to Claude. The OpenRouter key is in the assistant's
+   settings. Not built: the same actions for Claude apps through MCP, standing permissions, the agent GPU-hour
+   limit, and Claude standing in when there is no OpenRouter key (the sentence goes to Claude's chat instead).
+
+**The decision model in use:** `liquid/d1-ultra`, pinned as `liquid/d1-ultra-20261015`, with the gate the
+evaluation found for it: the least certain answer at 0.7 or more, and "asks for more than one thing" at 0.5 or
+less (`modellab/hub/system1/service.py`). Through the hub a decision takes about a quarter of a second.
+
 4. **Fix**: the failure catalog, fix cards on failed runs, datasets and machine checks, and self-healing search
    trials with a standing permission.
 5. **Collaborate**: idea → plan → drafts in the real forms → approval → watch → explanation, with each idea kept

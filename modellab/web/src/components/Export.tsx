@@ -24,7 +24,7 @@ export default function ExportPanel({ runId, stage, machineName, className }: { 
         <span className="text-[13px] font-medium text-fg">Export for deployment</span>
         {last && <StatusPill status={busy ? (last.status === "running" ? "running" : "queued") : last.status} />}
         {last && !busy && <span className="text-2xs text-subtle">{relTime(last.finished ?? last.created)}</span>}
-        <Button small className="ml-auto" onClick={go} disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <PackageOpen />}{last?.status === "done" ? "Export again" : "Export"}</Button>
+        <Button small className="ml-auto" yeti="run.export" onClick={go} disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <PackageOpen />}{last?.status === "done" ? "Export again" : "Export"}</Button>
       </div>
       {!last && <p className="mt-1.5 text-xs text-subtle">ONNX, a TensorRT FP16 engine when TensorRT is installed on {machineName ?? "the machine"}, a model card and an example script. The files stay on the machine.</p>}
       {busy && <p className="mt-1.5 text-xs text-sky-700 dark:text-sky-300">{last?.status === "running" ? "exporting on " : "waiting for "}{machineName ?? "the machine"}…</p>}

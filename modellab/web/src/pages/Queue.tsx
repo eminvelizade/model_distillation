@@ -100,11 +100,12 @@ const FINISHED_ICON: Record<string, React.ReactNode> = {
 };
 
 export default function Queue() {
-  useYetiPage({ kind: "queue" });
   const { hub, machine, machineId } = useSession();
   const q = usePoll(api.queue, 2000, [machineId]);
   const gpu = usePoll(api.gpu, 2000, [machineId]);
   const recent = usePoll(() => api.runs("done,failed,cancelled,interrupted", true), 5000, [machineId]);
+  // the runs on screen, top to bottom: "the first one", "the one below it" mean something to the assistant
+  useYetiPage({ kind: "queue", rows: [...(q.data?.runs ?? []), ...(recent.data ?? [])].map((r) => r.id).slice(0, 20) });
   const [toast, setToast] = useState<string | null>(null);
   const [logStage, setLogStage] = useState<string | null>(null);
   const [openErr, setOpenErr] = useState<string | null>(null);
@@ -171,7 +172,7 @@ export default function Queue() {
             {waiting.length === 0 ? <div className="px-5 pb-5 pt-2 text-[13px] text-subtle">The queue is empty.</div> : (
               <ul className="px-2 pb-2">
                 {waiting.map((r, i) => (
-                  <li key={r.id} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-raised/60">
+                  <li key={r.id} data-yeti-row={r.id} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-raised/60">
                     <span className={cx("flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-semibold",
                       i === 0 ? "bg-accent text-canvas" : "bg-raised text-muted ring-1 ring-inset ring-line")}>{i + 1}</span>
                     <div className="min-w-0 flex-1">
@@ -193,7 +194,7 @@ export default function Queue() {
       <Card title="Recently finished" flush>
         <ul className="px-2 pb-2">
           {(recent.data ?? []).slice(0, 8).map((r) => (
-            <li key={r.id} className="rounded-xl px-3 py-2.5 hover:bg-raised/40">
+            <li key={r.id} data-yeti-row={r.id} className="rounded-xl px-3 py-2.5 hover:bg-raised/40">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 {FINISHED_ICON[r.status] ?? <StatusPill status={r.status} />}
                 <Link to={`/runs/${r.id}`} className="min-w-0 truncate text-[13.5px] font-medium text-fg hover:text-accent">{r.name}</Link>

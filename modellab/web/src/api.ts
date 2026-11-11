@@ -146,8 +146,15 @@ export interface YetiSettings {
   connected: boolean; key_hint: string | null; key_error: string | null; model: string; effort: string;
   models: { id: string; label: string; note: string }[]; efforts: { id: string; label: string }[];
   connector: { url: string; apps: { client_id: string; name: string; connected: number; last_used: number | null }[] };
+  /** the decision model for one-sentence actions, on the user's OpenRouter key */
+  system1: { connected: boolean; key_hint: string | null; key_error: string | null; model: string };
 }
-export interface YetiPage { kind: string; id?: string; items?: string[]; path?: string; focus?: string }
+/** What a page shows. `rows` (ids, top to bottom), `form` (its current values) and `machine` (the one picked in the
+ *  sidebar) only go to the decision model; the hub looks every name up itself. */
+export interface YetiPage {
+  kind: string; id?: string; items?: string[]; path?: string; focus?: string;
+  rows?: string[]; form?: Record<string, string | number | undefined>; machine?: string;
+}
 export type YetiEvent =
   | { type: "start"; turn: string; note: string | null; model: string; model_label: string }
   | { type: "text"; text: string }
@@ -226,6 +233,12 @@ export const api = {
   yeti: () => fetch("/api/assistant").then(j<YetiSettings>),
   yetiSave: (body: { api_key?: string; model?: string; effort?: string }) => send("PUT", "/api/assistant", body).then(j<YetiSettings>),
   yetiForgetKey: () => send("DELETE", "/api/assistant/key").then(j<YetiSettings>),
+  system1Save: (apiKey: string) => send("PUT", "/api/assistant/system1", { api_key: apiKey }).then(j<YetiSettings>),
+  system1Forget: () => send("DELETE", "/api/assistant/system1/key").then(j<YetiSettings>),
+  decide: (sentence: string, page: YetiPage | null) => post("/api/assistant/decide", { sentence, page }).then(j<import("./agent").Decision>),
+  actionOutcome: (id: string, outcome: "approved" | "declined" | "done" | "failed", note?: string) =>
+    post(`/api/assistant/actions/${id}`, { outcome, note }).then(j<{ result: string }>),
+  actions: () => fetch("/api/actions").then(j<{ actions: { id: string; title: string; tier: string; needs: string }[]; pages: Record<string, string> }>),
   yetiDisconnect: (clientId: string) => send("DELETE", `/api/assistant/apps/${clientId}`).then(j<{ apps: YetiSettings["connector"]["apps"] }>),
 
   // ---------- searches + export (hub) ----------

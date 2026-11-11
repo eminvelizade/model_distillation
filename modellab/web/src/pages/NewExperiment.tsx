@@ -6,6 +6,7 @@ import { Button, Callout, Card, cx, Field, IconButton, inputCls, Mascot, PageHea
 import { MachinePicker } from "../components/Hub";
 import { useSession } from "../session";
 import { useYetiPage } from "../components/yeti/YetiContext";
+import { readFill } from "../agent";
 
 type Ref = { from: string };
 type Stage = Record<string, any> & { name: string; type: string };
@@ -100,8 +101,35 @@ function NumberInput({ value, onChange, placeholder, step }: { value: number | u
     onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={inputCls} />;
 }
 
-function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
-  st: Stage; idx: number; stages: Stage[]; cat: Catalog; vars: string[];
+/** The stage a one-sentence request means by "the model", "the epochs", "the batch size": the last one that trains. */
+function mainStage(stages: Stage[]): number {
+  for (const t of ["finetune", "distill"]) {
+    const i = stages.map((s) => s.type).lastIndexOf(t);
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+/** Settings from the assistant (src/agent.tsx, `?fill=`), written into the recipe as if typed into its fields. */
+function applyFill(r: Recipe, f: Record<string, string>): Recipe {
+  const i = mainStage(r.stages);
+  const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : undefined);
+  const stages = r.stages.map((s, j) => {
+    if (j !== i) return s;
+    const n: Stage = { ...s };
+    if (f.model && n.type === "finetune" && n.model !== f.model) { n.model = f.model; delete n.init; }
+    if (f.model && n.type === "distill") n.student = f.model;
+    if (f.epochs && num(f.epochs)) n.budget = { ...(n.budget ?? {}), epochs: num(f.epochs) };
+    if (f.batch_size && num(f.batch_size)) n.batch_size = num(f.batch_size);
+    if (f.image_size && num(f.image_size)) n.image_size = num(f.image_size);
+    if (f.lr && num(f.lr)) n.lr = num(f.lr);
+    return n;
+  });
+  return { ...r, stages, ...(f.dataset ? { dataset: f.dataset } : {}) };
+}
+
+function StageCard({ st, idx, stages, cat, vars, main, onChange, onRemove, onMove }: {
+  st: Stage; idx: number; stages: Stage[]; cat: Catalog; vars: string[]; main?: boolean;
   onChange: (s: Stage) => void; onRemove: () => void; onMove: (d: -1 | 1) => void;
 }) {
   const prods = producers(stages, idx, cat);
@@ -123,6 +151,7 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
   const isLT = typeof st.model === "string" && st.model.startsWith("ltdetr");
 
   const Icon = style?.icon ?? Target;
+  const y = (name: string) => (main ? name : undefined); // only the main stage's fields are the assistant's targets
   return (
     <div className="relative flex animate-pop gap-4">
       {/* pipeline rail */}
@@ -147,7 +176,7 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {st.type === "distill" && <>
-          <Field label="Student (RF-DETR)">
+          <Field label="Student (RF-DETR)" yeti={y("model")}>
             <Select value={st.student ?? "rfdetr/nano"} onChange={(v) => set("student", v)}>{detectorOpts("rfdetr")}</Select>
           </Field>
           <Field label="Teacher" hint={isRef(st.teacher) ? "fine-tuned DINOv3 backbone from that stage" : undefined}>
@@ -163,14 +192,14 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
               {sameModel(st.student ?? "rfdetr/nano").map((p) => <option key={p.name} value={`@${p.name}`}>from: {p.name}</option>)}
             </Select>
           </Field>
-          <Field label="Image size" hint="empty = student native (DINOv2 teachers: multiple of 224)">
+          <Field label="Image size" hint="empty = student native (DINOv2 teachers: multiple of 224)" yeti={y("image_size")}>
             <NumberInput value={st.image_size} onChange={(v) => set("image_size", v)} placeholder="auto" step={32} />
           </Field>
         </>}
 
         {st.type === "finetune" && <>
-          <Field label="Model">
-            <Select value={st.model ?? ""} onChange={(v) => { const n: Stage = { ...st, model: v }; delete n.init; if (!v.startsWith("ltdetr")) delete n.image_size; onChange(n); }}>
+          <Field label="Model" yeti={y("model")}>
+            <Select value={st.model ?? ""} onChange={(v) => { const n: Stage = { ...st, model: v }; delete n.init; onChange(n); }}>
               <optgroup label="RF-DETR (DINOv2)">{detectorOpts("rfdetr")}</optgroup>
               <optgroup label="LT-DETR (DINOv3, LightlyTrain)">{detectorOpts("ltdetr")}</optgroup>
               {vars.length > 0 && <optgroup label="Sweep variable">{varOpts}</optgroup>}
@@ -182,8 +211,8 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
               {sameModel(st.model).map((p) => <option key={p.name} value={`@${p.name}`}>from: {p.name}</option>)}
             </Select>
           </Field>
-          {isLT && <Field label="Image size"><NumberInput value={st.image_size} onChange={(v) => set("image_size", v)} placeholder="384" step={32} /></Field>}
-          <Field label="Learning rate" hint="empty = library default"><NumberInput value={st.lr} onChange={(v) => set("lr", v)} placeholder="default" step={0.0001} /></Field>
+          <Field label="Image size" hint="empty = the model's native size; a multiple of 32" yeti={y("image_size")}><NumberInput value={st.image_size} onChange={(v) => set("image_size", v)} placeholder={isLT ? "384" : "native"} step={32} /></Field>
+          <Field label="Learning rate" hint="empty = library default" yeti={y("lr")}><NumberInput value={st.lr} onChange={(v) => set("lr", v)} placeholder="default" step={0.0001} /></Field>
         </>}
 
         {st.type === "eval" && <>
@@ -226,9 +255,9 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
         </>}
 
         {(st.type === "distill" || st.type === "finetune") && <>
-          <Field label="Budget: epochs"><NumberInput value={budget.epochs} onChange={(v) => setBudget("epochs", v)} placeholder={String(cat.default_epochs[st.type])} /></Field>
+          <Field label="Budget: epochs" yeti={y("epochs")}><NumberInput value={budget.epochs} onChange={(v) => setBudget("epochs", v)} placeholder={String(cat.default_epochs[st.type])} /></Field>
           <Field label="Budget: wall-clock cap (min)"><NumberInput value={budget.minutes} onChange={(v) => setBudget("minutes", v)} placeholder="none" /></Field>
-          <Field label="Batch size"><NumberInput value={st.batch_size} onChange={(v) => set("batch_size", v)} placeholder={st.type === "distill" ? "32" : "8"} /></Field>
+          <Field label="Batch size" yeti={y("batch_size")}><NumberInput value={st.batch_size} onChange={(v) => set("batch_size", v)} placeholder={st.type === "distill" ? "32" : "8"} /></Field>
         </>}
         <Field label="Dataset">
           <Select value={st.dataset ?? ""} onChange={(v) => set("dataset", v || undefined)}>
@@ -243,7 +272,6 @@ function StageCard({ st, idx, stages, cat, vars, onChange, onRemove, onMove }: {
 }
 
 export default function NewExperiment() {
-  useYetiPage({ kind: "new" });
   const [cat, setCat] = useState<Catalog | null>(null);
   const [recipe, setRecipe] = useState<Recipe>(BLANK);
   const [mode, setMode] = useState<"builder" | "yaml">("builder");
@@ -279,11 +307,28 @@ export default function NewExperiment() {
     }
   };
 
+  // ?clone=<run> loads that run's recipe; ?fill={...} (from the assistant) then sets fields, as if typed
+  const handled = useRef("");
   useEffect(() => {
-    const clone = params.get("clone");
-    if (clone) api.run(clone).then((r) => { loadYaml(r.recipe_yaml, true); setToast({ msg: `Cloned recipe of ${r.name} — edit and run`, kind: "info" }); });
+    const key = params.toString();
+    if (handled.current === key) return;
+    handled.current = key;
+    const clone = params.get("clone"), fill = readFill(params);
+    const apply = () => {
+      if (!fill || !Object.keys(fill).length) return;
+      if (fill.dataset) keepDataset.current = true;
+      setRecipe((r) => applyFill(r, fill));
+    };
+    if (clone) api.run(clone).then(async (r) => { await loadYaml(r.recipe_yaml, true); apply(); setToast({ msg: `Cloned recipe of ${r.name} — edit and run`, kind: "info" }); });
+    else apply();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
+
+  // what the form holds now, for the assistant: "make it 60 epochs" changes a value it can see
+  const ms = recipe.stages[mainStage(recipe.stages)];
+  useYetiPage({ kind: "new", form: mode === "builder" && ms ? {
+    model: typeof ms.model === "string" ? ms.model : ms.student, dataset: recipe.dataset, machine: machineId ?? undefined,
+    epochs: ms.budget?.epochs, batch_size: ms.batch_size, image_size: ms.image_size, lr: ms.lr } : undefined });
 
   // Live preview (debounced): builder -> server renders YAML + validates; YAML mode -> validate text.
   useEffect(() => {
@@ -347,7 +392,7 @@ export default function NewExperiment() {
               <Card title="Recipe" description="Shared by every stage unless a stage overrides it">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <Field label="Name"><input className={inputCls} value={recipe.name} onChange={(e) => setRecipe({ ...recipe, name: e.target.value })} /></Field>
-                  <Field label="Dataset" hint={!cat.datasets.some((d) => d.built !== false && !d.error) ? (hub && machine
+                  <Field label="Dataset" yeti="dataset" hint={!cat.datasets.some((d) => d.built !== false && !d.error) ? (hub && machine
                     ? <Link to={`/machines/${machine.id}`} className="text-accent hover:underline">Add one on {machine.name} →</Link>
                     : hub ? undefined : <>add one with <code className="font-mono">modellab dataset add</code></>) : undefined}>
                     <select className={cx(inputCls, "pr-8")} value={recipe.dataset ?? ""} onChange={(e) => setRecipe({ ...recipe, dataset: e.target.value || undefined })}>
@@ -397,7 +442,7 @@ export default function NewExperiment() {
                   <span className="text-subtle">runs top to bottom</span>
                 </div>
                 {recipe.stages.map((s, i) => (
-                  <StageCard key={i} st={s} idx={i} stages={recipe.stages} cat={cat} vars={vars} onChange={(n) => setStage(i, n)}
+                  <StageCard key={i} st={s} idx={i} stages={recipe.stages} cat={cat} vars={vars} main={i === mainStage(recipe.stages)} onChange={(n) => setStage(i, n)}
                     onRemove={() => setRecipe({ ...recipe, stages: recipe.stages.filter((_, j) => j !== i) })}
                     onMove={(d) => {
                       const st = [...recipe.stages];
@@ -480,7 +525,7 @@ export default function NewExperiment() {
                 <Button variant="brand" className="flex-1" disabled={!preview?.ok || busy} onClick={(e) => submit("front", e.currentTarget)} title="Put at the front of the queue">
                   {busy ? <Loader2 className="animate-spin" /> : <Play />}Run next
                 </Button>
-                <Button className="flex-1" disabled={!preview?.ok || busy} onClick={(e) => submit("end", e.currentTarget)}><ListPlus />Add to queue</Button>
+                <Button className="flex-1" yeti="run.queue" disabled={!preview?.ok || busy} onClick={(e) => submit("end", e.currentTarget)}><ListPlus />Add to queue</Button>
                 <Mascot size={34} mood={!preview ? "happy" : preview.ok ? "happy" : "sad"} />
               </div>
             </div>

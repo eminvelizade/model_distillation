@@ -117,8 +117,8 @@ export default function SearchDetail() {
         eyebrow={<span className="flex items-center gap-1.5"><Link to="/search" className="hover:underline">Find my best model</Link></span>}
         title={<span className="flex flex-wrap items-center gap-3">{s.name}<StatusPill status={s.status} /></span>}
         actions={s.status === "running"
-          ? <Button variant="danger" onClick={() => api.cancelSearch(s.id).then(() => { setToast("cancelled: its queued runs too"); refresh(); }).catch((e) => setToast(e.message))}><Square />Cancel search</Button>
-          : <Button variant="ghost" onClick={() => window.confirm("Delete this search? Its runs and results stay.") && api.deleteSearch(s.id).then(() => nav("/search")).catch((e) => setToast(e.message))}><Trash2 />Delete</Button>}>
+          ? <Button variant="danger" yeti="search.cancel" onClick={() => api.cancelSearch(s.id).then(() => { setToast("cancelled: its queued runs too"); refresh(); }).catch((e) => setToast(e.message))}><Square />Cancel search</Button>
+          : <Button variant="ghost" yeti="search.delete" onClick={() => window.confirm("Delete this search? Its runs and results stay.") && api.deleteSearch(s.id).then(() => nav("/search")).catch((e) => setToast(e.message))}><Trash2 />Delete</Button>}>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
           <span className="flex items-center gap-1.5"><Gauge className="h-3.5 w-3.5 text-subtle" />under {s.spec.speed_ms} ms on {names[s.spec.target_machine]}</span>
           <span>dataset {s.spec.dataset}</span>

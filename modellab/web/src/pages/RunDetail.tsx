@@ -150,10 +150,10 @@ export default function RunDetail() {
           <button onClick={copyId} className="inline-flex items-center gap-1 font-mono text-muted hover:text-fg" title="Copy run id">{r.id}{copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}</button></span>}
         title={<span className="flex flex-wrap items-center gap-3">{r.name}<StatusPill status={r.status} /></span>}
         actions={<>
-          <Button variant="brand" onClick={() => nav(`/?clone=${r.id}`)}><CopyPlus />Clone & edit</Button>
-          {(r.status === "running" || r.status === "queued") && <Button variant="danger" onClick={() => act(api.cancel(r.id))}><Square />Cancel</Button>}
-          {finished && <Button onClick={() => act(api.requeue(r.id))} title="finished stages are kept; resumes at the first unfinished one"><RotateCcw />Re-queue</Button>}
-          {finished && <Button variant="ghost" onClick={() => (hub ? setDeleting(true) : window.confirm("Delete this run and its files?") && act(api.remove(r.id), () => nav("/leaderboard")))}><Trash2 />Delete</Button>}
+          <Button variant="brand" yeti="run.clone_edit" onClick={() => nav(`/?clone=${r.id}`)}><CopyPlus />Clone & edit</Button>
+          {(r.status === "running" || r.status === "queued") && <Button variant="danger" yeti="run.cancel" onClick={() => act(api.cancel(r.id))}><Square />Cancel</Button>}
+          {finished && <Button yeti="run.requeue" onClick={() => act(api.requeue(r.id))} title="finished stages are kept; resumes at the first unfinished one"><RotateCcw />Re-queue</Button>}
+          {finished && <Button variant="ghost" yeti="run.delete" onClick={() => (hub ? setDeleting(true) : window.confirm("Delete this run and its files?") && act(api.remove(r.id), () => nav("/leaderboard")))}><Trash2 />Delete</Button>}
         </>}>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
           <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-subtle" />{fmt.time(r.created)}</span>

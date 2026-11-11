@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, Gauge, Loader2, Sparkles, Wand2 } from "lucide-react";
 import { api, Catalog, DatasetInfo, fmt, MachineDetail, SearchPreview, SearchSpec } from "../api";
 import { useSession } from "../session";
 import { Button, Callout, Card, cx, Empty, Field, inputCls, PageHeader, relTime, Segmented, StatusPill, usePoll } from "../ui";
 import { FAMILY } from "../components/Scatter";
 import { useYetiPage } from "../components/yeti/YetiContext";
+import { readFill } from "../agent";
 
 /** "1e-4, 2e-4" or "320 384" -> numbers; null if something isn't a number. */
 const numbers = (s: string): number[] | null => {
@@ -14,8 +15,11 @@ const numbers = (s: string): number[] | null => {
   return out.some((n) => !Number.isFinite(n)) ? null : out;
 };
 
-function NewSearch({ onCreated }: { onCreated: (id: string) => void }) {
+type Form = Record<string, string | number | undefined>;
+
+function NewSearch({ onCreated, fill, onForm }: { onCreated: (id: string) => void; fill: Record<string, string> | null; onForm: (f: Form) => void }) {
   const { machines, machineId } = useSession();
+  const wantTarget = useRef<string | null>(null); // a target machine asked for before its dataset's machines were known
   const [cat, setCat] = useState<Catalog | null>(null);
   const [details, setDetails] = useState<Record<string, MachineDetail>>({});
   const [dataset, setDataset] = useState("");
@@ -57,10 +61,31 @@ function NewSearch({ onCreated }: { onCreated: (id: string) => void }) {
   }, [holders, dataset, machineId]);
   useEffect(() => {
     const hs = holders[dataset] ?? [];
-    const first = hs.find((h) => h.mid === machineId)?.mid ?? hs[0]?.mid;
+    const first = hs.find((h) => h.mid === wantTarget.current)?.mid ?? hs.find((h) => h.mid === machineId)?.mid ?? hs[0]?.mid;
     setPicked(first ? [first] : []);
     setTarget(first ?? "");
   }, [dataset, holders, machineId]);
+
+  // settings from the assistant (src/agent.tsx, `?fill=`), as if typed into the fields
+  const fillKey = JSON.stringify(fill);
+  useEffect(() => {
+    if (!fill) return;
+    if (fill.speed_budget_ms) setSpeed(fill.speed_budget_ms);
+    if (fill.epochs) setEpochs(fill.epochs);
+    if (fill.gpu_hours) setHours(fill.gpu_hours);
+    if (fill.machine) {
+      wantTarget.current = fill.machine;
+      if ((holders[fill.dataset ?? dataset] ?? []).some((h) => h.mid === fill.machine)) {
+        setPicked((p) => (p.includes(fill.machine) ? p : [...p, fill.machine]));
+        setTarget(fill.machine);
+      }
+    }
+    if (fill.dataset) setDataset(fill.dataset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fillKey]);
+  const form = JSON.stringify({ dataset, machine: target || undefined, speed_budget_ms: Number(speed) || undefined,
+    epochs: Number(epochs) || undefined, gpu_hours: Number(hours) || undefined });
+  useEffect(() => { onForm(JSON.parse(form)); }, [form]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sizeLists: Record<string, number[]> = {};
   let sizeError: string | null = null;
@@ -106,15 +131,15 @@ function NewSearch({ onCreated }: { onCreated: (id: string) => void }) {
       description="Pick a dataset, a speed budget and the models to try. ModelLab times every candidate, trains the ones that fit in rounds, and keeps the best.">
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Dataset">
+          <Field label="Dataset" yeti="dataset">
             <select className={inputCls} value={dataset} onChange={(e) => setDataset(e.target.value)}>
               {Object.keys(holders).sort().map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </Field>
-          <Field label="Speed budget (ms per image)" hint="median latency, batch 1, FP16, on the machine below">
+          <Field label="Speed budget (ms per image)" hint="median latency, batch 1, FP16, on the machine below" yeti="speed_budget_ms">
             <input className={cx(inputCls, "font-mono")} inputMode="decimal" value={speed} onChange={(e) => setSpeed(e.target.value)} />
           </Field>
-          <Field label="Speed measured on">
+          <Field label="Speed measured on" yeti="machine">
             <select className={inputCls} value={target} onChange={(e) => setTarget(e.target.value)}>
               {hs.filter((h) => picked.includes(h.mid)).map((h) => <option key={h.mid} value={h.mid}>{details[h.mid]?.name}</option>)}
             </select>
@@ -177,12 +202,12 @@ function NewSearch({ onCreated }: { onCreated: (id: string) => void }) {
         </div>
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Field label="Epochs (full training)" hint="earlier rounds train a fraction of this">
+          <Field label="Epochs (full training)" hint="earlier rounds train a fraction of this" yeti="epochs">
             <input className={cx(inputCls, "font-mono")} inputMode="numeric" value={epochs} onChange={(e) => setEpochs(e.target.value)} />
           </Field>
           <Field label="Rounds"><Segmented value={rungs} onChange={setRungs} options={["1", "2", "3", "4"].map((v) => ({ value: v, label: v }))} /></Field>
           <Field label="Extra seeds for the best two"><Segmented value={seeds} onChange={setSeeds} options={["0", "1", "2", "3"].map((v) => ({ value: v, label: v }))} /></Field>
-          <Field label="GPU-hour cap (optional)" hint="stops before a round that wouldn't fit">
+          <Field label="GPU-hour cap (optional)" hint="stops before a round that wouldn't fit" yeti="gpu_hours">
             <input className={cx(inputCls, "font-mono")} inputMode="decimal" value={hours} placeholder="none" onChange={(e) => setHours(e.target.value)} />
           </Field>
         </div>
@@ -197,7 +222,7 @@ function NewSearch({ onCreated }: { onCreated: (id: string) => void }) {
               <span>at most <b className="font-mono text-fg">{preview.max_trials}</b> training runs</span>
             </div>
           ) : <span className="text-[13px] text-subtle">{error ? "fix the above to see the plan" : "working out the plan…"}</span>}
-          <Button variant="brand" className="ml-auto" disabled={!preview || busy} onClick={start}>{busy ? <Loader2 className="animate-spin" /> : <Sparkles />}Start search</Button>
+          <Button variant="brand" className="ml-auto" yeti="search.start" disabled={!preview || busy} onClick={start}>{busy ? <Loader2 className="animate-spin" /> : <Sparkles />}Start search</Button>
         </div>
       </div>
     </Card>
@@ -205,23 +230,27 @@ function NewSearch({ onCreated }: { onCreated: (id: string) => void }) {
 }
 
 export default function Search() {
-  useYetiPage({ kind: "searches" });
   const list = usePoll(api.searches, 5000);
   const nav = useNavigate();
+  const [params] = useSearchParams();
   const [show, setShow] = useState(false);
+  const [form, setForm] = useState<Form | undefined>(undefined);
+  const fill = useMemo(() => readFill(params), [params]);
+  useEffect(() => { if (fill) setShow(true); }, [fill]);
   const rows = list.data ?? [];
   const showForm = show || (list.data && !rows.length);
+  useYetiPage({ kind: "searches", form: showForm ? form : undefined });
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Build" title="Find my best model"
         description="The most accurate detector that fits your speed budget: every candidate is timed first, the ones that fit train in rounds, the best are repeated with other seeds."
         actions={!showForm && <Button variant="brand" onClick={() => setShow(true)}><Wand2 />New search</Button>} />
-      {showForm && <NewSearch onCreated={(id) => nav(`/search/${id}`)} />}
+      {showForm && <NewSearch onCreated={(id) => nav(`/search/${id}`)} fill={fill} onForm={setForm} />}
       {rows.length > 0 && (
         <Card title="Searches" flush>
           <ul className="divide-y divide-line/70">
             {rows.map((s) => (
-              <li key={s.id}>
+              <li key={s.id} data-yeti-row={s.id}>
                 <Link to={`/search/${s.id}`} className="group flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 transition hover:bg-raised/40">
                   <div className="min-w-0 flex-1 basis-64">
                     <div className="flex items-center gap-2">
