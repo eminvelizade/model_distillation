@@ -195,13 +195,15 @@ def _public_url(request: Request) -> str:
 
 def settings_view(c: sa.Connection, user: dict, cfg: Config, base_url: str) -> dict:
     from modellab.hub import oauth
+    from modellab.hub.system1 import service as system1
 
     st = load(c, user["id"], cfg)
     return {"connected": bool(st["api_key"]), "key_hint": st["key_hint"], "key_error": st["key_error"],
             "model": st["model"], "effort": st["effort"],
             "models": [{"id": k, **{x: v[x] for x in ("label", "note")}} for k, v in MODELS.items()],
             "efforts": [{"id": k, "label": v} for k, v in EFFORTS.items()],
-            "connector": {"url": base_url + "/mcp", "apps": oauth.connected_apps(c, user["id"])}}
+            "connector": {"url": base_url + "/mcp", "apps": oauth.connected_apps(c, user["id"])},
+            "system1": system1.settings_view(c, user["id"], cfg)}
 
 
 @router.get("/assistant")

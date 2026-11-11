@@ -216,11 +216,55 @@ size with diminishing-returns flags, distillation and learning-rate effects, see
 runner-up. The answer streams back with each tool it used, linked to its page.
 
 What Claude sees: only what the tools return when you ask (run, search and machine names, settings, metrics, log
-tails, PCA and attention figures). Never datasets, images, annotations or checkpoints. Yeti can't start, change or
+tails, PCA and attention figures). Never datasets, images, annotations or checkpoints. Claude can't start, change or
 delete anything.
 
-Next, Yeti goes hands-on: it highlights what to click, acts when you approve, fixes failed runs and finds datasets and
-models online. Plan: [AGENTS_PLAN.md](AGENTS_PLAN.md).
+### One-step actions
+
+Say what to do in one sentence and the assistant does it, usually in under a second, without Claude:
+
+| you say | what happens |
+|---|---|
+| "re-run this with batch size 4 on the 5090" (on a run's page) | New experiment opens with that run's recipe, batch size 4 and the machine switched, the changed fields ringed. You press Run |
+| "open the leaderboard", "open nano-448-dinov3s" | it opens |
+| "where do I export this?" | the Export button is ringed; nothing else happens |
+| "cancel the queued one" (on the queue) | a card names the run and waits for one tap |
+| "delete this run" | a card with "This can't be undone" waits for one tap |
+| "why did this fail?", "halve the batch size and retry", "cancel this and then export that" | not one action: it goes to Claude, as before |
+
+- **Turn it on:** the assistant's settings → One-step actions → paste an OpenRouter key (openrouter.ai → Keys). It is
+  stored encrypted, like the Claude key. Without it, every sentence goes to Claude.
+- **What decides:** a small decision model (`liquid/d1-ultra`, chosen in [SYSTEM1_EVAL.md](SYSTEM1_EVAL.md)) picks one
+  of the actions the page offers; code checks its answer and hands over when it is unsure.
+- **What it sees:** your sentence, the page, and the names, statuses and form values on it, all looked up by the hub.
+  Never images, annotations, weights or files. OpenRouter and the model's provider receive that request.
+- **What it can do:** only what the page's own buttons do, through the same API. Opening and filling in happen at
+  once; anything that runs, cancels or deletes waits for your tap. Every decision is logged
+  (`GET /api/assistant/actions`).
+- **⌘K** lists the actions of the page you are on and presses the real button.
+
+![One sentence fills in Clone & edit](screenshots/hub_12_one_sentence_clone_edit.png)
+
+### Fixes for known failures
+
+A failed or interrupted run's page shows a card when the failure is one ModelLab knows: what happened, what the fix
+changes, and one button.
+
+- **Out of GPU memory:** the button opens New experiment with the run's recipe, half the batch and (on RF-DETR)
+  twice the gradient accumulation, so the effective batch stays the same. You press Run.
+- **Too many open files, too little shared memory, a driver problem:** it runs the machine's self-check, which shows
+  the limit and the command that fixes it.
+- **A full disk, a missing dataset folder, missing weights, a NaN loss, an interrupted run:** it opens the machine,
+  re-checks the dataset, fetches the weights, halves the learning rate, or re-queues.
+
+An error that matches no pattern is shown to the decision model once (with an OpenRouter key set), and the card then
+says "Looks like a known failure". A run started from a fix is tagged `fix:<failure>`; the card says how often that
+fix has worked for you. Anything else is for "Why did it fail?", which asks Claude as before.
+
+![A known failure and its fix](screenshots/hub_15_fix_card.png)
+
+Next: fixing failed runs, turning ideas into experiments, and finding datasets and models online. Plan and what is
+built: [AGENTS_PLAN.md](AGENTS_PLAN.md).
 
 ## 9. Updates
 

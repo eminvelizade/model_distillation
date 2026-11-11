@@ -103,7 +103,6 @@ function ChampionCard({ best, second, ds }: { best: ResultRow; second?: ResultRo
 
 export default function Leaderboard() {
   const res = usePoll(api.results, 10000);
-  useYetiPage({ kind: "leaderboard" });
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "map", desc: true });
   const [dataset, setDataset] = useState<string>("");
   const [split, setSplit] = useState<string>("");
@@ -143,6 +142,8 @@ export default function Leaderboard() {
         return sort.desc ? -c : c;
       });
   }, [dsRows, family, onlyComparable, q, sort, comp]);
+  // the runs on screen, top to bottom: "the best one", "the second one" mean something to the assistant
+  useYetiPage({ kind: "leaderboard", rows: [...new Set(visible.map((r) => r.run_id))].slice(0, 20) });
 
   const points: Pt[] = visible.filter((r) => r.latency_ms !== null && r.map !== null)
     .map((r) => ({ key: rk(r), x: r.latency_ms!, y: r.map!, label: r.label, family: r.family, comparable: !comp.reason(r), row: r }));
@@ -245,7 +246,7 @@ export default function Leaderboard() {
                 {visible.map((r, i) => {
                   const why = comp.reason(r), k = rk(r), on = sel.has(k);
                   return (
-                    <tr key={k} onClick={() => toggle(k)}
+                    <tr key={k} data-yeti-row={r.run_id} onClick={() => toggle(k)}
                       className={cx("group cursor-pointer border-b border-line/70 transition last:border-0", on ? "bg-accent/[.06]" : "hover:bg-accent/[.035]")}>
                       <td className="relative pl-4">
                         {on && <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: seriesOf(k) }} />}

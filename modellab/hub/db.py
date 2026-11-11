@@ -152,6 +152,31 @@ assistant = sa.Table(
     Column("model", String(64)), Column("effort", String(16)), Column("updated", Float),
 )
 
+system1 = sa.Table(
+    "system1", md,  # per user: the OpenRouter key for the decision model (encrypted, modellab/hub/system1/service.py)
+    Column("user_id", String(32), primary_key=True),
+    Column("api_key", Text), Column("key_hint", String(16)), Column("updated", Float),
+)
+
+agent_log = sa.Table(
+    "agent_log", md,  # every sentence System 1 decided on: the decision, how sure it was, and what became of it
+    Column("id", String(32), primary_key=True),
+    Column("user_id", String(32), nullable=False, index=True), Column("created", Float, index=True),
+    Column("sentence", Text), Column("page_kind", String(16)), Column("model", String(64)),
+    Column("fast", Boolean, nullable=False, default=False),  # acted on without Claude
+    Column("action", String(40)), Column("tier", String(12)), Column("intent", String(12)),
+    Column("values_json", Text), Column("confidence", Float), Column("reason", Text), Column("ms", Float),
+    Column("outcome", String(12)),  # approved | declined | done | failed (set by the web app)
+    Column("outcome_note", Text), Column("outcome_time", Float),
+)
+
+diagnoses = sa.Table(
+    "diagnoses", md,  # what the decision model made of a failed run's error, asked once (system1/failures.py)
+    Column("run_id", String(80), primary_key=True),
+    Column("signature", String(32)),  # a catalogue id, or "none"
+    Column("confidence", Float), Column("model", String(64)), Column("created", Float),
+)
+
 oauth_clients = sa.Table(
     "oauth_clients", md,  # Claude apps registered for the MCP connector (OAuth dynamic client registration)
     Column("id", String(64), primary_key=True),

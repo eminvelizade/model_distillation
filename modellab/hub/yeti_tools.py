@@ -99,6 +99,16 @@ def _read_guide(c, user, a) -> Output:
 
 # ---------------------------------------------------------------- runs
 
+def _known_failure(r: dict) -> str | None:
+    """The failure catalogue's name for this run's error, when a pattern matches (system1/failures.py)."""
+    from modellab.hub.system1 import failures
+
+    if r.get("status") == "interrupted":
+        return failures.BY_ID["interrupted"].title
+    sig = failures.match(r.get("error_tail")) if r.get("status") == "failed" else None
+    return f"{sig.title}: {sig.explain}" if sig else None
+
+
 def _run_row(r: dict) -> dict:
     best = r.get("best") or {}
     return xai._drop_none({
@@ -106,6 +116,7 @@ def _run_row(r: dict) -> dict:
         "dataset": r.get("dataset"), "created": r.get("created"), "stages": [f"{s['name']}:{s['type']}" for s in r.get("stages") or []],
         "best_map": xai.pct(best.get("map")), "best_label": best.get("label"), "tags": r.get("tags") or None,
         "error": (r.get("error_tail") or "").strip().splitlines()[-1][:200] if r.get("status") in ("failed", "interrupted") and r.get("error_tail") else None,
+        "known_failure": _known_failure(r),
         "link": f"/runs/{r['id']}",
     })
 

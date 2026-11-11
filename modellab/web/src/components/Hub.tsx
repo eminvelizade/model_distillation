@@ -28,13 +28,15 @@ export function MachinePicker({ className }: { className?: string }) {
     hint: m.online ? `${machineState(m)}${m.gpus[0] ? ` · ${m.gpus[0].name.replace("NVIDIA ", "").replace("GeForce ", "")}` : ""}` : `offline · seen ${relTime(m.last_seen)}`,
   }));
   return (
-    <Dropdown label="Machine" value={machineId ?? machines[0].id} options={options} onChange={setMachineId} className={className}
+    <div data-yeti-field="machine" className={className}>
+    <Dropdown label="Machine" value={machineId ?? machines[0].id} options={options} onChange={setMachineId}
       footer={(close) => (
         <button type="button" onClick={() => { close(); nav("/machines"); }}
           className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] text-muted transition hover:bg-raised hover:text-fg">
           <Settings2 className="h-3.5 w-3.5 text-subtle" />Manage machines
         </button>
       )} />
+    </div>
   );
 }
 

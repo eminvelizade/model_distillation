@@ -1,7 +1,7 @@
 # Agents: Yeti, hands-on
 
-> Status: plan. Today Yeti reads and explains, and never changes anything ([HUB.md](HUB.md#8-yeti-the-assistant)).
-> This plan lets it act on the platform. Where agents sit among ModelLab's three parts: [PLATFORM.md](PLATFORM.md).
+> Status: the first steps are built: one-sentence actions work in the web app ([Build order](#build-order) says
+> what is and isn't; [HUB.md](HUB.md#8-yeti-the-assistant) says how to use it). The rest is the plan. Where agents sit among ModelLab's three parts: [PLATFORM.md](PLATFORM.md).
 
 **In one sentence:** you say what you want in one sentence; a fast System One model picks the component and the
 action, ModelLab highlights it and fills it in, and nothing runs without your approval. Anything bigger than one step
@@ -22,14 +22,15 @@ goes to Claude, which plans it.
 | topic | decision |
 |---|---|
 | Job | Help you develop: guide, act, fix, collaborate, find. Agents never go around the harness: every action is one the web app can take too. |
-| Two systems | **System 1**: a System One model (TypeSafe AI's Jev, a pinned version) for fast, bounded decisions: which action, which component, which option. **System 2**: Claude, the Yeti engine that exists today, for open-ended work: plans, recipes, diagnosis, search, explanations. |
+| Two systems | **System 1**: a System One (decision) model, a pinned version, for fast, bounded decisions: which action, which component, which option. Which model is chosen by our own evaluation, not by name. **System 2**: Claude, the Yeti engine that exists today, for open-ended work: plans, recipes, diagnosis, search, explanations. |
+| One router | System 1 models are reached through **OpenRouter**: one key and one credit balance for every decision model and for the chat models they are compared with, so a model can be swapped by changing its id. |
 | One sentence | One sentence → one System 1 request, with all its questions answered in parallel → one decision: act, show, ask you, or hand over to Claude. |
 | Clicking | The agent doesn't click pixels or read the page. It picks from registered actions; the web app highlights the matching component, fills it in, and calls the same API the button calls. |
 | Values | Numbers, sizes, names and dates are found in the sentence by code. System 1 only picks among those candidates, and the hub validates them as it does for the web app. |
 | Approval | By tier: **look** never asks, **draft** leaves the last click to you, **act** takes one tap (or a standing permission you grant), **careful** always asks. Some things are never in reach. |
-| Trust | System 1 decides an action kind on its own only after it passes our evals for that kind. TypeSafe's own benchmarks don't count. |
-| Accounts | Your own keys, encrypted on the hub: a TypeSafe key for System 1, and the Claude key Yeti already uses for System 2. Without a TypeSafe key, Claude stands in for System 1 (slower). |
-| Privacy | System 1 sees your sentence and what's on screen (component labels, names, current values). Never images, annotations, weights, checkpoints or file contents. Listed on the privacy page. |
+| Trust | System 1 decides an action kind on its own only after it passes our evals for that kind. Vendors' own benchmarks don't count. |
+| Accounts | Your own keys, encrypted on the hub: an OpenRouter key for System 1, and the Claude key Yeti already uses for System 2. Yeti's chat stays on the Claude key for now; OpenRouter can become a second way to reach Claude later. |
+| Privacy | System 1 sees your sentence and what's on screen (component labels, names, current values). Never images, annotations, weights, checkpoints or file contents. OpenRouter and the model's provider both receive it; both are listed on the privacy page. |
 | Claude apps | The same actions and tiers are served through the MCP server. |
 | Record | Every action is logged with the sentence, the decision, its confidence and who approved it. What an agent starts is tagged "via Yeti" (or with the Claude app's name). |
 
@@ -64,8 +65,10 @@ and adversarial text, and that it leans toward the first option. ModelLab is ful
 answers of two large LLMs rather than a ground truth. We measure it on our own tasks before trusting it
 ([Evals](#evals-trust-is-earned-per-action)).
 
-**Access.** Early access, a hosted API in the US, proprietary weights. We pin a version (`jev-1.14.0` today): the
-`jev-latest` alias moves with every release, and its answers move with it.
+**Access.** Through OpenRouter's Decisions API (`POST /api/alpha/decisions`, in alpha: its shape may change), which
+serves Jev (`typesafe/jev-1.14`) next to about thirty other decision models from fourteen makers, all with the same
+request. We pin a dated version: aliases such as `~typesafe/jev-latest` move with every release, and the answers
+move with them. Each maker's probabilities mean something slightly different, so a threshold is tuned per model.
 
 ### System 2: Claude
 
@@ -98,9 +101,9 @@ also call System 1 as a tool, for fast ranking and checks.
 2. Code finds candidates in the sentence: numbers with their units, sizes, ratios, durations, and names that match
    your machines, datasets and runs.
 3. System 1 answers all the questions in one request.
-4. Code checks the answers: one registered action, every required value found, confidence over the threshold for
-   that action's tier, and both option orders agree. Then it acts within the action's tier, asks you one short
-   question, or hands everything to Claude with System 1's top guesses as hints.
+4. Code checks the answers: one registered action, both option orders agree, every required value found, no
+   setting named without a value, and the model's gate for that action's tier passed. Then it acts within the
+   action's tier, asks you one short question, or hands everything to Claude with System 1's top guesses as hints.
 
 **One sentence, one action** on the fast path. A request that needs several actions goes to Claude, which plans
 them and shows each one.
@@ -114,6 +117,7 @@ them and shows each one.
 | `target` | Choice | when an action appears on several rows: the rows on screen (which run, which dataset) |
 | `machine`, `dataset`, `run`, … | Choice | your machines, the datasets on the machine, the runs on screen, plus "not said" |
 | one per value the action needs | Choice | the candidates code found in the sentence, plus "not said" |
+| `several` | Noul | "The sentence asks for more than one thing to be done." |
 | `fits` | Noul | "One of the listed actions does what the user asked." |
 | `complete` | Noul | "The request says everything needed to do it." |
 
@@ -230,10 +234,19 @@ Yeti watches failed and interrupted runs, failed search trials, dataset check er
 and failed updates and exports.
 
 1. **Known failures, matched by code.** A catalog of failure signatures, each with its fix as a registered action:
-   out of GPU memory (half the batch, and twice the gradient accumulation where the trainer supports it, so the
-   effective batch stays the same); too many open files (the "received 0 items of ancdata" DataLoader crash) or too
-   little shared memory; a full disk; a dataset folder that moved; a driver older than 570; a weight file that
-   fails its hash check; a loss that turns NaN.
+
+   | failure | fix |
+   |---|---|
+   | out of GPU memory | Clone & edit with half the batch, and twice the gradient accumulation on RF-DETR, so the effective batch stays the same |
+   | too many open files ("received 0 items of ancdata"), too little shared memory, a driver that is too old or not working | run the machine's self-check, which shows the limit and the command that fixes it |
+   | a full disk | open the machine's page, which shows the free space |
+   | a dataset folder that is missing or incomplete | re-check the dataset on that machine |
+   | missing model weights | fetch them on that machine |
+   | a loss that turns NaN | Clone & edit with half the learning rate, when the recipe sets one |
+   | an interrupted run | re-queue it: finished stages are kept |
+
+   Where no fix can be worked out (a batch of 1, a default learning rate), the card says so and Claude takes it.
+   A weight file that fails its hash check is not in the catalog yet.
 2. **Near matches, by System 1**: the error tail against the catalog, as a Choice with "none of these", when no
    signature matches exactly.
 3. **New failures, by Claude**: it reads the logs with today's tools, explains what happened, and proposes a fix as
@@ -257,8 +270,12 @@ a trial with a different batch size isn't identical to its siblings.
    change anything you like.
 3. You approve. It runs as ordinary runs; Yeti watches, fixes what it can, and explains the outcome against the
    question.
-4. The idea, its runs and the answer stay together: the first step toward the research loops in
+4. The idea, its runs and the answer stay together as an entry in the lab's
+   [notebook](PLATFORM.md#the-notebook): the first step toward the research loops in
    [PLATFORM.md](PLATFORM.md#loops).
+
+Before it plans, Claude reads the notebook's earlier entries on the same dataset and models, so it can say "we
+tried that, and here is what happened" instead of running it again.
 
 ### Find: datasets, models and papers online
 
@@ -288,29 +305,76 @@ agent never sees. All of this needs the Foundations, the model library and data 
 
 ## Evals: trust is earned per action
 
-- **A golden set** of at least 300 cases, each a sentence and a recorded page state with the expected decision
-  (action, target, values, tier, whether to ask). Every page; paraphrases and typos; numbers and units; negation
-  ("not the 5090"); indirection ("the run before this one"); requests no action covers; hostile text inside run
-  names and logs.
-- **Measured:** action and value accuracy; calibration (is a 0.9 confidence right 90 % of the time?); how often it
-  hands over; **confident mistakes**, wrong answers above the threshold, which is the number that matters;
-  sensitivity to option order; latency (median and 95th percentile); cost.
-- **Side by side:** Jev (pinned), Claude Haiku 5.5 answering the same questions through structured outputs, and
-  Claude Opus 5.5 as the reference.
-- **The gate:** System 1 decides an action kind on the fast path only where, at its threshold, it's right at least
-  98 % of the time for look and draft actions, and 99.5 % for act actions (which still ask). Below that, Claude
-  decides.
-- **When:** the eval needs API keys, so it runs on demand: before an action kind is switched on, before a model
-  version changes, and after big changes to the registry. The router itself is tested in the normal test suite with
-  recorded answers.
+- **A golden set** (`modellab/hub/system1/evals/golden.py`, 405 cases today): each a sentence on a recorded screen
+  with the decision a correct System 1 makes (action, values, whether to act or hand over). The expected decision
+  is written with the case, never taken from a model. It covers every page; paraphrases and typos; numbers with
+  distractors ("batch size 4 on the 5090"); negation ("not the 5090"); indirection ("the run before this one");
+  relative values ("halve the batch"); requests for several actions; requests no action covers; hostile text
+  inside run names and logs.
+- **Measured:** action and decision accuracy; the **fast path**'s coverage and precision; **confident mistakes**,
+  fast paths that were wrong or should have been handed over, which is the number that matters; how many of those
+  would run something; calibration; sensitivity to option order; latency (median and 95th percentile, through
+  OpenRouter); cost.
+- **Side by side:** every decision model OpenRouter serves, Claude Haiku 5.5 answering the same questions through
+  structured outputs, and Claude Sonnet 5.5 as the reference. Each model is scored against the golden set and
+  against the reference's decisions.
+- **The gate:** System 1 decides an action kind on the fast path only where its fast path is right at least 98 % of
+  the time for look and draft actions, and 99.5 % for act actions (which still ask). Below that, Claude decides.
+  A gate is chosen on half of the cases and checked on the other half.
+- **When:** the eval needs an OpenRouter key, so it runs on demand: before an action kind is switched on, before a
+  model version changes, and after big changes to the registry. The router itself is tested in the normal test
+  suite with recorded answers (`tests/hub/test_system1.py`).
 
-## Without a TypeSafe key
+```
+OPENROUTER_API_KEY=... python -m modellab.hub.system1.evals.run --out runs/system1-eval --sequential 60
+python -m modellab.hub.system1.evals.score runs/system1-eval
+```
 
-System 1 is an interface, `decide(state, questions) → answers`, with two adapters: TypeSafe's API, and Claude
-(Haiku 5.5 by default) answering the same questions through structured outputs, with each answer limited to the
-listed options. Claude gives a pick without calibrated probabilities, so its thresholds come from the evals, and it
-faces the same gate. Without a TypeSafe key the fast path still works, only slower. The interface also leaves room
-for other System One models, including open-weight ones on your own GPU, once they pass the same evals.
+**Results so far** ([SYSTEM1_EVAL.md](SYSTEM1_EVAL.md)), after two runs: of the 25 decision models that could be
+scored, `perplexity/pplx-decider-v1.2` (95 % of decisions right, 0.3 s), `liquid/d1-ultra` (96 %, 0.2 s) and
+`nace-ai/drex-max-finance` (97 %, 0.5 s) come within reach of the gate for look and draft actions; on held-out
+cases their fast paths are 96 to 98 % right, just under it. Jev makes the right decision 92 % of the time, so it
+is not the choice. Claude Sonnet is right 98 % of the time and takes 1.5 s. No model clears the gate for act
+actions.
+
+### What the runs taught the router
+
+Decision models read a single request well and are poor at knowing when not to act. Code closes most of that gap,
+for every model alike (`modellab/hub/system1/route.py`):
+
+- **A value that already holds is no change.** Asked "which machine?", models pick the machine the run is already
+  on when the sentence names none. The router drops any value equal to the current one.
+- **One number, one setting.** When two settings claim the same number, the surer one keeps it.
+- **A setting named without a value is for Claude.** "Halve the batch size" names the batch size and gives no
+  number to pick, so it is handed over.
+- **The model's own doubt counts.** Its answers to "one listed action does what the user asked" and "the sentence
+  asks for more than one thing" are part of the gate: they catch most requests for several actions.
+- **The state stays lean.** The selected machine was in the state and no question needed it; models took it for
+  the machine the user meant. It is left out.
+
+## One interface, any model
+
+System 1 is an interface, `decide(state, questions) → answers` (`modellab/hub/system1/providers.py`), with two
+adapters, both through OpenRouter:
+
+- **Decision models** (Jev and the others), through the Decisions API: a probability for every option.
+- **Chat models** (Claude and the others), through chat completions with structured outputs: each answer limited
+  to the listed options. They give a pick without probabilities, so there is no threshold to hold them to: they
+  can only be trusted by measurement, and they face the same gate.
+
+Claude can also be asked directly with your Anthropic key (`providers.Claude`), without OpenRouter in between: the
+same questions through the Messages API's structured outputs.
+
+Changing the System 1 model is changing one id, after it has passed the evals. The interface also leaves room for
+open-weight decision models on your own GPU.
+
+**What OpenRouter adds, and what to watch:**
+- One key, one balance, and every model side by side in the same evaluation.
+- One more party in the path. Requests carry `provider.data_collection: "deny"` where the model allows it, so only
+  providers that don't keep or train on requests are used.
+- One more hop. Latency is measured through OpenRouter, from where the hub runs, never taken from a vendor's page.
+- A model can be served by several providers, with different features and speeds. The provider is pinned with the
+  model.
 
 ## Privacy
 
@@ -318,29 +382,41 @@ for other System One models, including open-weight ones on your own GPU, once th
   values); the names of your machines, datasets and runs as options; the candidates found in the sentence; and,
   when it diagnoses a failure, the error tail.
 - **Never:** images (although Jev can read them), annotations, weights, checkpoints, file contents or keys.
-- **TypeSafe** hosts in the US. Its policy says it doesn't train on customer requests, and zero data retention is an
-  enterprise option. We read its data processing terms before real use. The privacy page lists it next to what
-  Claude sees.
-- **Your TypeSafe key** is kept like the Claude key: encrypted with `MODELLAB_SECRET_KEY`, only the last 4
+- **OpenRouter and the model's provider** both receive the request. We read their data terms before real use, ask
+  for providers that don't retain requests, and the privacy page lists both next to what Claude sees.
+- **Your OpenRouter key** is kept like the Claude key: encrypted with `MODELLAB_SECRET_KEY`, only the last 4
   characters shown, never sent back to the browser.
 
 ## Build order
 
 Each step ships on its own and is useful without the next.
 
-1. **Action registry**, no AI yet: actions on the hub, targets in the web app, ⌘K gains the actions, the highlight
-   and fill-in, the action log and the "via Yeti" tag. Tests: each registered action calls the same API as its
-   button, with the same checks.
-2. **Guide**, with both systems: System 1 picks the component to highlight from one sentence (look tier, so a wrong
-   guess costs nothing), and Claude walks you through several steps. The System 1 adapters, the sentence parsers
-   and the first golden set land here.
-3. **Act**: draft and act actions with an approval card in the chat. System 1 takes one-sentence actions, switched
-   on per action kind as each passes the gate; Claude takes the rest. The MCP server serves the same actions to
-   Claude apps, with the same tiers.
-4. **Fix**: the failure catalog, fix cards on failed runs, datasets and machine checks, and self-healing search
-   trials with a standing permission.
+0. **The deciding half** (built): the action list on the hub (`modellab/hub/system1/actions.py`), the number
+   parser, the questions, the OpenRouter adapters, the router, the golden set and the evaluation.
+1. **Action registry** (built, except the "via Yeti" tag): the web app's buttons, form fields, rows and sidebar
+   links declare which action they are (`data-yeti…`, `modellab/web/src/agent.tsx`); a ring highlights them; forms
+   fill themselves in from a decision; ⌘K lists the current page's actions and presses the real button; every
+   decision is logged with its sentence, confidence and outcome (`agent_log`).
+2. **Guide** (System 1's half built): "where do I export this?" rings the button. Showing asks for less certainty
+   than doing, since a wrong ring costs nothing. Claude walking you through several steps is not built.
+3. **Act** (built for one sentence): the hub's `POST /api/assistant/decide` builds the screen from its own data,
+   asks the decision model and routes the answer. Look and draft actions happen at once; act and careful actions
+   show a card and wait for one tap; anything else goes to Claude. The OpenRouter key is in the assistant's
+   settings. Not built: the same actions for Claude apps through MCP, standing permissions, the agent GPU-hour
+   limit, and Claude standing in when there is no OpenRouter key (the sentence goes to Claude's chat instead).
+
+**The decision model in use:** `liquid/d1-ultra`, pinned as `liquid/d1-ultra-20261015`, with the gate the
+evaluation found for it: the least certain answer at 0.7 or more, and "asks for more than one thing" at 0.5 or
+less (`modellab/hub/system1/service.py`). Through the hub a decision takes about a quarter of a second.
+
+4. **Fix** (the run page built): a catalogue of nine known failures (`modellab/hub/system1/failures.py`), each
+   with its fix as a registered action; a failed run's page shows the diagnosis and the fix one press away
+   (`GET /api/runs/{id}/diagnosis`). An error no pattern matches goes to the decision model once, as "which of
+   these, or none"; its pick is shown as "looks like". A run started from a fix carries the tag `fix:<signature>`,
+   and the card says how often that fix worked. Not built: fix cards on dataset checks and machine checks, the
+   weight-file hash check, and self-healing search trials (they need standing permissions).
 5. **Collaborate**: idea → plan → drafts in the real forms → approval → watch → explanation, with each idea kept
-   together with its runs.
+   together with its runs as the first notebook entries.
 6. **Find**: Hugging Face and web search, candidate cards, and imports through the model library and data import,
    after their Foundations.
 
@@ -348,7 +424,8 @@ Each step ships on its own and is useful without the next.
 
 1. **Naming**: the program on each GPU PC is also called "the agent". Keep calling it the "machine agent" wherever
    both could be meant, or rename it in the web app (for example "runner")?
-2. **TypeSafe access**: Jev is in early access. Do we have a key yet? Until we do, the Claude adapter stands in.
+2. **OpenRouter for Claude too?** System 1 goes through OpenRouter. Yeti's chat stays on Anthropic's SDK with your
+   Claude key; moving it is a rewrite of something that works, for one fewer key. Proposed: not now.
 3. **Standing permissions**: which fixes, if any, may a search apply on its own at first? Proposed: none until the
    failure catalog has been tried on real failures, then out-of-memory retries first.
 4. **Sources beyond Hugging Face**: Roboflow Universe (it needs its own key), GitHub releases, arXiv?
@@ -363,3 +440,6 @@ Each step ships on its own and is useful without the next.
   [Jev's weak spots](https://docs.typesafe.ai/model-jaggedness/jev-1.13),
   [launch post](https://typesafe.ai/blog/introducing-system-one-models-and-jev).
 - Independent notes: [Simon Willison on Jev](https://simonwillison.net/2026/Sep/21/jev/).
+- OpenRouter: [Jev and the Decisions API](https://openrouter.ai/docs/guides/community/jev),
+  [structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs),
+  [provider selection and data policy](https://openrouter.ai/docs/guides/routing/provider-selection).
