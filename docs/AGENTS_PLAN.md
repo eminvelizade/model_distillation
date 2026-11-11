@@ -117,6 +117,7 @@ them and shows each one.
 | `target` | Choice | when an action appears on several rows: the rows on screen (which run, which dataset) |
 | `machine`, `dataset`, `run`, … | Choice | your machines, the datasets on the machine, the runs on screen, plus "not said" |
 | one per value the action needs | Choice | the candidates code found in the sentence, plus "not said" |
+| `several` | Noul | "The sentence asks for more than one thing to be done." |
 | `fits` | Noul | "One of the listed actions does what the user asked." |
 | `complete` | Noul | "The request says everything needed to do it." |
 
@@ -321,13 +322,13 @@ python -m modellab.hub.system1.evals.score runs/system1-eval
 ```
 
 **Results so far** ([SYSTEM1_EVAL.md](SYSTEM1_EVAL.md)), after two runs: of the 25 decision models that could be
-scored,  (95 % of decisions right, 0.3 s),  (96 %, 0.2 s) and
- (97 %, 0.5 s) come within reach of the gate for look and draft actions; on held-out
+scored, `perplexity/pplx-decider-v1.2` (95 % of decisions right, 0.3 s), `liquid/d1-ultra` (96 %, 0.2 s) and
+`nace-ai/drex-max-finance` (97 %, 0.5 s) come within reach of the gate for look and draft actions; on held-out
 cases their fast paths are 96 to 98 % right, just under it. Jev makes the right decision 92 % of the time, so it
 is not the choice. Claude Sonnet is right 98 % of the time and takes 1.5 s. No model clears the gate for act
 actions.
 
-### What the first run taught the router
+### What the runs taught the router
 
 Decision models read a single request well and are poor at knowing when not to act. Code closes most of that gap,
 for every model alike (`modellab/hub/system1/route.py`):
@@ -337,8 +338,10 @@ for every model alike (`modellab/hub/system1/route.py`):
 - **One number, one setting.** When two settings claim the same number, the surer one keeps it.
 - **A setting named without a value is for Claude.** "Halve the batch size" names the batch size and gives no
   number to pick, so it is handed over.
-- **The model's own doubt counts.** Its answer to "one listed action does what the user asked" is part of the gate:
-  it catches most requests for several actions.
+- **The model's own doubt counts.** Its answers to "one listed action does what the user asked" and "the sentence
+  asks for more than one thing" are part of the gate: they catch most requests for several actions.
+- **The state stays lean.** The selected machine was in the state and no question needed it; models took it for
+  the machine the user meant. It is left out.
 
 ## One interface, any model
 
@@ -349,6 +352,9 @@ adapters, both through OpenRouter:
 - **Chat models** (Claude and the others), through chat completions with structured outputs: each answer limited
   to the listed options. They give a pick without probabilities, so there is no threshold to hold them to: they
   can only be trusted by measurement, and they face the same gate.
+
+Claude can also be asked directly with your Anthropic key (`providers.Claude`), without OpenRouter in between: the
+same questions through the Messages API's structured outputs.
 
 Changing the System 1 model is changing one id, after it has passed the evals. The interface also leaves room for
 open-weight decision models on your own GPU.
