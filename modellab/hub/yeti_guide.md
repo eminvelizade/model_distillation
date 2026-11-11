@@ -183,7 +183,10 @@ The `features` stage writes figures that I can look at and explain:
   in Claude Code with the connector URL shown in Yeti's settings. Claude then reads your ModelLab data with your own
   Claude subscription, after you approve access once.
 - What Claude sees: only what the tools return when you ask: run and search names, settings, metrics, log tails and
-  the feature figures. Never datasets, images or checkpoints. Yeti can read but never start, change or delete anything.
+  the feature figures. Never datasets, images or checkpoints.
+- What the assistant can do: it changes nothing on its own. It can fill in the New experiment form and offer other
+  actions (re-queue, cancel, export, delete, open a page) as cards in the chat. Opening and filling in happen at once;
+  anything that runs, cancels or deletes waits for the user's tap.
 
 ## Troubleshooting
 

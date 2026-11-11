@@ -236,8 +236,8 @@ function ActionCard({ m }: { m: YetiMsg }) {
             <span>{state === "failed" ? `That didn't work: ${happened}` : happened}</span>
           </div>
         )}
-        <div className="mt-1.5 text-2xs text-subtle" title="decided by the decision model, without Claude">
-          {y.settings?.system1?.model ?? "decision model"}{d.ms ? ` · ${(d.ms / 1000).toFixed(1)} s` : ""}
+        <div className="mt-1.5 text-2xs text-subtle" title={d.by === "claude" ? "prepared by Claude" : "decided by the decision model, without Claude"}>
+          {d.by === "claude" ? "prepared by Claude" : <>{y.settings?.system1?.model ?? "decision model"}{d.ms ? ` · ${(d.ms / 1000).toFixed(1)} s` : ""}</>}
         </div>
       </div>
     </div>
@@ -389,7 +389,8 @@ function ConnectView() {
       </section>
       <p className="mt-4 px-1 text-2xs leading-relaxed text-subtle">
         Either way, Claude only sees what {name}'s tools return when you ask (names, settings, metrics, log tails, feature figures),
-        never datasets, images or checkpoints, and it can't start, change or delete anything.
+        never datasets, images or checkpoints. It can fill a form in or offer an action as a card; anything that runs, cancels
+        or deletes waits for your tap.
       </p>
     </div>
   );
@@ -493,8 +494,9 @@ function SettingsView() {
       </section>
       <p className="text-2xs leading-relaxed text-subtle">
         Claude only sees what {name}'s tools return when you ask: run and search names, settings, metrics, log tails and feature
-        figures. Never datasets, images or checkpoints. Claude can read but never start, change or delete anything; one-step
-        actions are carried out by this page, through the same buttons you would press.
+        figures. Never datasets, images or checkpoints. Claude changes nothing by itself: it can fill a form in or offer an
+        action as a card, this page carries it out through the same buttons you would press, and anything that runs,
+        cancels or deletes waits for your tap.
       </p>
     </div>
   );

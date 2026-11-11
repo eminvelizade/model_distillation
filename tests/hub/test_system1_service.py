@@ -253,3 +253,57 @@ def test_a_near_match_is_asked_once_and_must_be_sure(hub, monkeypatch):  # noqa:
         assert u.get(f"/api/runs/{other}/diagnosis").json() == {"known": False, "status": "failed"}
         n = len(fake.seen)
         assert u.get(f"/api/runs/{other}/diagnosis").json()["known"] is False and len(fake.seen) == n
+
+
+# ---------------------------------------------------------------- Claude's action tools
+
+def test_claude_drafts_and_proposes_through_the_registry(hub, monkeypatch):  # noqa: F811
+    from test_yeti import KEY as CLAUDE_KEY, FakeClaude, events, sse_message
+
+    from modellab.hub import yeti, yeti_actions, yeti_tools
+
+    u, agent, mid, _ = setup(hub, monkeypatch)
+    rid = finished_run(hub, u, agent, with_figure=False)
+    use = lambda name, **inp: {"type": "tool_use", "id": "toolu_" + name[:5] + str(len(inp)), "name": name, "input": inp}  # noqa: E731
+    fake = FakeClaude([
+        sse_message([use("draft_experiment", machine_id=mid, dataset="tiny", model="rfdetr/nano", epochs=1, name="nano-1ep-test")], "tool_use"),
+        sse_message([use("propose_action", action="run.queue"), use("propose_action", action="run.delete", run_id=rid),
+                     use("propose_action", action="run.export", run_id="someone-elses-run"),
+                     use("draft_experiment", machine_id=mid, dataset="not-there")], "tool_use"),
+        sse_message([{"type": "text", "text": "I filled in a quick test. Tap Queue it to start."}], "end_turn"),
+    ])
+    monkeypatch.setattr(yeti, "make_client", fake.client)
+    u.put("/api/assistant", json={"api_key": CLAUDE_KEY})
+    ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "start a test train on tower, fast one"}]}))
+    acts = [e["decision"] for e in ev if e["type"] == "action"]
+    assert [(d["action"], d["needs"], d["tier"]) for d in acts] == [
+        ("experiment.fill", "none", "draft"), ("run.queue", "tap", "act"), ("run.delete", "confirm", "careful")]
+    draft = acts[0]
+    assert draft["values"] == {"model": "rfdetr/nano", "dataset": "tiny", "machine": mid, "epochs": "1"} and draft["by"] == "claude"
+    assert {c["label"]: c["value"] for c in draft["changes"]} == {"Name": "nano-1ep-test", "Model": "RF-DETR Nano", "Dataset": "tiny",
+                                                                  "Machine": "tower", "Epochs": "1"}
+    assert draft["extra"] == {"name": "nano-1ep-test"}
+    assert acts[2]["target"] == "t" and acts[2]["values"] == {"run": rid}
+    done = [e for e in ev if e["type"] == "tool_done"]
+    assert [e["ok"] for e in done] == [True, True, True, False, False]  # not the user's run; no such dataset there
+    # what Claude was told: a draft is not a queued run, a card is not a done deed, and why the bad ones failed
+    chats = [r["body"] for r in fake.requests if r["body"] and "messages" in r["body"]]
+    told = [b["content"][0]["text"] for m in chats[-1]["messages"] if m["role"] == "user" and isinstance(m["content"], list)
+            for b in m["content"] if b.get("type") == "tool_result"]
+    assert "nothing is queued yet" in told[0] and "has NOT happened" in told[1] and "can't be undone" in told[2]
+    assert "one of this user's own" in told[3] and "has no dataset 'not-there'; it has: tiny" in told[4]
+    # nothing was changed on the hub, and every proposal is in the action log
+    assert u.get(f"/api/runs/{rid}").status_code == 200 and len(u.get("/api/runs").json()) == 1
+    log = [a for a in u.get("/api/assistant/actions").json()["actions"] if a["model"] == "claude"]
+    assert sorted(a["action"] for a in log) == ["experiment.fill", "run.delete", "run.queue"]
+    # Claude gets the two tools; Claude apps (MCP) do not
+    names = [t["name"] for t in chats[0]["tools"]]
+    assert {"draft_experiment", "propose_action"} <= set(names) and not yeti_actions.NAMES & {t["name"] for t in yeti_tools.mcp_tools()}
+    assert "draft_experiment fills in" in chats[0]["system"][0]["text"]
+    # bad arguments come back as errors Claude can read, never as a decision
+    for args in ({"machine_id": mid, "epochs": 0}, {"machine_id": mid, "image_size": 500}, {"machine_id": mid, "nope": 1}, {},
+                 {"machine_id": mid, "name": "Bad Name!"}):
+        out, d = yeti_actions.call(hub.state.engine, {"id": "nobody"}, "draft_experiment", args)
+        assert out.error and d is None
+    out, d = yeti_actions.call(hub.state.engine, {"id": "nobody"}, "propose_action", {"action": "experiment.fill"})
+    assert out.error and d is None
