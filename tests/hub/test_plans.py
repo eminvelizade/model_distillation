@@ -342,20 +342,36 @@ def test_plans_are_checked_as_the_user_and_refuse_what_they_could_not_click(hub)
 
 def test_agents_have_a_name_a_look_and_one_thread_each(hub):  # noqa: F811
     u = login(hub)
-    team = u.get("/api/agents", params={"mascot": "rime"}).json()
-    assert len(team) == 1 and team[0]["name"] == "Rime" and team[0]["look"] == {"base": "rime"} and team[0]["unread"] == 0
+    team = u.get("/api/agents", params={"mascot": "rime"}).json()   # (a mascot that was removed: the first agent is Bloom)
+    assert len(team) == 1 and team[0]["name"] == "Bloom" and team[0]["look"] == {"base": "bloom"} and team[0]["unread"] == 0
     look = {"base": "fuzzy", "shape": "frog", "colour": "lime", "eyes": "googly", "glasses": "none", "extra": "headphones"}
     a = u.post("/api/agents", json={"name": "  Pond ", "look": look, "role": "watches the overnight runs"}).json()
-    assert a["name"] == "Pond" and a["look"] == {**look, "accent": "ice"} and a["role"] == "watches the overnight runs"
+    assert a["name"] == "Pond" and a["look"] == {**look, "accent": "ice", "material": "plush"} and a["role"] == "watches the overnight runs"
     assert u.post("/api/agents", json={"name": "x", "look": {"base": "fuzzy", "shape": "cloud", "colour": "lime"}}).status_code == 422
+    assert u.post("/api/agents", json={"name": "x", "look": {**look, "material": "gold leaf"}}).status_code == 422
     assert u.post("/api/agents", json={"name": "x", "look": {"base": "clippy"}}).status_code == 422
     assert u.post("/api/agents", json={"name": "", "look": {"base": "bloom"}}).status_code == 422
-    p = u.patch(f"/api/agents/{a['id']}", json={"name": "Lily", "look": {**look, "colour": "teal"}}).json()
-    assert p["name"] == "Lily" and p["look"]["colour"] == "teal"
-    assert [x["name"] for x in u.get("/api/agents").json()] == ["Rime", "Lily"]
-    from modellab.hub import agents
+    p = u.patch(f"/api/agents/{a['id']}", json={"name": "Lily", "look": {**look, "colour": "teal", "material": "ice"}}).json()
+    assert p["name"] == "Lily" and p["look"]["colour"] == "teal" and p["look"]["material"] == "ice"
+    assert [x["name"] for x in u.get("/api/agents").json()] == ["Bloom", "Lily"]
+    from modellab.hub import agents, db
 
-    assert "teal plush frog" in agents.look_words(p["look"]) and "wearing headphones" in agents.look_words(p["look"])
+    assert agents.look_words(p["look"]) == "a small frog carved from clear ice with a teal tint and big googly eyes, wearing headphones"
+    assert "lime-green plush frog with a short, soft pile" in agents.look_words(a["look"])
+    for m in agents.MATERIALS:   # every material reads as a sentence
+        words = agents.look_words({**look, "material": m})
+        assert words.startswith("a small ") and "{" not in words and "frog" in words
+    # looks saved before today still open: one of the five mascots that were removed is Bloom, a make-your-own look
+    # from before materials is plush, and one that can't be read at all is Bloom; a retired mascot sent now is Bloom too
+    with hub.state.engine.begin() as c:
+        c.execute(db.agents.update().where(db.agents.c.id == team[0]["id"]).values(look='{"base": "rime"}'))
+        c.execute(db.agents.update().where(db.agents.c.id == a["id"]).values(look=db.dumps(look)))
+    got = {x["name"]: x["look"] for x in u.get("/api/agents").json()}
+    assert got == {"Bloom": {"base": "bloom"}, "Lily": {**look, "accent": "ice", "material": "plush"}}
+    with hub.state.engine.begin() as c:
+        c.execute(db.agents.update().where(db.agents.c.id == a["id"]).values(look='{"base": "fuzzy", "shape": "cloud"}'))
+    assert u.get("/api/agents").json()[1]["look"] == {"base": "bloom"}
+    assert u.patch(f"/api/agents/{a['id']}", json={"look": {"base": "mochi"}}).json()["look"] == {"base": "bloom"}
     assert u.delete(f"/api/agents/{a['id']}").json() == {"result": "deleted"}
     assert u.delete(f"/api/agents/{team[0]['id']}").status_code == 409  # the last one stays
     assert client(hub).get("/api/agents").status_code == 401

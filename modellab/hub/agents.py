@@ -46,21 +46,34 @@ EYES = {"bean": "oval black eyes", "round": "round black eyes", "bead": "tiny be
 GLASSES = {"none": None, "round": "round glasses", "shades": "sunglasses"}
 EXTRAS = {"none": None, "headphones": "headphones", "beanie": "a knitted beanie with a pom", "sprout": "a little sprout on top",
           "antenna": "a small antenna", "scarf": "a scarf", "cap": "a graduation cap", "tuft": "a tuft of long fur on top"}
+# what a make-your-own agent is made of, in words ({colour} and {shape} are filled in)
+MATERIALS = {"plush": "a small {colour} plush {shape} with a short, soft pile",
+             "cotton": "a small {colour} {shape} sewn from smooth cotton",
+             "boucle": "a small {colour} {shape} in curly, nubby boucle cloth",
+             "elastane": "a small {colour} {shape} in sleek stretch fabric with a satin sheen",
+             "sugar": "a small {colour} jelly {shape} coated in sparkling sugar",
+             "ice": "a small {shape} carved from clear ice with a {colour} tint",
+             "glass": "a small {shape} of clear {colour} glass",
+             "chrome": "a small {shape} of mirror-polished {colour} chrome",
+             "ceramic": "a small {shape} of glossy {colour} glazed ceramic",
+             "clay": "a small {shape} modelled in {colour} clay, fingerprints and all"}
 DEFAULT_LOOK = {"base": "bloom"}
+RETIRED = ("mochi", "bop", "twinkle", "pip", "rime")   # built-in mascots that were removed: a look that names one is Bloom
 
 
 def clean_look(look) -> dict:
-    """A look the web app can draw: a built-in mascot, or a shape, colour and eyes (422 otherwise)."""
+    """A look the web app can draw: the built-in mascot, or a shape, material, colour and eyes (422 otherwise)."""
     if not isinstance(look, dict):
         raise HTTPException(422, "look must be an object")
     base = look.get("base")
-    if base in yeti.MASCOTS:
-        return {"base": base}
+    if base in yeti.MASCOTS or base in RETIRED:   # (a tab left open from before may still send a retired one)
+        return {"base": base if base in yeti.MASCOTS else "bloom"}
     if base != "fuzzy":
         raise HTTPException(422, f"look.base must be fuzzy or one of {', '.join(yeti.MASCOTS)}")
     out = {"base": "fuzzy"}
-    for key, options, default in (("shape", SHAPES, None), ("colour", COLOURS, None), ("accent", COLOURS, "ice"),
-                                  ("eyes", EYES, "bean"), ("glasses", GLASSES, "none"), ("extra", EXTRAS, "none")):
+    for key, options, default in (("shape", SHAPES, None), ("material", MATERIALS, "plush"), ("colour", COLOURS, None),
+                                  ("accent", COLOURS, "ice"), ("eyes", EYES, "bean"), ("glasses", GLASSES, "none"),
+                                  ("extra", EXTRAS, "none")):
         v = look.get(key, default)
         if v not in options:
             raise HTTPException(422, f"look.{key} must be one of {', '.join(options)}")
@@ -68,13 +81,24 @@ def clean_look(look) -> dict:
     return out
 
 
+def stored_look(raw) -> dict:
+    """An agent's look as it was saved, made drawable today: a retired mascot (or anything unreadable) is Bloom, and a
+    make-your-own look from before materials existed is plush."""
+    look = db.loads(raw, None)
+    try:
+        return clean_look(look)
+    except HTTPException:
+        return dict(DEFAULT_LOOK)
+
+
 def look_words(look: dict) -> str:
     """What an agent looks like, for its own prompt."""
     if look.get("base") in yeti.MASCOTS:
         return yeti.MASCOTS[look["base"]][1]
     wears = [w for w in (GLASSES.get(look.get("glasses", "none")), EXTRAS.get(look.get("extra", "none"))) if w]
-    return (f"a small {COLOURS.get(look.get('colour'), 'green')} plush {SHAPES.get(look.get('shape'), 'ball')} with a short, soft pile "
-            f"and {EYES.get(look.get('eyes'), 'oval black eyes')}" + (f", wearing {' and '.join(wears)}" if wears else ""))
+    body = MATERIALS.get(look.get("material", "plush"), MATERIALS["plush"]).format(
+        colour=COLOURS.get(look.get("colour"), "green"), shape=SHAPES.get(look.get("shape"), "ball"))
+    return f"{body} and {EYES.get(look.get('eyes'), 'oval black eyes')}" + (f", wearing {' and '.join(wears)}" if wears else "")
 
 
 # ---------------------------------------------------------------- agents
@@ -84,12 +108,12 @@ def _agent(c: sa.Connection, user: dict, aid: str) -> dict:
     if r is None:
         raise HTTPException(404, "no such agent")
     d = dict(r)
-    d["look"] = db.loads(d["look"], DEFAULT_LOOK) or DEFAULT_LOOK
+    d["look"] = stored_look(d["look"])
     return d
 
 
 def ensure(c: sa.Connection, user: dict, mascot: str | None = None) -> None:
-    """Everyone starts with one agent: Bloom, or the built-in mascot they had picked before."""
+    """Everyone starts with one agent: Bloom."""
     if c.execute(sa.select(db.agents.c.id).where(db.agents.c.owner_id == user["id"]).limit(1)).first():
         return
     base = mascot if mascot in yeti.MASCOTS else "bloom"
@@ -114,7 +138,7 @@ def _summary(c: sa.Connection, a: dict) -> dict:
 
 def list_agents(c: sa.Connection, user: dict) -> list[dict]:
     rows = c.execute(sa.select(db.agents).where(db.agents.c.owner_id == user["id"]).order_by(db.agents.c.position, db.agents.c.created)).mappings()
-    return [_summary(c, {**dict(r), "look": db.loads(r["look"], DEFAULT_LOOK) or DEFAULT_LOOK}) for r in rows]
+    return [_summary(c, {**dict(r), "look": stored_look(r["look"])}) for r in rows]
 
 
 def _name(name) -> str:

@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { Dices, Loader2, Trash2 } from "lucide-react";
 import { Agent, api } from "../../api";
 import { Button, Callout, cx, Field, inputCls, Modal, Segmented } from "../../ui";
-import { AgentLook, COLOURS, DEFAULT_LOOK, isBuiltIn, Look, LOOK_OPTIONS, MASCOT_LIST, MascotKind } from "./mascots";
+import { AgentLook, COLOURS, DEFAULT_LOOK, isBuiltIn, Look, LOOK_OPTIONS, MASCOT_LIST } from "./mascots";
 import Yeti from "./Yeti";
 
-// An agent's name, role and look. The look is a built-in mascot or one put together here: a shape in a colour, with
-// eyes, and glasses or an extra if you like. The preview is the real thing, drawn live.
+// An agent's name, role and look. The look is Bloom (the built-in mascot) or one put together here: a shape in a
+// material and a colour, with eyes, and glasses or an extra if you like. The preview is the real thing, drawn live.
 
 const pick = <T,>(xs: readonly T[]) => xs[Math.floor(Math.random() * xs.length)];
 const USES_ACCENT = new Set(["headphones", "beanie", "antenna", "scarf", "cap", "tuft"]);
@@ -15,7 +15,8 @@ const NAMES = ["Pond", "Tofu", "Nimbus", "Pebble", "Miso", "Juno", "Fig", "Atlas
 function randomLook(): Look {
   const colour = pick(LOOK_OPTIONS.colour.filter(([k]) => k !== "ink"))[0];
   return {
-    shape: pick(LOOK_OPTIONS.shape)[0], colour, accent: pick(LOOK_OPTIONS.colour.filter(([k]) => k !== colour && k !== "ink"))[0],
+    shape: pick(LOOK_OPTIONS.shape)[0], material: pick(LOOK_OPTIONS.material)[0], colour,
+    accent: pick(LOOK_OPTIONS.colour.filter(([k]) => k !== colour && k !== "ink"))[0],
     eyes: pick(LOOK_OPTIONS.eyes)[0], glasses: Math.random() < 0.3 ? pick(LOOK_OPTIONS.glasses.slice(1))[0] : "none",
     extra: Math.random() < 0.6 ? pick(LOOK_OPTIONS.extra.slice(1))[0] : "none",
   };
@@ -57,7 +58,7 @@ export default function AgentEditor({ agent, canDelete, onClose }: { agent: Agen
   const [name, setName] = useState(agent?.name ?? pick(NAMES));
   const [role, setRole] = useState(agent?.role ?? "");
   const [look, setLook] = useState<AgentLook>(agent?.look ?? { base: "fuzzy", ...randomLook() });
-  const [tab, setTab] = useState<"own" | "classic">(agent && isBuiltIn(agent.look) ? "classic" : "own");
+  const [tab, setTab] = useState<"own" | "bloom">(agent && isBuiltIn(agent.look) ? "bloom" : "own");
   const [own, setOwn] = useState<Look>(agent && !isBuiltIn(agent.look) ? agent.look : !isBuiltIn(look) ? look : DEFAULT_LOOK);
   const [pose, setPose] = useState<"idle" | "happy">("idle");
   const [busy, setBusy] = useState(false);
@@ -94,8 +95,8 @@ export default function AgentEditor({ agent, canDelete, onClose }: { agent: Agen
         <div className="flex min-h-0 flex-col">
           <div className="flex items-center gap-2 border-b border-line px-5 py-3">
             <div className="text-[15px] font-semibold text-fg">{agent ? `Change ${agent.name}` : "New agent"}</div>
-            <Segmented small className="ml-auto" value={tab} onChange={(v) => { setTab(v); if (v === "classic" && !isBuiltIn(look)) setLook({ base: "bloom" }); }}
-              options={[{ value: "own", label: "Make your own" }, { value: "classic", label: "Classic" }]} />
+            <Segmented small className="ml-auto" value={tab} onChange={(v) => { setTab(v); if (v === "bloom") { setLook({ base: "bloom" }); hop(); } }}
+              options={[{ value: "own", label: "Make your own" }, { value: "bloom", label: MASCOT_LIST[0].name }]} />
           </div>
           <div className="scroll-thin max-h-[58vh] flex-1 space-y-4 overflow-y-auto px-5 py-4">
             {tab === "own" ? <>
@@ -108,29 +109,23 @@ export default function AgentEditor({ agent, canDelete, onClose }: { agent: Agen
                     <button key={k} type="button" role="radio" aria-checked={own.shape === k} onClick={() => { change({ shape: k }); hop(); }}
                       className={cx("flex flex-col items-center gap-0.5 rounded-xl px-1 pb-1.5 pt-1 text-2xs font-medium transition",
                         own.shape === k ? "bg-accent-soft text-fg ring-1 ring-inset ring-accent/25" : "text-muted hover:bg-raised/70 hover:text-fg")}>
-                      <Yeti look={{ base: "fuzzy", shape: k, colour: own.colour, eyes: own.eyes, glasses: "none", extra: "none" }} size={46} thumb follow={false} />
+                      <Yeti look={{ base: "fuzzy", shape: k, material: own.material, colour: own.colour, eyes: own.eyes, glasses: "none", extra: "none" }} size={46} thumb follow={false} />
                       {label}
                     </button>
                   ))}
                 </div>
               </div>
+              <Chips label="Material" options={LOOK_OPTIONS.material} value={own.material ?? "plush"} onChange={(material) => { change({ material }); hop(); }} />
               <Swatches label="Colour" value={own.colour} onChange={(colour) => change({ colour })} />
               <Chips label="Eyes" options={LOOK_OPTIONS.eyes} value={own.eyes} onChange={(eyes) => change({ eyes })} />
               {own.shape !== "frog" && <Chips label="Glasses" options={LOOK_OPTIONS.glasses} value={own.glasses} onChange={(glasses) => change({ glasses })} />}
               <Chips label="Extra" options={LOOK_OPTIONS.extra} value={own.extra} onChange={(extra) => change({ extra })} />
               {USES_ACCENT.has(own.extra) && <Swatches label="Its colour" value={own.accent ?? "ice"} onChange={(accent) => change({ accent })} />}
             </> : (
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Classic mascots">
-                {MASCOT_LIST.map((m) => (
-                  <button key={m.kind} type="button" role="radio" aria-checked={isBuiltIn(look) && look.base === m.kind} title={m.tagline}
-                    onClick={() => { setLook({ base: m.kind as MascotKind }); hop(); }}
-                    className={cx("flex flex-col items-center gap-1 rounded-xl px-1 pb-2 pt-1.5 text-xs font-medium transition",
-                      isBuiltIn(look) && look.base === m.kind ? "bg-accent-soft text-fg ring-1 ring-inset ring-accent/25" : "text-muted hover:bg-raised/70 hover:text-fg")}>
-                    <Yeti kind={m.kind} size={64} fps={8} follow={false} />
-                    {m.name}
-                  </button>
-                ))}
-              </div>
+              <p className="text-[13px] leading-relaxed text-muted">
+                <span className="font-medium text-fg">{MASCOT_LIST[0].name}</span> is ModelLab's own mascot: {MASCOT_LIST[0].tagline}, modelled on a real
+                plush toy. His look is fixed; pick <span className="font-medium text-fg">Make your own</span> to choose a shape, a material and a colour.
+              </p>
             )}
             {err && <Callout tone="error">{err}</Callout>}
           </div>

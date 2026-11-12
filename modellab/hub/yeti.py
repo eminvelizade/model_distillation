@@ -65,20 +65,12 @@ PAGE_KINDS = {"run", "search", "machine", "searches", "machines", "leaderboard",
 ITEM_RE = re.compile(r"^[A-Za-z0-9_.-]{1,100}:[A-Za-z0-9_.-]{1,64}$")
 PATH_RE = re.compile(r"[^A-Za-z0-9/_.:,=&?%-]")
 
-# The assistant is one of ModelLab's mascots; the user picks which one in the chat's settings (Bloom by default).
+# What an agent is called, looks like and sounds like when its look is the built-in mascot. (There were five more
+# built-in mascots once; agents.py turns a look that names one of them into Bloom. A make-your-own agent is described
+# by agents.look_words and speaks in Bloom's tone.)
 MASCOTS = {   # name, what you look like, and how you talk
     "bloom": ("Bloom", "a small, round, fluffy white plush cub with sky-blue ears and a tuft of blue fur on his head",
               "Be warm and light. A touch of gentle, patient encouragement is welcome"),
-    "mochi": ("Dr. Mochi", "a small orange plush scientist in a white lab coat and round glasses",
-              "Be warm and light. A touch of lab-coat enthusiasm for a good experiment is welcome"),
-    "bop": ("Bop", "a small cobalt-blue plush bean wearing headphones",
-            "Be warm and light. A touch of easygoing, upbeat vibe is welcome"),
-    "twinkle": ("Twinkle", "a small yellow plush star", "Be warm and light. A touch of cheerful encouragement is welcome"),
-    "pip": ("Pip", "a small lime-green plush chick", "Be warm and light. A touch of quick curiosity is welcome"),
-    "rime": ("Rime", "a tall, slender snow golem of packed snow, with a smooth, blank face, two tiny dot eyes set far apart "
-             "and barely a mouth",
-             "Be calm and brief, with a quiet, slightly mysterious air: plain words, no jokes, no exclamation marks, no "
-             "gushing. You never show much emotion, but you are kind and fully helpful"),
 }
 
 PERSONA = """You are {name}, the assistant built into ModelLab: a personal R&D lab where the user trains, distills and \

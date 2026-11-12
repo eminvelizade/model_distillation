@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Agent, AgentEvent, api, Plan, streamAgent, ThreadMsg, YetiPage, YetiSettings } from "../../api";
-import { legacyMascot, setCurrentAgent } from "./mascots";
+import { setCurrentAgent } from "./mascots";
 import { useSession } from "../../session";
 import { changed, COVERED, Decision, highlight, spotsFor, useCarryOut } from "../../agent";
 
@@ -124,7 +124,7 @@ export function YetiProvider({ children }: { children: ReactNode }) {
 
   const reloadAgents = useCallback(async () => {
     if (!available) return [];
-    try { const list = await api.agents(legacyMascot()); setAgents(list); return list; } catch { return []; }
+    try { const list = await api.agents(); setAgents(list); return list; } catch { return []; }
   }, [available]);
   useEffect(() => { setAgents([]); reloadAgents(); }, [reloadAgents]);
   useEffect(() => { if (!available) return; const t = window.setInterval(reloadAgents, visible ? 8000 : 20000); return () => window.clearInterval(t); }, [available, visible, reloadAgents]);

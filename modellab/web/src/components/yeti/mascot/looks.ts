@@ -15,6 +15,9 @@ type V3 = [number, number, number];
 export type Part = { ty: number; a: V3; b?: V3; r: V3; k?: number; fur?: number; col?: number; rough?: number };
 export const SOLID = { ink: 0, white: 1, accent: 2, dark: 3, leaf: 4, soft: 5 } as const;
 export const PILE = [0.05, 0.034, 0.09, 0.28];   // how far each fur stands off its fabric (as in the shader)
+/** A body in a surface material has no pile. It is grown by this much instead, so its surface lies where the pile's
+ *  tips would be: every look keeps its size, and its eyes and what it wears sit as they do on plush. */
+export const SKIN = 0.045;
 export const MAX_FUR = 8, MAX_SOLID = 22;
 export const PARKED = -99;   // the height a solid part that isn't showing is put at (an eye's unused places)
 
@@ -90,7 +93,8 @@ export function glslFor(fur: Part[], solid: Part[]): { cloth: string; solid: str
     return q.ty === 0 ? `sdEllipsoidG(p - ${a}.xyz, ${r}.xyz, ${g})` : q.ty === 1 ? `sdRoundConeG(p, ${a}.xyz, ${b}.xyz, ${r}.x, ${r}.y, ${g})`
       : q.ty === 2 ? `sdRBoxG(p - ${a}.xyz, ${b}.xyz, ${r}.x, ${g})` : `layerG(d0, g0, p.y, ${r}.x, ${a}.y, ${b}.y, ${g})`;
   };
-  const parts = fur.slice(0, MAX_FUR).map((q, i) => ({ q, i, L: f(PILE[q.fur ?? 0]), F: `vec4(uFurC[${q.fur ?? 0}], ${f(q.fur ?? 0)})`, k: q.k ?? 0 }));
+  const parts = fur.slice(0, MAX_FUR).map((q, i) => ({ q, i, L: (q.fur ?? 0) === 0 ? "BODY_PILE" : f(PILE[q.fur ?? 0]),
+    F: `vec4(uFurC[${q.fur ?? 0}], ${f(q.fur ?? 0)})`, k: q.k ?? 0 }));
   const join = (L: string, F: string, k: number, n: string) => k > 0
     ? `  h = clamp(0.5 + 0.5 * (di - d) / ${f(k)}, 0.0, 1.0); d = mix(di, d, h) - ${f(k)} * h * (1.0 - h); len = mix(${L}, len, h); fur = mix(${F}, fur, h);${n && " n = mix(gi, n, h);"}`
     : `  if (di < d) { d = di; len = ${L}; fur = ${F};${n && " n = gi;"} }`;
@@ -100,9 +104,12 @@ export function glslFor(fur: Part[], solid: Part[]): { cloth: string; solid: str
   const sloped = parts.map(({ q, i, L, F, k }) => i === 0
     ? `  vec3 g0, gi;\n  float d0 = ${slope(q, 0, "g0")};\n  float d = d0, di, h;\n  n = g0; len = ${L}; fur = ${F};`
     : `  di = ${slope(q, i, "gi")};\n${join(L, F, k, "n")}`);
-  const cloth = `float pileOf(float kind) { return kind < 0.5 ? ${f(PILE[0])} : kind < 1.5 ? ${f(PILE[1])} : kind < 2.5 ? ${f(PILE[2])} : ${f(PILE[3])}; }
+  const cloth = `float pileOf(float kind) { return kind < 0.5 ? BODY_PILE : kind < 1.5 ? ${f(PILE[1])} : kind < 2.5 ? ${f(PILE[2])} : ${f(PILE[3])}; }
 float cloth(vec3 p, float pile, out float len, out vec4 fur) {
 ${flat.join("\n")}
+#ifdef MAT_DISPLACE
+  if (gDetail > 0.5 && fur.a < 0.5 && d < MAT_DISPLACE + 0.02) d -= matDisplace(p) * (1.0 - 2.0 * fur.a);
+#endif
   return d;
 }
 float clothN(vec3 p, out float len, out vec4 fur, out vec3 n) {
@@ -155,6 +162,8 @@ export type Built = {
    *  the same order share it, and so share a program. null: a part it can't write out, so the look stays on the
    *  program that reads any parts. */
   glsl: { cloth: string; solid: string } | null;
+  /** whether the body is a bare surface (a material other than plush), and whether it wears anything with a pile */
+  bare: boolean; pile: boolean;
   /** the solid parts for this moment: eyes (open, blinking, smiling or asleep, glancing gx, gy), then the fixed ones */
   solids: (mode: number, open: number, gx: number, gy: number) => Part[];
   box: number[]; top: number; cam: [number, number, number, number]; shadow: [number, number]; eyeY: number;
@@ -309,8 +318,17 @@ export function build(look: Look): Built {
   H = Math.max(H, y1 - 0.03);
   const w = Math.max(x1, -x0), dz = Math.max(z1, -z0), camY = 2.4, camZ = 9.8, mid = H * 0.5;
   const dist = Math.hypot(camY - mid, camZ), fov = (2 * Math.atan((Math.max(H * 0.5 + 0.08, w * 0.98) * 1.14) / dist) * 180) / Math.PI;
+  // A body in a surface material: no pile, grown by SKIN instead; and the knit layers over it (a hat, a scarf) start
+  // from its new surface, so they are no thicker than on plush.
+  const bare = (look.material ?? "plush") !== "plush";
+  if (bare) fur.forEach((q, i) => {
+    if ((q.fur ?? 0) === 0) fur[i] = q.ty === 0 ? { ...q, r: [q.r[0] + SKIN, q.r[1] + SKIN, q.r[2] + SKIN] }
+      : q.ty === 1 ? { ...q, r: [q.r[0] + SKIN, q.r[1] + SKIN, q.r[2]] }
+      : { ...q, b: [q.b![0] + SKIN, q.b![1] + SKIN, q.b![2] + SKIN], r: [q.r[0] + SKIN, q.r[1], q.r[2]] };
+    else if (q.ty === 6) fur[i] = { ...q, r: [Math.max(q.r[0] - SKIN, 0.006), q.r[1], q.r[2]] };
+  });
   return {
-    glsl: glslFor(fur, solids(0, 1, 0, 0)),
+    glsl: glslFor(fur, solids(0, 1, 0, 0)), bare, pile: fur.some((q) => (q.fur ?? 0) !== 0),
     fur, solids, furC: [main, look.extra === "sprout" ? COLOURS.leaf : accent, look.extra === "beanie" ? COLOURS.snow : accent, accent],   // body, knit (or leaves), pom, tuft
     solidC: ["#060608", "#f6f7f9", accent, "#23262d", "#3f9b2f", "#c9ced6"],
     box: [-w, -0.1, -dz, w, H + 0.06, dz], top, cam: [camY, camZ, mid * 0.97, fov], shadow: [w * 2.2, dz * 1.6], eyeY: ey,
