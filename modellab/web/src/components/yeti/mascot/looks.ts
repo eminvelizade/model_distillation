@@ -197,7 +197,9 @@ export function build(look: Look): Built {
     return [sgn * exx, ey, front(sgn * exx, ey)];
   };
   const eyes = [eyeAt(-1), eyeAt(1)];
-  const sink = kind === "googly" ? 0.045 : 0.03;   // how far behind the pile's surface an eye's centre sits
+  // how far behind the pile's surface an eye's centre sits (less in a material whose surface stands up in relief, so
+  // its loops or crystals don't close over the eyes)
+  const sink = (kind === "googly" ? 0.045 : 0.03) - (look.material === "boucle" || look.material === "sugar" ? 0.03 : 0);
 
   // ---- glasses: two rings in front of the eyes, a bridge, and arms that run round the sides of the head
   if (look.glasses !== "none" && !B.onBumps) {
