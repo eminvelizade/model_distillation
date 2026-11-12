@@ -174,6 +174,15 @@ The `features` stage writes figures that I can look at and explain:
   the image (above 1 means attention concentrates on objects); entropy (0..1) says how spread out it is;
   similarity_to_teacher correlates the attention maps with the teacher's.
 
+## Notebook
+
+- The Notebook page (sidebar, Analyze) is the lab's memory: each question or idea, the runs and searches that tested
+  it, the answer, and a status (open, answered, dropped with its reason).
+- An entry's page has New experiment and New search buttons: what is started from there is linked to the entry.
+  Link a run adds an existing run. Edit the question, plan or answer with the pencil on each part.
+- Every Find best model search gets an entry of its own, answered from its recommendation when it finishes.
+- When all of an entry's runs have finished, its page offers "Write up the answer".
+
 ## Yeti and Claude
 
 - Yeti is powered by Claude. **Chat here**: paste an API key from your Claude Console account (console.anthropic.com

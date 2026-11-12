@@ -527,6 +527,10 @@ def advance(c: sa.Connection, sid: str) -> None:
     done = c.execute(db.searches.update().where(db.searches.c.id == sid, db.searches.c.rev == row["rev"]).values(**vals))
     if done.rowcount != 1:
         raise Conflict()
+    if vals.get("status") == "done":
+        from modellab.hub import notebook  # its notebook entry gets the answer
+
+        notebook.on_search_final(c, sid)
 
 
 def advance_safe(c: sa.Connection, sid: str) -> None:

@@ -113,6 +113,22 @@ export interface SearchDetail extends SearchSummary {
   preview: SearchPreview;
 }
 
+// ---------- the notebook (hub) ----------
+export type EntryStatus = "open" | "answered" | "dropped";
+export interface NotebookEntry {
+  id: string; title: string; question: string; plan: string | null; answer: string | null; status: EntryStatus;
+  status_reason: string | null; author: "user" | "claude" | "loop"; updated_by: string; created: number; updated: number;
+  runs: number; searches: number;
+}
+export interface NotebookDetail extends NotebookEntry {
+  linked_runs: { id: string; name: string; status: Status; dataset: string | null; machine_name: string | null; created: number;
+    progress: number; error_tail: string | null;
+    best: { map: number; label: string; stage: string; latency_ms: number | null; latency_device: string | null; split: string } | null }[];
+  linked_searches: { id: string; name: string; status: string; message: string | null; recommendation: Recommendation | null;
+    trials: { total: number; done: number; failed: number }; created: number }[];
+  all_finished: boolean;
+}
+
 export interface TeamUser extends User { disabled: boolean; created: number; last_login: number | null; machines: number }
 
 const UNAUTHORIZED = "modellab:unauthorized";
@@ -247,9 +263,18 @@ export const api = {
   searches: () => fetch("/api/searches").then(j<SearchSummary[]>),
   search: (id: string) => fetch(`/api/searches/${id}`).then(j<SearchDetail>),
   searchPreview: (body: Partial<SearchSpec>) => post("/api/searches/preview", body).then(j<SearchPreview>),
-  createSearch: (body: Partial<SearchSpec>) => post("/api/searches", body).then(j<SearchDetail>),
+  createSearch: (body: Partial<SearchSpec> & { notebook?: string }) => post("/api/searches", body).then(j<SearchDetail>),
   cancelSearch: (id: string) => post(`/api/searches/${id}/cancel`).then(j<SearchDetail>),
   deleteSearch: (id: string) => send("DELETE", `/api/searches/${id}`).then(j<{ result: string }>),
+  notebook: (q: { q?: string; status?: string; run?: string; search?: string } = {}) =>
+    fetch(`/api/notebook?${new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][])}`).then(j<NotebookEntry[]>),
+  entry: (id: string) => fetch(`/api/notebook/${id}`).then(j<NotebookDetail>),
+  createEntry: (body: { title: string; question: string }) => post("/api/notebook", body).then(j<NotebookDetail>),
+  patchEntry: (id: string, body: Partial<Pick<NotebookEntry, "title" | "question" | "plan" | "answer" | "status" | "status_reason">>) =>
+    send("PATCH", `/api/notebook/${id}`, body).then(j<NotebookDetail>),
+  deleteEntry: (id: string) => send("DELETE", `/api/notebook/${id}`).then(j<{ result: string }>),
+  linkEntry: (id: string, kind: "run" | "search", ref: string) => post(`/api/notebook/${id}/links`, { kind, id: ref }).then(j<NotebookDetail>),
+  unlinkEntry: (id: string, kind: "run" | "search", ref: string) => send("DELETE", `/api/notebook/${id}/links/${kind}/${ref}`).then(j<NotebookDetail>),
   exportRun: (runId: string, stage: string) => post(`/api/runs/${runId}/export`, { stage }).then(j<Command>),
   exports: (runId: string) => fetch(`/api/runs/${runId}/exports`).then(j<Command[]>),
 };

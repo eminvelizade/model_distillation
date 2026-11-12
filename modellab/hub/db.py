@@ -177,6 +177,23 @@ diagnoses = sa.Table(
     Column("confidence", Float), Column("model", String(64)), Column("created", Float),
 )
 
+notebook = sa.Table(
+    "notebook", md,  # the lab's memory: a question in the user's words, what tested it, the answer (hub/notebook.py)
+    Column("id", String(32), primary_key=True),
+    Column("owner_id", String(32), nullable=False, index=True),
+    Column("title", Text), Column("question", Text), Column("plan", Text), Column("answer", Text),
+    Column("status", String(12), nullable=False, default="open"),  # open | answered | dropped
+    Column("status_reason", Text),  # why it was dropped
+    Column("author", String(12)), Column("updated_by", String(12)),  # user | claude | loop
+    Column("created", Float), Column("updated", Float, index=True),
+)
+
+notebook_links = sa.Table(
+    "notebook_links", md,  # the runs and searches that tested an entry (links, not copies)
+    Column("entry_id", String(32), primary_key=True), Column("kind", String(8), primary_key=True),  # run | search
+    Column("ref_id", String(80), primary_key=True, index=True), Column("added", Float),
+)
+
 oauth_clients = sa.Table(
     "oauth_clients", md,  # Claude apps registered for the MCP connector (OAuth dynamic client registration)
     Column("id", String(64), primary_key=True),

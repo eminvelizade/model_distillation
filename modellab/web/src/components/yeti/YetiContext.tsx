@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { api, streamYeti, YetiEvent, YetiPage, YetiSettings } from "../../api";
 import { currentMascot } from "./mascots";
 import { useSession } from "../../session";
-import { COVERED, Decision, highlight, spotsFor, useCarryOut } from "../../agent";
+import { changed, COVERED, Decision, highlight, spotsFor, useCarryOut } from "../../agent";
 
 export interface YetiTool { id: string; label: string; href?: string | null; ok?: boolean; done: boolean }
 export interface YetiMsg {
@@ -158,6 +158,7 @@ export function YetiProvider({ children }: { children: ReactNode }) {
       else if (e.type === "rewind") patch(aid, (m) => ({ ...m, text: m.text.slice(0, Math.max(0, m.text.length - e.chars)) }));
       else if (e.type === "note") patch(aid, (m) => ({ ...m, status: e.text }));
       else if (e.type === "tool") patch(aid, (m) => ({ ...m, status: null, tools: [...(m.tools ?? []), { id: e.id, label: e.label, done: false }] }));
+      else if (e.type === "tool_done" && e.href?.startsWith("/notebook")) { changed(); patch(aid, (m) => ({ ...m, tools: (m.tools ?? []).map((t) => t.id === e.id ? { ...t, label: e.label, href: e.href, ok: e.ok, done: true } : t) })); }
       else if (e.type === "tool_done") patch(aid, (m) => ({ ...m, tools: (m.tools ?? []).map((t) => t.id === e.id ? { ...t, label: e.label, href: e.href, ok: e.ok, done: true } : t) }));
       else if (e.type === "done") patch(aid, (m) => ({ ...m, text: e.text, streaming: false, status: null, model: e.model_label, usage: e.usage }));
       else if (e.type === "action") queue = queue.then(() => act(e.decision)); // one after the other, in the order Claude gave

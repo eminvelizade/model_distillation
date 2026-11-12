@@ -120,9 +120,10 @@ By part ([how they fit together](docs/PLATFORM.md)):
 - Faster and wider searches, failed trials that fix themselves, and research loops where the agent picks the next
   experiments from the last results.
 
-**Notebook**
+**Notebook** (first version built: [how to use it](docs/HUB.md#the-notebook))
 - The lab's memory: each question with its runs and its answer, including what didn't work, read by you, the agents
-  and the loops.
+  and the loops. Tell the assistant an idea and it writes the entry, plans and drafts the runs, and writes up the
+  answer when they have finished.
 
 **Phase 3**: cloud GPUs, and clusters (sharing machines with teammates by invitation).
 

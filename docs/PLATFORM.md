@@ -140,7 +140,12 @@ The lab's memory. Runs and searches already record *what* ran; the notebook reco
 - **Private like everything else.** Entries hold text, names, settings and metrics, and live on the hub with your
   runs. Never images, annotations or weights.
 
-To be planned in detail. The first step comes with Collaborate, which already keeps an idea with its runs.
+**Built (first version):** the Notebook page and an entry page per question (`modellab/hub/notebook.py`). Runs and
+searches started for an entry are linked to it; existing runs can be linked by hand. Every search gets an entry of
+its own, answered from its recommendation when it finishes. The assistant searches the notebook before it plans,
+writes an entry with a plan and an estimated GPU time when you share an idea, drafts its runs linked to the entry,
+and writes the answer with its evidence when they have finished. How to use it: [HUB.md](HUB.md#the-notebook).
+Not built: research loops that read earlier entries and propose the next round on their own.
 
 ## Where things are written down
 
@@ -149,4 +154,4 @@ To be planned in detail. The first step comes with Collaborate, which already ke
 | Agents | [AGENTS_PLAN.md](AGENTS_PLAN.md) | [HUB.md §8](HUB.md#8-yeti-the-assistant) |
 | Harness | [PHASE2_PLAN.md](PHASE2_PLAN.md), [HUB_PLAN.md](HUB_PLAN.md) | [HUB.md](HUB.md), [MODELLAB.md](MODELLAB.md) |
 | Loops | this file, and [PHASE2_PLAN.md §1](PHASE2_PLAN.md#1-find-my-best-model-automated-search) | [HUB.md §7](HUB.md#7-find-my-best-model) |
-| Notebook | this file | not built yet |
+| Notebook | this file | [HUB.md](HUB.md#the-notebook) |

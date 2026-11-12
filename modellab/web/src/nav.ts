@@ -1,4 +1,4 @@
-import { FlaskConical, GitCompareArrows, ListOrdered, Server, Trophy, Users, Wand2 } from "lucide-react";
+import { BookOpen, FlaskConical, GitCompareArrows, ListOrdered, Server, Trophy, Users, Wand2 } from "lucide-react";
 import { useSession } from "./session";
 
 export type NavEntry = { group: string; to: string; label: string; icon: typeof Trophy; hub?: boolean; admin?: boolean };
@@ -11,6 +11,7 @@ export const NAV: NavEntry[] = [
   { group: "Run", to: "/machines", label: "Machines", icon: Server, hub: true },
   { group: "Analyze", to: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { group: "Analyze", to: "/compare", label: "Compare", icon: GitCompareArrows },
+  { group: "Analyze", to: "/notebook", label: "Notebook", icon: BookOpen, hub: true },
   { group: "Admin", to: "/team", label: "Team", icon: Users, hub: true, admin: true },
 ];
 

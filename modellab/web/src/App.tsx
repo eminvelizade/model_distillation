@@ -18,6 +18,8 @@ import MachineDetail from "./pages/MachineDetail";
 import Team from "./pages/Team";
 import SearchPage from "./pages/Search";
 import SearchDetail from "./pages/SearchDetail";
+import Notebook from "./pages/Notebook";
+import NotebookEntryPage from "./pages/NotebookEntry";
 import { YetiProvider } from "./components/yeti/YetiContext";
 import YetiDock from "./components/yeti/YetiDock";
 import { Highlighter } from "./agent";
@@ -224,6 +226,8 @@ function Shell() {
             <Route path="/runs/:id" element={<RunDetail />} />
             {hub && <Route path="/search" element={<SearchPage />} />}
             {hub && <Route path="/search/:id" element={<SearchDetail />} />}
+            {hub && <Route path="/notebook" element={<Notebook />} />}
+            {hub && <Route path="/notebook/:id" element={<NotebookEntryPage />} />}
             {hub && <Route path="/machines" element={<Machines />} />}
             {hub && <Route path="/machines/:id" element={<MachineDetail />} />}
             {hub && me?.user?.is_admin && <Route path="/team" element={<Team />} />}

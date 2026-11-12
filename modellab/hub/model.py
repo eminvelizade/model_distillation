@@ -438,6 +438,9 @@ def submit(c: sa.Connection, user: dict, m: dict, text: str, tags: list[str], po
         for j, st in enumerate(p.stages):
             c.execute(db.stages.insert().values(run_id=rid, name=st["name"], type=st["type"], idx=j, status="pending"))
         ids.append(rid)
+        from modellab.hub import notebook  # a run queued for a notebook entry (tag nb:<id>) joins it
+
+        notebook.link_from_tags(c, user, [rid], all_tags)
     return ids
 
 

@@ -269,6 +269,25 @@ fix has worked for you. Anything else is for "Why did it fail?", which asks Clau
 Next: fixing failed runs, turning ideas into experiments, and finding datasets and models online. Plan and what is
 built: [AGENTS_PLAN.md](AGENTS_PLAN.md).
 
+## The notebook
+
+The lab's memory (**Notebook** in the sidebar): each question or idea, the runs and searches that tested it, and
+what was learned. Dropped ideas stay, with their reason, so nobody tries them again without knowing.
+
+- **An entry** has a question in your words, a plan (what runs where, the estimated GPU time, which result would
+  answer it), the runs and searches that tested it, an answer, and a status: open, answered, or dropped.
+- **Write one yourself:** Notebook → New entry. On its page, **New experiment** and **New search** open the forms
+  for it, and whatever you start from there is linked to it. **Link a run** adds one you started some other way.
+- **Or tell the assistant an idea:** "I think distilling DINOv3 into the Nano could beat the Small at the same
+  speed." It looks through the notebook for what was already learned, writes the entry with a plan and an estimated
+  GPU time (from your own past runs), fills in the experiment or the search, and offers the card to start it.
+- **When its runs have finished,** the entry's page offers **Write up the answer**: the assistant compares the
+  results against the question and records the answer with the numbers it rests on. A negative answer is an answer.
+- **Every search** gets an entry of its own, answered from its recommendation when it finishes.
+- **Claude apps** connected through MCP can read the notebook, not write it.
+
+![A notebook entry with its runs and the answer the assistant wrote](screenshots/hub_17_notebook_entry.png)
+
 ## 9. Updates
 
 Each heartbeat tells the agent the hub's current release. When the agent is idle (no run, no command), it:

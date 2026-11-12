@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowUpRight, Calendar, Check, Copy, CopyPlus, Database, FileText, GitCompareArrows, HardDrive, Loader2, RotateCcw, Server, Square, Timer, Trash2, Wrench, X } from "lucide-react";
+import { ArrowUpRight, Calendar, Check, Copy, CopyPlus, Database, FileText, GitCompareArrows, HardDrive, Loader2, RotateCcw, Server, Square, Timer, Trash2, Wrench, X, BookOpen } from "lucide-react";
 import { api, fmt } from "../api";
 import { Button, Callout, Card, cx, LogView, Modal, PageHeader, ProgressBar, Segmented, sparkleBurst, StatusPill, Switch, Tag, TermTab, Toast, Yaml, inputCls, relTime, usePoll } from "../ui";
 import { useSession } from "../session";
@@ -169,6 +169,8 @@ function FixCard({ runId }: { runId: string }) {
 }
 
 export default function RunDetail() {
+  const [entries, setEntries] = useState<{ id: string; title: string }[]>([]); // the notebook entries this run tests
+
   const { id = "" } = useParams();
   const { data: r, refresh } = usePoll(() => api.run(id), 3000, [id]);
   const [logStage, setLogStage] = useState<string | null>(null);
@@ -180,6 +182,7 @@ export default function RunDetail() {
   const [deleteFiles, setDeleteFiles] = useState(false);
   const nav = useNavigate();
   const { hub } = useSession();
+  useEffect(() => { if (hub && id) api.notebook({ run: id }).then((l) => setEntries(l.map((x) => ({ id: x.id, title: x.title })))).catch(() => setEntries([])); }, [hub, id]);
   const failedRun = r && (r.status === "failed" || r.status === "interrupted");
   const hasFeatures = r?.stages?.some((s: any) => s.type === "features" && s.status === "done");
   const hasResults = r?.results?.length > 0;
@@ -212,7 +215,8 @@ export default function RunDetail() {
           <span className="flex items-center gap-1.5"><Timer className="h-3.5 w-3.5 text-subtle" />{r.started ? `ran ${fmt.dur(r.started, r.finished)}` : "not started"}</span>
           <span className="flex items-center gap-1.5"><Database className="h-3.5 w-3.5 text-subtle" />{r.dataset}</span>
           {r.machine_name && <Link to={`/machines/${r.machine_id}`} className="flex items-center gap-1.5 hover:text-accent"><Server className="h-3.5 w-3.5 text-subtle" />{r.machine_name}</Link>}
-          {r.tags.map((t: string) => <Tag key={t}>{t}</Tag>)}
+          {r.tags.filter((t: string) => !t.startsWith("nb:")).map((t: string) => <Tag key={t}>{t}</Tag>)}
+          {entries.map((x) => <Link key={x.id} to={`/notebook/${x.id}`} className="flex items-center gap-1.5 hover:text-accent"><BookOpen className="h-3.5 w-3.5 text-subtle" />{x.title}</Link>)}
         </div>
       </PageHeader>
 

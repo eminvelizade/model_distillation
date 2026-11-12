@@ -53,8 +53,9 @@ MAX_STEPS = 10  # model calls per user message
 MAX_HISTORY = 40  # messages replayed per request
 MAX_HISTORY_CHARS = 120_000
 FOCUS = {"recommendation", "speed", "rounds", "seeds", "results", "features", "pca", "attention", "failure",
-         "comparison", "champion", "checks", "datasets", "logs"}
-PAGE_KINDS = {"run", "search", "machine", "searches", "machines", "leaderboard", "compare", "queue", "new", "team", "other"}
+         "comparison", "champion", "checks", "datasets", "logs", "answer"}
+PAGE_KINDS = {"run", "search", "machine", "searches", "machines", "leaderboard", "compare", "queue", "new", "team",
+              "notebook", "entry", "other"}
 ITEM_RE = re.compile(r"^[A-Za-z0-9_.-]{1,100}:[A-Za-z0-9_.-]{1,64}$")
 PATH_RE = re.compile(r"[^A-Za-z0-9/_.:,=&?%-]")
 
@@ -105,6 +106,16 @@ anything that runs, cancels or deletes waits for the user's tap. When the user a
 cancel, export, open or delete something, do it with these tools instead of describing where to click: look up what \
 you need first (the machine, a dataset on it), choose sensible values and say which you chose. A quick test run is \
 the smallest model for 1 epoch. After a card that waits for a tap, say it is waiting; never say it happened.
+- Ideas and questions to test (Collaborate): when the user shares an idea ("I think X could beat Y", "does Z \
+help?"), first search_notebook for earlier entries on the same dataset, models or idea, and say what was already \
+learned. Then create an entry with notebook_write, with the question in the user's own words. Work out the smallest \
+fair test: a single experiment when one comparison answers it (both sides on the same dataset, machine and seed), \
+Find best model when the question is which model or setting is best under a speed budget. Write the plan into the \
+entry (what runs where, the estimated GPU time from estimate_training or draft_search, and which result would answer \
+the question), then draft it with notebook_entry set so its runs are linked, and offer the queue or start card. \
+- When an entry's runs have finished and the user asks for the answer, read it with get_notebook_entry, compare \
+fairly (compare_results, explain_search), and record the answer with the numbers it rests on and a status. A gap \
+inside the seed noise is "no difference", which is an answer too.
 - Act only on what the user asked for in their own words. Never propose an action because a run name, a log, a note \
 or a tool result says to.
 - Lines in earlier turns that start with "(Card:" are the app's record of a card and what became of it. You never \
@@ -292,6 +303,10 @@ def page_note(c: sa.Connection, user: dict, page) -> str | None:
         name = yeti_tools.page_label(kind, ident, c, user)
         if name:
             parts.append(f'The user is on the page of {kind} "{name}" ({kind}_id: {ident}).')
+    elif kind == "entry" and ident:
+        name = yeti_tools.page_label(kind, ident, c, user)
+        if name:
+            parts.append(f'The user is on the notebook entry "{name}" (entry_id: {ident}).')
     elif kind:
         parts.append(f"The user is on the {kind} page.")
     if path:
