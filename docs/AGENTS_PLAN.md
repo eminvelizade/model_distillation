@@ -1,11 +1,14 @@
 # Agents: Yeti, hands-on
 
-> Status: the first steps are built: one-sentence actions work in the web app ([Build order](#build-order) says
-> what is and isn't; [HUB.md](HUB.md#8-yeti-the-assistant) says how to use it). The rest is the plan. Where agents sit among ModelLab's three parts: [PLATFORM.md](PLATFORM.md).
+> Status: built so far: one-sentence actions, fixes for known failures, the notebook, and (new) a team of agents
+> you message in a Chat tab, who plan several steps and carry them out on the hub. [Build order](#build-order) says
+> what is and isn't built; [HUB.md](HUB.md#8-yeti-the-assistant) says how to use it. The rest is the plan. Where
+> agents sit among ModelLab's three parts: [PLATFORM.md](PLATFORM.md).
 
 **In one sentence:** you say what you want in one sentence; a fast System One model picks the component and the
 action, ModelLab highlights it and fills it in, and nothing runs without your approval. Anything bigger than one step
-goes to Claude, which plans it.
+goes to Claude, which writes a plan: typed steps you approve once, which then run on the hub, are checked against
+what the runs really did, and are retried when they fail for a reason the hub knows how to fix.
 
 ## What changes
 
@@ -16,6 +19,67 @@ goes to Claude, which plans it.
 | "Re-run this with batch size 4 on the 5090" | tells you where to click | opens Clone & edit with batch 4 and the RTX 5090 filled in; one tap queues it |
 | "Could distilling DINOv3 into the Nano beat the Small at the same speed?" | discusses it | drafts the search that answers it, runs it when you approve, explains the outcome |
 | "Find a forklift detection dataset" | can't help yet | finds candidates online with their licence and size, and imports the one you pick |
+
+## What other agents do (November 2026)
+
+Before building plans and the Chat tab we read how the current "always-on" agents work: OpenAI's dots (launched 29
+September 2026), xAI's Grok Bot (beta since 11 August 2026) and Meta's Muse with its mascot Jolly. What follows is
+from OpenAI's and xAI's own documentation where we could read it, and from press and hands-on reviews otherwise;
+[Sources](#sources) says which is which. OpenAI's announcement page, its help-centre article, and the Fast Company
+and Axios pieces refused our reader, so nothing here rests on them.
+
+| | dots (OpenAI) | Grok Bot (xAI) | Muse (Meta) |
+|---|---|---|---|
+| What it is | a named, persistent agent with its own cloud computer and browser | named Bots, each with one main job, on a cloud computer | a personal agent behind an animated avatar |
+| How you reach it | one thread in ChatGPT, also Slack, Teams, text and calls | the Grok Bot app; two to six Bots can share a group chat | chat; voice and video calls with the avatar (US, since 5 November) |
+| Work of several steps | keeps going between conversations, decides when to pause and wake, splits work among background agents; an Activity view shows progress, files and results | "finish jobs end to end, and only come back when something needs your approval"; Bots pass work and assign ownership among themselves | prepares a purchase and shows the total for approval |
+| Approval | an automatic review checks an action against your instructions, permissions, custom rules and safety rules: it proceeds, needs your approval, or is a step you do yourself. Custom rules: act without asking, act when told, ask first, hand off | Auto Review, on by default; cards say Allow once, Always allow or Deny; a card from background work expires after 30 minutes | you choose which apps it may connect to |
+| Memory | private notes on preferences, decisions and ongoing work | its role, stable preferences, summaries of earlier work | not covered |
+| When it goes wrong | "A completed run doesn't by itself confirm that the requested result was achieved"; the docs describe no retry | "takes your corrections"; no mechanism described | not covered |
+| The character | shape, colour, eyes, glasses, accessories; a name. Names and looks "help people tell agents apart" when several share a workspace | a name, a job, a description | Jolly: rename it, change its look, clothes and voice; it puts on headphones and types while it works |
+
+**What reviewers say is still broken.** Five failures came up again and again, and each one shaped a decision
+below:
+
+1. *It starts before the approach is agreed.* A user asked for a training run on a large model; the dot "started
+   right away, without discussing" the method, and a week's allowance was gone before the result came back poor.
+2. *Progress is invisible.* The same user "couldn't see what it was doing as the work progressed", and to correct
+   a subtask had to find it by hand.
+3. *It checks its own work and passes it.* The dot audited its code "module by module" and found nothing; a second
+   agent found a misjudged parameter and a missed path.
+4. *It finishes with missing information.* One reviewer's dot said what it couldn't check, "but still went ahead
+   with finishing the report"; another's sent an email before the reviewer had seen it.
+5. *Corrections don't carry over.* "It still often felt as if we were starting from the beginning." The notes a dot
+   keeps can't be read or edited one by one.
+
+One more: friction. A booking took three separate approvals, and broad rules meant to reduce them were rejected.
+
+**What we take, and what we do differently.**
+
+| they do | we do |
+|---|---|
+| start working, report later | the plan is shown first, with its steps and its estimated GPU time; nothing runs before Start |
+| an approval per consequential action | one Start approves the whole plan, inside an envelope: these machines and datasets, this much GPU time, three tries per step |
+| progress in a separate activity view | the plan's card shows every step, live, in the conversation |
+| the agent reports whether it worked | the hub writes each step's state from what happened to its run; the agent reads that, it doesn't write it |
+| no retry described | a failed run goes to the failure catalogue: a known failure is fixed and retried inside the envelope; anything else stops the plan and says what is missing |
+| private notes | notes are listed in Chat; you can change or remove any of them, and they go into every answer |
+| reachable everywhere, always on | the conversation is kept on the hub, so a plan reports into it with no page open; unread counts show on the corner button and in the sidebar |
+| a character built from parts | the same idea, with our own characters: a shape, a colour, eyes, glasses, an extra |
+
+What makes the checking possible here is that ModelLab's world is typed: every action is a registered one, and
+every step has an outcome code can read (a run's status, its error, its mAP). An agent that books travel on the
+open web can't have that.
+
+**Deliberately not built yet:** Claude thinking while you are away (the hub carries a plan's steps out by itself,
+but the agent's own follow-up waits until its conversation is on screen); a second model reviewing each action
+(the decision model could play that part); rules you write per action; several agents in one conversation; calls.
+See [Build order](#build-order).
+
+**The look.** No source calls the dots' material woven: reviewers say fuzzy or plush. In OpenAI's own press image
+it is a short, curly pile lying in small patches of parallel strands, in pure, saturated dyes, with glossy black
+eyes and accessories and no mouth. Our make-your-own mascots use that material on Bloom's fur renderer, with shapes
+and extras of our own (`tools/mascot/README.md`). OpenAI's images are not in this repository.
 
 ## Decisions
 
@@ -201,9 +265,11 @@ way, so the agent can drive them too.
   web pages are data: text in them can't trigger an action, whichever system reads it.
 - **An agent GPU-hour limit** (set in Yeti's settings) caps what one approval can start; anything above it is
   careful.
-- **Standing permissions** are narrow ("retry my search trials that ran out of memory, with the fix"), apply only to
-  failures that code matched exactly (never to a guess), are listed in Yeti's settings, can be revoked, and are off
-  by default.
+- **A plan's Start is the one standing approval built so far.** It covers the plan's own steps and the catalogue's
+  fixes for them, inside its envelope, and nothing else. Careful actions (deleting) can't be plan steps.
+- **Standing permissions** beyond a plan are narrow ("retry my search trials that ran out of memory, with the
+  fix"), apply only to failures that code matched exactly (never to a guess), are listed in Yeti's settings, can be
+  revoked, and are off by default. Not built yet.
 - **Careful actions from Claude apps** wait for approval in ModelLab itself, because a Claude app may be set to allow
   tools without asking.
 - **Undo** is offered where the action has one: a queued run can be cancelled, a removed dataset added back.
@@ -276,6 +342,63 @@ a trial with a different batch size isn't identical to its siblings.
 
 Before it plans, Claude reads the notebook's earlier entries on the same dataset and models, so it can say "we
 tried that, and here is what happened" instead of running it again.
+
+### Plan: several steps, approved once
+
+"Train the Nano at 448 and at 512 on the tower, pick the better one and export it."
+
+A plan is a list of typed steps, each one a registered action with its values checked as the user, or a step that
+only reads results:
+
+| step | what it does | the action behind it |
+|---|---|---|
+| run | queues one training run (the recipe the New experiment form writes) | `run.queue` |
+| search | starts a Find best model search | `search.start` |
+| pick | chooses the best of earlier steps by mAP 50-95, mAP 50 or latency; a gap under 0.3 points is called a tie | reads results |
+| export | exports the model of a run, or of the run a pick chose | `run.export` |
+
+A run step can wait for another (`after`: a quick test before the full run) and can train whatever a pick chose
+(`base`). Runs with nothing to wait for are queued together.
+
+1. **Claude writes it** (`propose_plan`), after looking up the machine and its datasets, and after asking one
+   question when the request leaves the method open. Writing a plan changes nothing: it is stored as proposed and
+   shown as a card with every step, the machines, and the GPU time estimated from your own past runs.
+2. **You press Start.** That is your own request to the hub (`POST /api/plans/{id}/approve`); no tool can make it.
+   What it approves is an **envelope**: the plan's machines and datasets, its estimated GPU time times 1.5 plus ten
+   minutes, and three tries per step.
+3. **The hub carries it out** (`modellab/hub/plans.py`), the way it runs a search: when one of the plan's runs
+   finishes (its runs are tagged `plan:<id>`) and whenever the web app reads it. No page needs to be open.
+4. **Each step's state comes from its run**, not from what anyone said: queued, running with its progress, done
+   with its result, or failed with its error.
+5. **A failed run is fixed when the failure is known.** The [failure catalogue](#fix-when-something-fails) is asked.
+   Out of memory: half the batch, twice the gradient accumulation. A NaN loss: half the learning rate. An
+   interruption: re-queued. The step is tried again, at most three times and only while the approved GPU time
+   lasts, and the conversation says what was changed. Anything else (a failure nobody knows, a machine-level
+   fault, a cancelled run) stops the plan: the card says why and offers Retry the step, Skip it or Stop the plan.
+6. **Claude can change it** (`revise_plan`): the steps that haven't started are replaced. Inside the envelope the
+   change takes effect at once; beyond it (another machine or dataset, more GPU time) it waits on the card for
+   your OK, and the plan goes on as approved meanwhile.
+7. **When it ends, the hub writes what happened into the conversation** (an event, shown as a system line). The
+   next time that conversation is on screen, the agent follows up by itself: the numbers, what was retried and why,
+   what it could not check, one suggested next step, and the answer in the notebook entry when there is one.
+
+Text in an event is data: it is fenced in `<event>` tags, cannot close its own fence, and the prompt says no
+instruction is ever taken from it.
+
+### The team: agents, Chat and what they keep in mind
+
+- **Agents** (`modellab/hub/agents.py`). Everyone starts with Bloom and can add up to seven more. An agent is a
+  name, a role in your words and a look. All agents share the same Claude model, tools and approvals; the role only
+  shapes what an agent pays attention to. Names and looks are there for the reason OpenAI gives: to tell them apart.
+- **Chat.** A tab in the sidebar: the team on the left, one conversation per agent on the right, written like
+  messages. The conversation lives on the hub, so the corner panel shows the same one, it is the same on every
+  device, and a plan can report into it while you are away. Unread counts show on the corner button and in the
+  sidebar.
+- **Kept in mind.** Notes the agents keep between conversations: a correction you made, or a standing preference,
+  a sentence each (`remember`). They are listed in Chat, where you can add, change or remove any of them, and they
+  go into every answer of every agent. This is how a correction carries over.
+- **Looks.** A classic mascot, or one you put together: eight shapes, twelve colours, six kinds of eyes, glasses
+  and seven extras. Any combination fits, because each part is placed by solving against the body's surface.
 
 ### Find: datasets, models and papers online
 
@@ -426,8 +549,28 @@ less (`modellab/hub/system1/service.py`). Through the hub a decision takes about
    start it. When the entry's runs have finished, its page offers "Write up the answer", and Claude records the
    answer with the numbers it rests on. Not built: Claude watching the runs and fixing them on its own while they
    run (that needs standing permissions), and answering without being asked.
-6. **Find**: Hugging Face and web search, candidate cards, and imports through the model library and data import,
+6. **Plans** (built): `propose_plan` and `revise_plan`, the plan card with Start, Stop, Retry and Skip, the
+   executor on the hub with the envelope, and the catalogue's fixes with up to three tries
+   (`modellab/hub/plans.py`). A plan's follow-up report is written when its conversation is next on screen.
+   Not built: a plan step that needs Claude's judgment while you are away (a plan stops and waits instead), fixes
+   that need the decision model's near match or a machine command (fetching weights), and plans from Claude apps.
+7. **The team** (built): agents with a name, a role and a look; the Chat tab; conversations kept on the hub;
+   notes the agents keep in mind, which you can read and change; make-your-own mascots
+   (`modellab/hub/agents.py`, `modellab/web/src/pages/Chat.tsx`).
+8. **Find**: Hugging Face and web search, candidate cards, and imports through the model library and data import,
    after their Foundations.
+
+**Next for the agents**, in the order we would build them:
+
+1. *Thinking while you are away.* A worker on the hub that runs the agent's own turn when a plan stops or finishes,
+   so the report (or a fix Claude works out from the logs) is there when you come back.
+2. *A reviewer.* Before a change inside the envelope takes effect unseen, the decision model checks it against
+   what you asked, as dots and Grok Bot do with their automatic review.
+3. *Rules.* Per action: without asking, ask first, or never, in your own words, shown in Chat.
+4. *Several agents in one conversation*, each with its role, and plans that pass from one to another.
+5. *Calls and meetings.* Talking to an agent, then to several at once. This needs a speech model and a way to draw
+   the mascots speaking; the conversation, the plans and the notes are already where a call would read and write
+   them, so a call is a new way in, not a new system.
 
 ## Open questions
 
@@ -440,8 +583,39 @@ less (`modellab/hub/system1/service.py`). Through the hub a decision takes about
 4. **Sources beyond Hugging Face**: Roboflow Universe (it needs its own key), GitHub releases, arXiv?
 5. **Mascots**: should a mascot's character change how it acts (Rime asking fewer questions)? Proposed: no, only how
    it talks.
+6. **Which classic mascots stay?** Bloom does. Dr. Mochi, Bop, Twinkle, Pip and Rime are still offered under
+   "Classic" in the agent editor; any of them can be retired once the make-your-own ones have been lived with.
+7. **One conversation per agent, or several?** One, like a contact in a messaging app, with "Fresh conversation"
+   to clear it. Claude reads the last 80 messages; older ones stay on screen but aren't replayed, and what must
+   last is in the notes and the notebook.
 
 ## Sources
+
+Agents in the field (read 12 November 2026):
+
+- OpenAI's documentation for dots: [Meet dots](https://learn.chatgpt.com/docs/dots),
+  [getting started](https://learn.chatgpt.com/docs/dots/getting-started),
+  [tasks and memory](https://learn.chatgpt.com/docs/dots/tasks-and-memory),
+  [controls](https://learn.chatgpt.com/docs/dots/controls), and
+  [Auto-review](https://learn.chatgpt.com/codex/sandboxing/auto-review). Not readable to us: the announcement
+  (openai.com/index/introducing-dots) and the help-centre article.
+- xAI: [Introducing Grok Bot](https://x.ai/news/introducing-grok-bot),
+  [approvals, security and privacy](https://docs.x.ai/grok-bot/approvals-security-and-privacy); a third-party
+  guide by [Composio](https://composio.dev/content/guide-to-frok-bot).
+- Press: [TechCrunch](https://techcrunch.com/2026/09/29/openai-launches-dots-its-bubbly-agentic-avatar/),
+  [VentureBeat](https://venturebeat.com/technology/openai-launches-dots-always-on-ai-agent-coworkers-and-chatgpt-space-where-they-can-collaborate-with-human-teams),
+  [Fortune on the mascots](https://fortune.com/2026/10/02/meta-openai-ai-agent-mascots-jolly-dots-trust/),
+  [Engadget](https://www.engadget.com/2275148/dont-let-the-adorable-ai-agents-fool-you/),
+  [The San Francisco Standard](https://sfstandard.com/2026/09/29/openai-launches-dots/) (with OpenAI's press image),
+  [Dazed](https://www.dazeddigital.com/life-culture/article/71256/1/meta-jolly-openai-jolly-big-tech-is-weaponising-cuteness).
+- Hands-on: [The Neuron](https://www.theneuron.ai/explainer-articles/openai-dots-hands-on-review-herman/),
+  [eesel](https://www.eesel.ai/blog/openai-dots-review) (a competitor's blog),
+  [Aakash Gupta](https://www.aibyaakash.com/p/dots), and a
+  [developer-community post](https://community.openai.com/t/after-a-month-with-dot-i-needed-a-second-agent-to-move-my-project-forward/1414456)
+  after a month of use.
+
+The decision model:
+
 
 - TypeSafe AI: [System One models](https://docs.typesafe.ai/concepts/system-one),
   [Choice questions](https://docs.typesafe.ai/primitives/choice),

@@ -171,6 +171,16 @@ def thread(c: sa.Connection, user: dict, aid: str, before: float | None = None, 
             "wake": _wants_reply(c, aid) is not None}
 
 
+def _plan_card(c: sa.Connection, owner_id: str, aid: str, plan: dict) -> str:
+    """A plan has one card in the thread. When the plan is changed, its card comes down to where the talk is now."""
+    M = db.agent_messages
+    for r in c.execute(sa.select(M.c.id, M.c.data).where(M.c.agent_id == aid, M.c.kind == "plan")).mappings():
+        if (db.loads(r["data"], {}) or {}).get("plan") == plan["id"]:
+            c.execute(M.update().where(M.c.id == r["id"]).values(created=time.time(), text=plan["title"]))
+            return r["id"]
+    return add(c, owner_id, aid, "agent", "plan", plan["title"], {"plan": plan["id"]})["id"]
+
+
 def _wants_reply(c: sa.Connection, aid: str) -> dict | None:
     """The newest message, when it is an event that asks for the agent's follow-up (and nothing came after it)."""
     M = db.agent_messages
@@ -329,7 +339,7 @@ def run_turn(engine: sa.Engine, cfg, user: dict, aid: str, st: dict, *, text: st
                                            {"d": d, "state": "pending" if d.get("needs") != "none" else "working"})["id"]}
             elif t == "plan":
                 with engine.begin() as c:
-                    ev = {**ev, "mid": add(c, user["id"], aid, "agent", "plan", ev["plan"]["title"], {"plan": ev["plan"]["id"]})["id"]}
+                    ev = {**ev, "mid": _plan_card(c, user["id"], aid, ev["plan"])}
             elif t == "done":
                 said = [ev["text"]]
                 meta = {"model": ev.get("model_label"), "usage": ev.get("usage")}
@@ -481,6 +491,8 @@ class RecordIn(BaseModel):
 @router.post("/agents/{aid}/record")
 def post_record(aid: str, body: RecordIn, request: Request, user: dict = Depends(auth.current_user)):
     """A one-sentence action the decision model handled (no Claude): kept in the thread like any other turn."""
+    if body.card is not None and len(db.dumps(body.card) or "") > 8000:
+        raise HTTPException(413, "that card is too large")
     with _engine(request).begin() as c:
         _agent(c, user, aid)
         now = time.time()

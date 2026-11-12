@@ -186,15 +186,16 @@ Nothing is uploaded; the page shows the folder.
 
 ## 8. Yeti, the assistant
 
-The yeti in the bottom-right corner of every page is ModelLab's assistant. It answers how-to questions and explains
+The mascot in the bottom-right corner of every page is one of your agents. It answers how-to questions and explains
 results: why a search recommended its model, why a run scored what it did or failed, what PCA and attention figures
-show, how two runs differ, what a machine's failing checks mean. Pages with something to explain make Yeti wave once
-with a short offer, and "Explain" buttons sit next to recommendations, results, figures, failures and checks.
+show, how two runs differ, what a machine's failing checks mean. Pages with something to explain make it wave once
+with a short offer, and "Explain" buttons sit next to recommendations, results, figures, failures and checks. It
+also carries out work: one action as a card, or several steps as a [plan](#chat-agents-and-plans).
 
-The assistant is one of six mascots, drawn live in 3D: Bloom (the default), a fluffy white cub with real fur, modelled
-on a photo of a plush; four plush ones (Dr. Mochi, Bop, Twinkle and Pip); and Rime, a tall, quiet snow golem with
-frost drifting round him. Pick one under **Your assistant** in its settings (saved in that browser). Its look and name change everywhere, and Claude answers as that
-character (Rime answers calmly and briefly, and never gushes). How they're drawn: [tools/mascot](../tools/mascot/README.md).
+You start with one agent, Bloom, a fluffy white cub with real fur. Add others and change their names, roles and
+looks in [Chat](#chat-agents-and-plans). An agent looks like a classic mascot (Bloom, Dr. Mochi, Bop, Twinkle, Pip,
+or Rime the snow golem) or like one you put together. They are drawn live in 3D; how:
+[tools/mascot](../tools/mascot/README.md). (The code and this section's title still say Yeti, after the first mascot.)
 
 Yeti runs on Claude, with each user's own Claude account. Two ways, set up in Yeti's settings (the sliders icon):
 
@@ -216,8 +217,57 @@ size with diminishing-returns flags, distillation and learning-rate effects, see
 runner-up. The answer streams back with each tool it used, linked to its page.
 
 What Claude sees: only what the tools return when you ask (run, search and machine names, settings, metrics, log
-tails, PCA and attention figures). Never datasets, images, annotations or checkpoints. Claude can't start, change or
-delete anything.
+tails, PCA and attention figures). Never datasets, images, annotations or checkpoints. Claude starts nothing on its
+own: an action waits for your tap, and a plan for your Start.
+
+### Chat, agents and plans
+
+**Chat** (sidebar, Team) is where you talk with your agents, like messaging: the team on the left, one conversation
+per agent on the right. The corner button on any other page opens the same conversation in a small panel. The
+conversations are kept on the hub, so they are the same on every device, and a red count on the corner button and
+on Chat says how many messages arrived while you were away.
+
+![Chat: a plan running](screenshots/hub_20_chat_plan.png)
+
+**Plans.** Ask for something that takes several steps and the agent writes a plan:
+
+| you say | the plan |
+|---|---|
+| "Train the Nano at 448 and at 512 on the tower, pick the better one and export it" | two runs, a pick by mAP, an export |
+| "Do a 1-epoch smoke test, and if it passes train for 30 epochs" | a quick run, then the long one once the first is done |
+| "Run a search under 6 ms on forklifts-v3 and train the winner for 50 epochs" | a Find best model search, then a run that builds on its recommendation |
+
+- The plan is a card: each step with its settings, the machines, and the GPU time estimated from your own past
+  runs. **Nothing runs until you press Start**, and one Start covers every step.
+- A started plan runs on the hub. You can close the browser: the machines work through the runs, and the hub picks
+  and exports when they finish. The card shows each step's real state (queued, running with its progress, done with
+  its result).
+- **When a run fails for a known reason, the plan fixes it and tries again**, up to three tries: half the batch
+  after an out-of-memory error (with twice the gradient accumulation), half the learning rate after a NaN loss, a
+  re-queue after an interruption. The card and the conversation say what was changed.
+- Anything else stops the plan. The card says why and offers **Retry the step**, **Skip it** or **Stop the plan**.
+- What Start approves: the plan's machines and datasets, its estimated GPU time times 1.5 plus ten minutes, and
+  those retries. The agent can change steps that haven't started; a change that needs another machine, another
+  dataset or more GPU time waits on the card for **Approve the change**.
+- When the plan ends, the hub notes what happened in the conversation, and the agent reports the next time you
+  have that conversation open: the numbers, what was retried, what it couldn't check, and a next step.
+
+![A run ran out of memory; the plan halved the batch and is trying again](screenshots/hub_21_plan_fixed.png)
+
+**Agents.** The + in Chat adds an agent (up to 8); the pencil changes one. Give it a name, say what it is for if
+you like ("keeps an eye on the overnight runs"), and choose its look: a classic mascot, or your own from a shape, a
+colour, eyes, glasses and an extra. Every agent uses the same Claude model and has the same tools and limits.
+
+![The agent editor](screenshots/hub_22_agent_editor.png)
+
+**Kept in mind** (under the team list) holds what your agents remember between conversations: a sentence for each
+correction you made or preference you stated ("use the tower for quick tests"). An agent adds a note when you
+correct it. You can add, change or remove notes, and every agent reads all of them before each answer.
+
+Under the hood: `modellab/hub/agents.py` (agents, conversations, notes), `modellab/hub/plans.py` (plans and their
+executor) and `modellab/hub/yeti_actions.py` (Claude's tools: `propose_plan`, `revise_plan`, `remember`). A plan's
+runs carry the tag `plan:<id>`. The design, and how it compares with OpenAI's dots and xAI's Grok Bot:
+[AGENTS_PLAN.md](AGENTS_PLAN.md#what-other-agents-do-november-2026).
 
 ### One-step actions
 
@@ -382,7 +432,18 @@ Tested in a Linux sandbox without GPU:
   scripted Claude in a browser at 1440 px (light and dark) and 390 px. Attention maps: recomputed attention matches the
   RF-DETR Nano layer's own output (max error 4e-6), and the features stage wrote them on CPU.
 
+- Chat, agents and plans: the plan executor with simulated machines (one Start for a whole plan, runs queued and
+  picked and exported with only agent events reaching the hub, an out-of-memory run fixed and retried, three tries
+  and no fourth, an unknown error stopping the plan, retry and skip, a change beyond the approval waiting for the
+  user and a step that started meanwhile not queued twice, another user's plan unreachable), conversations and notes
+  against a mocked Claude API, and the web app in a browser with a real Claude model reached through OpenRouter:
+  a plan written, started, run and reported; a plan finishing while the browser was closed; a change that needed
+  another machine waiting for approval; an instruction planted in a failed run's error being ignored and pointed
+  out. At 1440 px (light and dark) and 390 px.
+
 Not tested here; check these on the real machines:
+- **Plans on real GPUs.** The runs in the plan tests were simulated (they finish in seconds), so the GPU-time
+  estimates, a real out-of-memory error's text matching the catalogue, and a plan lasting hours are unproven.
 - **Yeti against the real Claude API.** There was no API key here: the requests were checked against the SDK and a
   mocked API. The first real chat is the check (and claude.ai's connector against the deployed hub).
 - **TensorRT export.** There is no GPU or `trtexec` here: the engine build and its latency parsing have not run.

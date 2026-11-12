@@ -1,19 +1,27 @@
 # The mascots
 
-ModelLab's assistant is one of six mascots: **Bloom** (the default), a fluffy white cub with real fur, modelled on a
-photo of a plush; four plush ones, **Dr. Mochi**, **Bop**, **Twinkle** and **Pip**; and **Rime**, a quiet snow golem.
-You pick one in the assistant's settings. Its look and name then follow everywhere, and Claude speaks as it, in its
-own voice (`MASCOTS` in `modellab/hub/yeti.py`: Bloom and the plush ones are warm and light, Rime is calm and brief
-and never gushes). Everything is drawn live in the browser from code: there are no images or 3D model files, except
-the small still pictures described below. (The assistant's code is still named `yeti`, after the first mascot, which
-Bloom replaced.)
+Each of ModelLab's agents has a mascot. It is either a classic one or one the user put together:
+
+- **Classic:** **Bloom** (everyone's first agent), a fluffy white cub with real fur, modelled on a photo of a
+  plush; four plush ones, **Dr. Mochi**, **Bop**, **Twinkle** and **Pip**; and **Rime**, a quiet snow golem.
+- **Make your own:** a shape (pom, bean, drop, gumdrop, cub, frog, tofu, kitten) in one of twelve colours, with
+  eyes (bean, round, bead, googly, sparkle, smile), glasses (round, shades) and an extra (headphones, beanie,
+  sprout, antenna, scarf, cap, tuft). See [Make your own](#make-your-own) below.
+
+The look is chosen in the agent editor (Chat → the pencil) and kept on the hub with the agent. Claude speaks as the
+agent, in its voice (`MASCOTS` in `modellab/hub/yeti.py` for the classic ones: warm and light, except Rime, who is
+calm and brief; `look_words` in `modellab/hub/agents.py` describes a make-your-own one). Everything is drawn live
+in the browser from code: there are no images or 3D model files, except the small still pictures described below.
+(The code is still named `yeti`, after the first mascot, which Bloom replaced.)
 
 | file | what's in it |
 |---|---|
 | `modellab/web/src/components/yeti/mascot/shaders.ts` | the GLSL: each mascot as a signed distance field; the plush, snow, fur and plastic shading; Rime's frost |
 | `modellab/web/src/components/yeti/mascot/engine.ts` | shapes, faces, palette colours, poses and motion; the shared renderer |
-| `modellab/web/src/components/yeti/mascots.ts` | names, taglines, still pictures, the chosen mascot (saved in the browser) |
-| `modellab/web/src/components/yeti/Yeti.tsx` | the React component: `<Yeti size pose kind?>` |
+| `modellab/web/src/components/yeti/mascot/looks.ts` | make-your-own mascots: a look becomes lists of parts, each placed on the body |
+| `modellab/web/src/components/yeti/mascots.ts` | names, taglines, still pictures, the make-your-own options and colours, the agent on screen |
+| `modellab/web/src/components/yeti/Yeti.tsx` | the React component: `<Yeti size pose look? kind?>` |
+| `modellab/web/src/components/yeti/AgentEditor.tsx` | the editor, with the live preview |
 
 ## How it's drawn
 
@@ -127,13 +135,49 @@ real object, a photo of a plush, and the one with a real pile. His GLSL starts w
   shadings: about what the plush mascots take. Software rendering (no GPU) is slower with fur than with plush.
 - **Motion.** His ears twitch now and then and the tuft sways. He has no arms, so he wiggles hello.
 
+## Make your own
+
+The make-your-own mascots are short, soft and bright: a body of short curly pile in a pure dye, glossy black eyes,
+no mouth, and at most a pair of glasses and one extra. The material is the one OpenAI's dots made familiar (their
+press image was the reference for it, and only for it: the characters here are our own, and none of OpenAI's images
+are in this repository).
+
+- **The material.** A short plush pile lies in small patches, each combed its own way, a few strands side by
+  side. It is drawn with Bloom's fur renderer (`FUR`), with a pile of 0.05 units instead of Bloom's long one:
+  - a patch is a cell of a wobbly grid on the fabric, with its own direction;
+  - inside a patch the strands are the fibre noise stretched 6.5 times along that direction, bending a little;
+  - the strands are of even thickness and end together (a sheared pile), with no stray single fibres;
+  - more light gets down into a short, open pile, and what comes back is the dye's own colour, deeper: nothing is
+    mixed with white, so a saturated dye stays saturated.
+  Measured against the reference's green: its shade, middle and light tones are #95c22c, #afda47 and #cff274; ours
+  are #81b31e, #a9dd47 and #c8f17f. Where strands are smaller than a pixel (most sizes in the app) their average is
+  drawn, so small views are clean colour with a soft outline.
+- **Parts, not shapes.** The other mascots are each written out as a distance function. This one is two lists the
+  engine fills in (`FUZZY` in `shaders.ts`): fur parts (the body, a hat, a scarf) and solid parts (eyes, glasses,
+  headphones). A part is an ellipsoid, a round cone, a rounded box, a ring, a disc or an arc.
+- **Placed by solving.** `looks.ts` has the same distance functions in TypeScript and marches them to find the
+  body's surface: where the front is at the eyes' height, how far out the side is, where the top is. Eyes are set
+  into the pile there, glasses sit just in front of it with arms that run round the head, headphones span from side
+  to side over the top. So every shape takes every pair of eyes, glasses and extra with no table of positions.
+- **Hats and scarves are a layer over the body itself** (a part of type 6): the first fur part's own surface,
+  thickened between two heights, in knit. A beanie therefore fits a cube of tofu as well as a ball.
+- **Solid parts in fur.** The fur path used to draw no solid parts. It now marches them together: a ray that meets
+  a glossy eye behind a few fibres draws the eye under those fibres, so the pile closes over an eye's edge.
+- **Eyes move.** They are parts too, rebuilt each frame: they blink, turn to stitched arcs for a smile (∩) or for
+  sleep (∪), and a googly eye's pupil follows the pointer.
+- **Colours.** Twelve dyes (`COLOURS` in `mascots.ts`): the ice blues first, then teal, mint, lime, sun,
+  tangerine, coral, cherry, cobalt, snow and ink. No purple or pink, as everywhere in ModelLab.
+- **To add a shape, an extra or a colour:** add its parts to `BODIES` or to the extras in `looks.ts`, its name to
+  `LOOK_OPTIONS` (and a dye to `COLOURS`) in `mascots.ts`, and the same key to `SHAPES`, `EXTRAS` or `COLOURS` in
+  `modellab/hub/agents.py`, which checks a look and describes it to Claude.
+
 ## Changing a mascot or adding one
 
 1. **Shape.** Write its `skinM` (plush) and `solid` (plastic parts) in `shaders.ts`, following an existing one. Place
    accessories with a numeric solve against the same shape: `MOCHI`'s glasses and buttons were placed that way. For
    a different material, add a switch like `#define SNOW` rather than changing the plush. A mascot with fur defines
-   `FUR`, `furM` (the distance to the fabric and the pile at a point) and `pileD` (for shadows), as `BLOOM` does; the
-   fur path draws no plastic parts yet.
+   `FUR`, `furM` (the distance to the fabric and the pile at a point) and `pileD` (for shadows), as `BLOOM` does; solid
+   parts in fur are drawn when `FUZZY` is defined too.
 2. **Spec.** Add it to `SPECS` in `engine.ts`: box, camera, face, colours and exposure.
 3. **Lists.** Add it to `MASCOT_LIST` in `mascots.ts` and to `MASCOTS` in `modellab/hub/yeti.py` (its name, what it
    looks like, and how it talks).

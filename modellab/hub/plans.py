@@ -552,6 +552,11 @@ def _pick(st: dict, by_id: dict[str, dict]) -> None:
                       "table": [{"step": o, "value": v, "name": x.get("name")} for v, o, x in cands]})
 
 
+def _lc(title: str) -> str:
+    """A diagnosis inside a sentence: "Out of GPU memory" → "out of GPU memory"."""
+    return title[:1].lower() + title[1:]
+
+
 def _fix(c: sa.Connection, owner: dict, plan: dict, st: dict, run: dict, env: dict, spent: float) -> str | None:
     """Try the step again with the catalogue's fix. Returns None when it did, else why it can't."""
     error = (run.get("error_tail") or "").strip()
@@ -560,18 +565,18 @@ def _fix(c: sa.Connection, owner: dict, plan: dict, st: dict, run: dict, env: di
     if sig is None:
         return f"an error the catalogue doesn't know ({last})"
     if sig.id not in AUTO_FIX:
-        return f"{sig.title.lower()}: {sig.explain} That needs a person"
+        return f"{_lc(sig.title)}: {sig.explain} That needs a person"
     if len(st["attempts"]) >= env.get("tries", TRIES):
-        return f"{sig.title.lower()}, and it has been tried {len(st['attempts'])} times"
+        return f"{_lc(sig.title)}, and it has been tried {len(st['attempts'])} times"
     stages = model._stage_rows(c, run["id"])
     ctx = {"run_id": run["id"], "run_name": run["name"], "resolved": db.loads(run["resolved"], {}), "error": error,
            "failed_stage": next((s["name"] for s in stages if s["status"] == "failed"), run.get("current_stage")),
            "machine_id": run.get("machine_id"), "dataset": run.get("dataset")}
     fix = sig.fix(ctx)
     if fix is None:
-        return f"{sig.title.lower()}, and there is nothing left to turn down"
+        return f"{_lc(sig.title)}, and there is nothing left to turn down"
     if env.get("gpu_s") is not None and spent + (st.get("est_s") or 0) > env["gpu_s"]:
-        return f"{sig.title.lower()}, and another try wouldn't fit in the GPU time that was approved"
+        return f"{_lc(sig.title)}, and another try wouldn't fit in the GPU time that was approved"
     now = time.time()
     change = ", ".join(f"{x['label'].lower()} {x['value']}" for x in fix.get("changes") or []) or "re-queued as it was"
     st["attempts"][-1].update(failed=sig.id)
@@ -583,9 +588,9 @@ def _fix(c: sa.Connection, owner: dict, plan: dict, st: dict, run: dict, env: di
         rec = with_changes(recipe.load_text(run["recipe_yaml"]), vals)
         rec["tags"] = [t for t in rec.get("tags") or [] if not str(t).startswith((TAG, failures.FIX_TAG, notebook.TAG))]
         rid = _submit(c, owner, plan, env, run["machine_id"], rec, [failures.FIX_TAG + sig.id])
-    st["attempts"].append({"run_id": rid, "at": now, "fix": sig.id, "why": sig.title.lower(), "change": change})
+    st["attempts"].append({"run_id": rid, "at": now, "fix": sig.id, "why": _lc(sig.title), "change": change})
     st.update(run_id=rid, status="running")
-    _say(c, plan, f"Step {st['id']} ({st['title']}) failed: {sig.title.lower()}. Trying again with {change} "
+    _say(c, plan, f"Step {st['id']} ({st['title']}) failed: {_lc(sig.title)}. Trying again with {change} "
                   f"(try {len(st['attempts'])} of {env.get('tries', TRIES)}).")
     return None
 
@@ -810,9 +815,12 @@ def approve(c: sa.Connection, user: dict, pid: str) -> dict:
         for s in steps:
             if s["status"] in ("failed", "cancelled"):
                 s.update(status="skipped", note=f"{s.get('note') or 'failed'} (replaced by a revision)")
+        # the plan went on while the change waited: a step that has started since stays as it started (not twice)
+        started = {s["id"] for s in steps}
+        new = [s for s in pend["steps"] if s["id"] not in started]
         env = {**db.loads(r["envelope"], {}), **{k: pend["envelope"][k] for k in ("machines", "datasets", "runs", "est_s", "gpu_s")}}
         c.execute(db.plans.update().where(db.plans.c.id == pid).values(
-            steps=db.dumps(steps + pend["steps"]), envelope=db.dumps(env), pending=None, status="running", message=None,
+            steps=db.dumps(steps + new), envelope=db.dumps(env), pending=None, status="running", message=None,
             updated=now, rev=r["rev"] + 1))
     else:
         raise HTTPException(409, f"this plan is {r['status']}: there is nothing to approve")

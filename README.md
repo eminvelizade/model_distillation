@@ -54,16 +54,26 @@ Current version: **v0.1** (beta).
 - **Export** the winner (or any fine-tuned model): ONNX, a TensorRT FP16 engine when TensorRT is installed on the
   machine, a model card and a small example script. The files stay on the machine.
 
-**Yeti, the assistant**
-- The assistant (Bloom by default, a fluffy white cub with blue ears) in the bottom-right corner, answers questions about ModelLab ("how do I add a machine?") and
-  **explains your results**: why a search picked its model (speed headroom, how each round ranked, where a bigger
-  model or input size stopped paying off, whether the winner beat the runner-up by more than the seed noise), why a
-  run scored what it did or failed, what the PCA and attention figures show, how two runs differ.
-- Where there's something to explain, Yeti waves and offers it, and "Explain" buttons sit next to recommendations,
-  results, figures, failures and machine checks.
-- It runs on Claude, on your own account: paste an API key from your Claude Console account, or add ModelLab as a
-  connector in Claude (claude.ai, Claude Desktop, mobile, Claude Code) and use your Claude subscription. Read-only:
-  it never changes anything, and never sees datasets, images or checkpoints.
+**Your agents**
+- A small team you message in the **Chat** tab, each with a name, a role and a mascot you can put together yourself
+  (Bloom, a fluffy white cub with blue ears, is everyone's first). The mascot in the bottom-right corner of every
+  page opens the same conversation.
+- They answer questions about ModelLab ("how do I add a machine?") and **explain your results**: why a search picked
+  its model (speed headroom, how each round ranked, where a bigger model or input size stopped paying off, whether
+  the winner beat the runner-up by more than the seed noise), why a run scored what it did or failed, what the PCA
+  and attention figures show, how two runs differ.
+- They **do the work, too**. One sentence does one thing ("re-run this with batch size 4"). For several steps
+  ("train the Nano at 448 and 512, pick the better one and export it") an agent writes a **plan**: you see every
+  step and its estimated GPU time, press Start once, and it runs on the hub with no page open. Each step is checked
+  against what its run really did, and a run that fails for a known reason (out of memory, a NaN loss, an
+  interruption) is fixed and tried again. [How to use it](docs/HUB.md#chat-agents-and-plans).
+- Where there's something to explain, the agent waves and offers it, and "Explain" buttons sit next to
+  recommendations, results, figures, failures and machine checks.
+- They run on Claude, on your own account: paste an API key from your Claude Console account, or add ModelLab as a
+  connector in Claude (claude.ai, Claude Desktop, mobile, Claude Code) and use your Claude subscription. Nothing
+  starts without your approval, and Claude never sees datasets, images or checkpoints.
+
+![A plan in Chat](docs/screenshots/hub_20_chat_plan.png)
 
 ![Yeti explaining a search](docs/screenshots/hub_10_yeti_explains.png)
 
@@ -106,8 +116,11 @@ By part ([how they fit together](docs/PLATFORM.md)):
 - One sentence is enough (built: [how to use it](docs/HUB.md#one-step-actions)): a fast decision model, chosen by
   [our own evaluation](docs/SYSTEM1_EVAL.md), picks the component and the action, ModelLab highlights it and fills
   it in, and nothing runs without your approval. Claude takes anything bigger.
-- Yeti guides you by highlighting what to click, fixes failed runs, turns your ideas into experiments and searches,
-  and finds datasets and models online.
+- Plans of several steps, a team of agents in a Chat tab, and mascots you make yourself are built
+  ([how they compare with OpenAI's dots and xAI's Grok Bot](docs/AGENTS_PLAN.md#what-other-agents-do-november-2026)).
+- Next: agents that think while you are away, a reviewer for their changes, several agents in one conversation,
+  then calls and meetings. They will also guide you by highlighting what to click, and find datasets and models
+  online.
 
 **Harness: the rest of the R&D playground** ([plan](docs/PHASE2_PLAN.md))
 - Every major vision model, not only today's detectors: from Hugging Face (`transformers`, `timm`), or your own

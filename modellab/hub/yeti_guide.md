@@ -10,9 +10,10 @@ PCs and compare everything in one web app.
 - Every experiment is a **run**: a recipe of chained **stages** (finetune, distill, eval, features, speed) that runs on
   one machine. Results land on the **Leaderboard**, where every model is scored with the same evaluation code.
 - **Find best model** automates the search for the most accurate detector that fits a speed budget.
-- **Yeti** (that's me) explains how things work and why results came out the way they did.
+- **The agents** (that's me, and any others on the team) explain how things work and why results came out the way
+  they did, and carry out work: one action as a card, or several steps as a plan (see "Chat, agents and plans").
 
-Pages (sidebar): New experiment, Queue, Leaderboard, Compare, Find best model, Machines, Team (admins). ⌘K / Ctrl+K
+Pages (sidebar): Chat, New experiment, Queue, Leaderboard, Compare, Find best model, Notebook, Machines, Team (admins). ⌘K / Ctrl+K
 opens a palette that jumps to any page or run. The machine picker at the top of the sidebar selects the machine that
 New experiment, Queue and the GPU widget work with.
 
@@ -183,19 +184,49 @@ The `features` stage writes figures that I can look at and explain:
 - Every Find best model search gets an entry of its own, answered from its recommendation when it finishes.
 - When all of an entry's runs have finished, its page offers "Write up the answer".
 
+## Chat, agents and plans
+
+- **Chat** (sidebar, Team) is where the user talks with the agents, like messaging: the team on the left, one
+  conversation per agent on the right. The corner button on every other page opens the same conversation in a small
+  panel. Conversations are kept on the hub, so they are the same on every device.
+- **Agents.** Everyone starts with one (Bloom). The + in Chat adds another, up to 8; the pencil changes one. An
+  agent has a name, an optional role in the user's words ("keeps an eye on the overnight runs") and a look: a classic
+  mascot, or one put together from a shape, a colour, eyes, glasses and an extra. All agents use the same Claude model
+  and the same tools; the role only shapes what an agent pays attention to.
+- **Kept in mind** (bottom of the team list): notes the agents keep between conversations, a sentence each: a
+  correction the user made, or a standing preference. An agent adds one when it is corrected; the user can add,
+  change or remove any of them. Every agent reads all of them.
+- **Plans.** For work of several steps the agent writes a plan, shown as a card: steps of four kinds (train a run,
+  run a Find best model search, pick the best of earlier steps by mAP or latency, export a model), the estimated GPU
+  time, and a Start button. Nothing runs until the user presses **Start**; one Start covers every step.
+  - A started plan runs on the hub, with no page open: it queues the runs on the machines, waits, picks and exports.
+    Runs that don't depend on each other are queued together; a step can wait for another (a quick test first).
+  - Each step shows what really happened to its run. A run that fails for a known reason is tried again with the
+    catalogue's fix: half the batch (and twice the gradient accumulation) after an out-of-memory error, half the
+    learning rate after a NaN loss, a re-queue after an interruption; at most three tries, and only within the
+    approved GPU time (the estimate times 1.5, plus 10 minutes).
+  - Anything else stops the plan: the card says why and offers Retry the step, Skip it or Stop the plan.
+  - The agent can change a plan's steps that haven't started. A change inside what was approved (the same machines
+    and datasets, within the approved GPU time) takes effect at once; one that goes beyond it waits on the card for
+    the user's OK.
+  - When a plan finishes or stops, the hub writes what happened into the conversation, and the agent follows up with
+    a report the next time the conversation is on screen. A plan's runs carry the tag `plan:<id>`.
+- The corner button and the Chat entry show a red count of messages that arrived while the user was away.
+
 ## Yeti and Claude
 
-- Yeti is powered by Claude. **Chat here**: paste an API key from your Claude Console account (console.anthropic.com
-  → API keys) in Yeti's settings; usage is billed to that account. The key is stored encrypted on the hub and never
-  shown again. Pick the model and how thorough answers are in the same place.
+- The agents are powered by Claude. **Chat here**: paste an API key from your Claude Console account
+  (console.anthropic.com → API keys) in the settings (the sliders icon in Chat or in the corner panel); usage is
+  billed to that account. The key is stored encrypted on the hub and never shown again. Pick the model and how
+  thorough answers are in the same place.
 - **Use your Claude app**: add ModelLab as a custom connector in Claude (claude.ai, Claude Desktop, Claude mobile) or
-  in Claude Code with the connector URL shown in Yeti's settings. Claude then reads your ModelLab data with your own
+  in Claude Code with the connector URL shown in the settings. Claude then reads your ModelLab data with your own
   Claude subscription, after you approve access once.
 - What Claude sees: only what the tools return when you ask: run and search names, settings, metrics, log tails and
   the feature figures. Never datasets, images or checkpoints.
-- What the assistant can do: it changes nothing on its own. It can fill in the New experiment form and offer other
-  actions (re-queue, cancel, export, delete, open a page) as cards in the chat. Opening and filling in happen at once;
-  anything that runs, cancels or deletes waits for the user's tap.
+- What an agent can do: it starts nothing on its own. It can fill in the New experiment form, offer one action
+  (re-queue, cancel, export, delete, open a page) as a card, or write a plan of several steps. Opening and filling
+  in happen at once; anything that runs, cancels or deletes waits for the user's tap, and a plan waits for Start.
 
 ## Troubleshooting
 

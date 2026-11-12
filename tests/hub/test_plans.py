@@ -120,7 +120,7 @@ def test_a_failed_run_is_fixed_from_the_catalogue_then_the_plan_stops_and_says_w
     ft = next(s for s in run2["resolved"]["stages"] if s["name"] == "finetune")
     assert ft["batch_size"] == 8 and ft["grad_accum"] == 2 and "fix:oom" in run2["tags"] and f"plan:{pid}" in run2["tags"]
     said = [m["text"] for m in thread(u, aid)["messages"] if m["role"] == "event"]
-    assert len(said) == 1 and "out of gpu memory" in said[0] and "try 2 of 3" in said[0]
+    assert len(said) == 1 and "out of GPU memory" in said[0] and "try 2 of 3" in said[0]
     end(agent, r2["id"], "failed", error="torch.OutOfMemoryError: CUDA out of memory")
     r3 = claim(agent)
     end(agent, r3["id"], "failed", error="CUDA out of memory")  # the third try fails too: no fourth
@@ -168,10 +168,14 @@ def test_a_change_beyond_what_was_approved_waits_for_the_user(hub):  # noqa: F81
     # declined: the plan goes on as it was
     assert u.post(f"/api/plans/{pid}/decline").json()["pending"] is None
     tool(hub, "revise_plan", aid, plan_id=pid, steps=[{**run_step(mid, "full", epochs=30, batch_size=8), "after": ["s1"]}, run_step(mid2, "on-laptop")])
-    # approved: the envelope grows, and the new run is queued on the other machine
+    # the plan goes on while the change waits: the smoke test passes and the full run starts as it was approved
+    end(agent, claim(agent)["id"], map_=0.3)
+    assert [s["status"] for s in plan_row(hub, pid)["steps"]] == ["done", "running"]
+    # approved: the envelope grows and the new run is queued on the other machine; the run that started isn't queued twice
     p = u.post(f"/api/plans/{pid}/approve").json()
-    assert p["pending"] is None and sorted(p["machines"]) == ["laptop", "tower"] and len(p["steps"]) == 3
-    assert sorted(r["name"] for r in queue(u)) == ["on-laptop", "smoke"]
+    assert p["pending"] is None and sorted(p["machines"]) == ["laptop", "tower"]
+    assert [(s["id"], s["status"]) for s in p["steps"]] == [("s1", "done"), ("s2", "running"), ("s3", "running")]
+    assert sorted(r["name"] for r in queue(u)) == ["full", "on-laptop"]
     # stop: what it queued is cancelled, nothing more starts
     p = u.post(f"/api/plans/{pid}/cancel").json()
     assert p["status"] == "cancelled" and queue(u) == []
@@ -267,6 +271,13 @@ def test_a_turn_is_written_into_the_thread_and_read_back(hub, monkeypatch):  # n
     assert f'(Plan card: "384 or 448", plan_id {pid}.' in msgs[1]["content"] and "It waits for Start." in msgs[1]["content"]
     assert f'<plans>\nplan_id {pid} "384 or 448": proposed (a card in the chat; it has NOT started' in msgs[2]["content"]
     assert msgs[2]["content"].endswith("did it start?")
+    # a plan has one card: changing the plan moves its card down to where the talk is, it doesn't add a second
+    fake.script.insert(0, sse_message([{"type": "text", "text": "Changed."}], "end_turn"))
+    fake.script.insert(0, sse_message([{"type": "tool_use", "id": "toolu_3", "name": "revise_plan", "input": {"plan_id": pid, "steps": steps}}], "tool_use"))
+    ev = events(u.post(f"/api/agents/{aid}/messages", json={"text": "keep it as it is, but write it again"}))
+    assert next(e for e in ev if e["type"] == "plan")["revised"] is True
+    t = thread(u, aid)
+    assert [m["kind"] for m in t["messages"]].count("plan") == 1 and t["messages"][-1]["kind"] == "plan" and t["messages"][-1]["plan"] == pid
     # the plan runs with no page open; opening the chat afterwards wakes the agent once, with the hub's report
     u.post(f"/api/plans/{pid}/approve")
     for m in (0.40, 0.45):

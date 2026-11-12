@@ -79,7 +79,7 @@ export default function AgentEditor({ agent, canDelete, onClose }: { agent: Agen
     try { await api.deleteAgent(agent.id); onClose(undefined, true); } catch (e) { setErr((e as Error).message); setBusy(false); }
   };
   return (
-    <Modal onClose={() => onClose()} className="max-w-[760px]">
+    <Modal onClose={() => onClose()} className="!max-w-[760px]">
       <form className="grid gap-0 sm:grid-cols-[280px_1fr]" onSubmit={(e) => { e.preventDefault(); if (name.trim()) save(); }}>
         <div className="flex flex-col items-center gap-4 border-b border-line bg-raised/40 p-5 sm:border-b-0 sm:border-r">
           <button type="button" onClick={hop} title="Say hi" className="rounded-3xl transition active:scale-95"><Yeti look={look} size={208} pose={pose} /></button>

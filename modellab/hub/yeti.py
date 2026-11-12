@@ -1,11 +1,17 @@
-"""Yeti, ModelLab's assistant: Claude, with read-only tools over the user's ModelLab data.
+"""The agents' engine: Claude, with tools over the user's ModelLab data (the code is still named after Yeti, the
+first mascot).
 
-Each user connects Yeti with an API key from their own Claude Console account (stored encrypted, never sent back to
-the browser). A chat turn is one POST that streams server-sent events while the hub runs the tool loop:
+Each user connects it with an API key from their own Claude Console account (stored encrypted, never sent back to
+the browser). A turn is one POST that streams server-sent events while the hub runs the tool loop:
 
-    browser ──POST /api/assistant/chat──▶ hub ──Messages API (streamed)──▶ Claude
-                                            ◀── tool_use: explain_search(...) ──
-                                            runs the tool as the user (yeti_tools), sends the result back, repeats
+    browser ──POST /api/agents/{id}/messages──▶ hub ──Messages API (streamed)──▶ Claude
+                                                  ◀── tool_use: explain_search(...) ──
+                                                  runs the tool as the user (yeti_tools), sends the result back, repeats
+
+The agents themselves (who they are, their threads, what they keep in mind) are in hub/agents.py; plans of several
+steps in hub/plans.py; the tools that draft, propose and plan in hub/yeti_actions.py. This module holds the prompt,
+the settings and the loop. /api/assistant/chat is the older, stateless form of a turn (the browser sends the
+history); tabs left open from before still use it.
 
 The same tools are also served over MCP (modellab/hub/mcp.py), so Claude apps can use them with the user's own
 Claude subscription instead (OAuth connector, modellab/hub/oauth.py).
