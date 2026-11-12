@@ -262,6 +262,52 @@ def _get_machine(c, user, a) -> Output:
 
 # ---------------------------------------------------------------- registry
 
+# ---------------------------------------------------------------- the notebook (hub/notebook.py)
+
+def _short(text: str | None, n: int) -> str | None:
+    return None if not text else text if len(text) <= n else text[: n - 1].rstrip() + "…"
+
+
+def _search_notebook(c, user, a) -> Output:
+    from modellab.hub import notebook
+
+    rows = notebook.list_entries(c, user, a.get("query"), a.get("status"), limit=a.get("limit", 15))
+    return Output({"entries": [xai._drop_none({
+        "id": e["id"], "title": e["title"], "status": e["status"], "question": _short(e["question"], 300),
+        "answer": _short(e["answer"], 400), "why_dropped": e["status_reason"] if e["status"] == "dropped" else None,
+        "written_by": e["author"], "runs": e["runs"], "searches": e["searches"], "link": f"/notebook/{e['id']}"})
+        for e in rows]}, label=f"Looked through the notebook ({len(rows)} entr{'y' if len(rows) == 1 else 'ies'})", href="/notebook")
+
+
+def _get_entry(c, user, a) -> Output:
+    from modellab.hub import notebook
+
+    e = notebook.detail(c, user, a["entry_id"])
+    runs = [xai._drop_none({"id": r["id"], "name": r["name"], "status": r["status"], "dataset": r["dataset"],
+                            "machine": r["machine_name"], "best_map": xai.pct((r["best"] or {}).get("map")),
+                            "best_result": f"{r['id']}:{r['best']['stage']}" if r["best"] else None,
+                            "latency_ms": (r["best"] or {}).get("latency_ms"), "link": f"/runs/{r['id']}"})
+            for r in e["linked_runs"]]
+    searches = [xai._drop_none({"id": s["id"], "name": s["name"], "status": s["status"], "message": s["message"],
+                                "recommendation": s["recommendation"] and {k: s["recommendation"].get(k) for k in (
+                                    "model", "image_size", "teacher", "lr", "map_test_mean", "map_valid_mean",
+                                    "latency_ms", "best_run_id")}, "link": f"/search/{s['id']}"})
+                for s in e["linked_searches"]]
+    out = xai._drop_none({k: e[k] for k in ("id", "title", "question", "plan", "answer", "status", "status_reason")}
+                         | {"written_by": e["author"], "all_runs_finished": e["all_finished"], "runs": runs or None,
+                            "searches": searches or None, "link": f"/notebook/{e['id']}",
+                            "hint": "compare_results on best_result ids for a fair comparison; explain_search for a search"})
+    return Output(out, label=f"Read the notebook entry “{e['title']}”", href=f"/notebook/{e['id']}")
+
+
+def _estimate(c, user, a) -> Output:
+    from modellab.hub import notebook
+
+    e = notebook.estimate(c, user, a["machine_id"], a.get("dataset"), a["model"], a["epochs"])
+    e["readable"] = notebook.fmt_duration(e["seconds"]) if e["seconds"] is not None else None
+    return Output(xai._drop_none(e), label=f"Estimated the training time of {a['model']}")
+
+
 def _id(desc: str) -> dict:
     return {"type": "string", "maxLength": 100, "description": desc}
 
@@ -325,6 +371,24 @@ TOOLS: list[Tool] = [
          "One machine in depth: hardware, the self-check (failures with their fix), datasets with their check errors "
          "and warnings, downloaded weights, recent commands and agent updates. Call it for setup or dataset problems.",
          {"machine_id": _id("machine id")}, ["machine_id"], _get_machine, lambda a: "Inspecting the machine"),
+    Tool("search_notebook", "Search the notebook",
+         "The lab's notebook: questions and ideas the user (or you, or a search) tested, with their status (open, "
+         "answered, dropped with the reason), their answers and how many runs and searches tested them. Search it "
+         "before planning an experiment for an idea, to say what was already learned instead of running it again.",
+         {"query": {"type": "string", "maxLength": 120, "description": "words in the title, question, plan or answer"},
+          "status": {"type": "string", "enum": ["open", "answered", "dropped"]},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 40}},
+         [], _search_notebook, lambda a: "Looking through the notebook"),
+    Tool("get_notebook_entry", "Read a notebook entry",
+         "One notebook entry: the question, the plan, the answer, and the runs and searches linked to it with their "
+         "status and best results. Call it before writing an entry's answer.",
+         {"entry_id": _id("notebook entry id")}, ["entry_id"], _get_entry, lambda a: "Reading the notebook entry"),
+    Tool("estimate_training", "Estimate training time",
+         "How long fine-tuning a model would take on a machine, from the user's own finished runs of that model "
+         "(the same machine when there are any). Use it to give a plan its estimated GPU time.",
+         {"machine_id": _id("machine id"), "model": {"type": "string", "maxLength": 64, "description": "detector id"},
+          "dataset": {"type": "string", "maxLength": 64}, "epochs": {"type": "integer", "minimum": 1, "maximum": 2000}},
+         ["machine_id", "model", "epochs"], _estimate, lambda a: "Estimating the training time"),
 ]
 BY_NAME = {t.name: t for t in TOOLS}
 

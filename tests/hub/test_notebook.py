@@ -130,3 +130,83 @@ def test_training_time_is_estimated_from_past_runs(hub):  # noqa: F811
         unknown = notebook.estimate(c, me, mid, "other", "rfdetr/nano", 10)  # images unknown, no past run on it
         assert unknown["seconds"] is None and "isn't known" in unknown["note"]
         assert notebook.estimate(c, me, mid, "tiny", "rfdetr/small", 10)["seconds"] is None
+
+
+def test_claude_collaborates_through_the_notebook(hub, monkeypatch):  # noqa: F811
+    """An idea becomes an entry, a linked draft and a search draft; later the answer is recorded."""
+    from test_search import report as search_report
+    from test_yeti import KEY, FakeClaude, events, sse_message
+
+    from modellab.hub import yeti, yeti_actions, yeti_tools
+
+    u = login(hub)
+    agent, mid = pair(hub, u, "tower")
+    search_report(agent)
+    old = u.post("/api/notebook", json={"title": "Teacher size", "question": "Does a bigger DINOv3 teacher help the Nano?"}).json()
+    u.patch(f"/api/notebook/{old['id']}", json={"answer": "No: ViT-L and ViT-B were within 0.2 mAP.", "status": "answered"})
+    use = lambda tool, i, **inp: {"type": "tool_use", "id": f"toolu_{i}", "name": tool, "input": inp}  # noqa: E731
+    created = {}
+
+    def after_write(body):  # the second turn: Claude now knows the entry id it created
+        res = next(b for m in body["messages"] if m["role"] == "user" and isinstance(m["content"], list)
+                   for b in m["content"] if b.get("type") == "tool_result" and "entry_id" in b["content"][0]["text"])
+        created["id"] = res["content"][0]["text"].split("entry_id ")[1].split(")")[0]
+        eid = created["id"]
+        return sse_message([use("draft_experiment", 3, machine_id=mid, dataset="tiny", model="rfdetr/nano", epochs=1, notebook_entry=eid),
+                            use("draft_search", 4, dataset="tiny", target_machine_id=mid, speed_budget_ms=5, models=["rfdetr/nano"],
+                                teachers=["dinov3/vits16"], epochs=9, notebook_entry=eid),
+                            use("draft_search", 5, dataset="nope", target_machine_id=mid, speed_budget_ms=5, models=["rfdetr/nano"], epochs=9),
+                            use("notebook_write", 6, entry_id=eid, plan="One quick run, then a search.")], "tool_use")
+
+    fake = FakeClaude([
+        sse_message([use("search_notebook", 1, query="teacher nano"),
+                     use("notebook_write", 2, title="Distill into Nano", question="I think distilling DINOv3 into the nano could help")], "tool_use"),
+        after_write,
+        sse_message([{"type": "text", "text": "Drafted."}], "end_turn"),
+    ])
+    monkeypatch.setattr(yeti, "make_client", fake.client)
+    u.put("/api/assistant", json={"api_key": KEY})
+    ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "I think distilling DINOv3 into the nano could help"}]}))
+    done = [e for e in ev if e["type"] == "tool_done"]
+    assert [e["ok"] for e in done] == [True, True, True, True, False, True]
+    assert done[1]["href"] == f"/notebook/{created['id']}" and done[1]["label"] == "Saved to the notebook: Distill into Nano"
+    chats = [r["body"] for r in fake.requests if r["body"] and "messages" in r["body"]]
+    first_results = [b["content"][0]["text"] for m in chats[1]["messages"] if m["role"] == "user" and isinstance(m["content"], list)
+                     for b in m["content"] if b.get("type") == "tool_result"]
+    assert "within 0.2 mAP" in first_results[0]  # the earlier answer reached Claude before it planned
+    acts = [e["decision"] for e in ev if e["type"] == "action"]
+    assert [d["action"] for d in acts] == ["experiment.fill", "search.fill"]
+    assert acts[0]["extra"]["tag"] == f"nb:{created['id']}"
+    s = acts[1]
+    assert s["extra"]["models"] == ["rfdetr/nano"] and s["extra"]["teachers"] == ["dinov3/vits16"] and s["extra"]["notebook"] == created["id"]
+    assert s["values"] == {"dataset": "tiny", "machine": mid, "speed_budget_ms": "5", "epochs": "9"}
+    told = [b["content"][0]["text"] for m in chats[-1]["messages"] if m["role"] == "user" and isinstance(m["content"], list)
+            for b in m["content"] if b.get("type") == "tool_result"]
+    assert "linked to the notebook entry" in told[2] and "Training time: no estimate" in told[2]
+    assert "train up to" in told[3] and "at most" in told[3] and "would refuse this" in told[4]
+    e = u.get(f"/api/notebook/{created['id']}").json()
+    assert e["author"] == "claude" and e["plan"] == "One quick run, then a search." and e["updated_by"] == "claude"
+    # the drafted run, once the user queues it with the form's tag, joins the entry
+    tagged = RECIPE.replace("name: t", f"name: t\ntags: ['{acts[0]['extra']['tag']}']")
+    rid = u.post("/api/runs", json={"yaml": tagged, "machine_id": mid}).json()["run_ids"][0]
+    out = yeti_tools.call(hub.state.engine, _admin(hub), "get_notebook_entry", {"entry_id": created["id"]})
+    assert not out.error and '"runs":[{"id":"' + rid in out.text()
+    # the answer: Claude writes it, with a status; a drop needs its reason
+    out, _ = yeti_actions.call(hub.state.engine, _admin(hub), "notebook_write",
+                               {"entry_id": created["id"], "answer": "Yes: +4.1 mAP.", "status": "answered"})
+    assert not out.error and u.get(f"/api/notebook/{created['id']}").json()["status"] == "answered"
+    out, _ = yeti_actions.call(hub.state.engine, _admin(hub), "notebook_write", {"entry_id": created["id"], "status": "dropped"})
+    assert out.error and "say why" in out.text()
+    out, _ = yeti_actions.call(hub.state.engine, _admin(hub), "notebook_write", {"title": "No question"})
+    assert out.error
+    # Claude apps (MCP) can read the notebook, not write it
+    mcp = {t["name"] for t in yeti_tools.mcp_tools()}
+    assert {"search_notebook", "get_notebook_entry", "estimate_training"} <= mcp and "notebook_write" not in mcp
+    assert "search_notebook for earlier entries" in chats[0]["system"][0]["text"]
+
+
+def _admin(app) -> dict:
+    from modellab.hub import db
+
+    with app.state.engine.begin() as c:
+        return dict(c.execute(sa.select(db.users).where(db.users.c.username == "admin")).mappings().first())
