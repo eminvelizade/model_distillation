@@ -57,6 +57,12 @@ RUN_KEYS = {"machine_id", "dataset", "model", "epochs", "batch_size", "image_siz
 OPEN = ("proposed", "running", "waiting")  # not finished
 
 
+def safe(text: str) -> str:
+    """Text the hub puts inside a fenced block of a turn (<plans>, <event>, <page>): it can't close the fence or open
+    another, whatever a run's error, a title or a note says."""
+    return text.replace("<", "‹").replace(">", "›")
+
+
 class PlanError(Exception):
     """A plan the hub won't store or change: what is wrong with it, for whoever wrote it."""
 
@@ -298,8 +304,21 @@ def check(c: sa.Connection, user: dict, raw: list, kept: list[dict] | None = Non
     return out
 
 
+def _px(spec: dict) -> int:
+    """A run's input size: what it sets, or its model's own."""
+    d = catalog.DETECTORS.get(spec.get("model") or "")
+    return int(spec.get("image_size") or (d.resolution if d else 0) or 0)
+
+
+def _epochs(steps: list[dict]) -> int:
+    return sum(s["run"]["epochs"] + (s["run"].get("distill_epochs", 30) if s["run"].get("teacher") else 0)
+               for s in steps if s["kind"] == "run")
+
+
 def envelope_of(steps: list[dict]) -> dict:
-    """What approving these steps covers."""
+    """What approving these steps covers: machines, datasets, the kinds of step, and how much work. The work is GPU
+    time when it can be estimated; when it can't (no past runs to go by), it is the number of runs, their epochs in
+    all, their models and their largest input."""
     machines, datasets, ests = set(), set(), []
     for s in steps:
         if s["kind"] == "run":
@@ -311,13 +330,17 @@ def envelope_of(steps: list[dict]) -> dict:
             datasets.add(s["search"]["dataset"])
             ests.append(s["est_s"])
     known = bool(ests) and all(e is not None for e in ests)
+    runs = [s["run"] for s in steps if s["kind"] == "run"]
     return {"machines": sorted(machines), "datasets": sorted(datasets), "tries": TRIES,
-            "runs": sum(s["kind"] in ("run", "search") for s in steps),
+            "kinds": sorted({s["kind"] for s in steps}),
+            "runs": sum(s["kind"] in ("run", "search") for s in steps), "epochs": _epochs(steps),
+            "models": sorted({r["model"] for r in runs if r.get("model")}), "max_px": max([_px(r) for r in runs], default=0),
             "est_s": sum(ests) if known else None, "gpu_s": round(sum(ests) * BUDGET_MARGIN + SLACK_S) if known else None}
 
 
-def beyond(env: dict, steps: list[dict], spent_s: float, kept_runs: int) -> list[str]:
-    """Why these steps go beyond what was approved (empty: they don't)."""
+def beyond(env: dict, steps: list[dict], kept: list[dict], spent_s: float) -> list[str]:
+    """Why these steps go beyond what was approved (empty: they don't). `kept` are the plan's steps that have
+    started: what they still need counts too. `spent_s` is the GPU time of the runs that have finished."""
     new = envelope_of(steps)
     why = []
     names = {m["id"]: m["name"] for s in steps for m in ([s["machine"]] if s["kind"] == "run" else s.get("machines", []))}
@@ -327,14 +350,31 @@ def beyond(env: dict, steps: list[dict], spent_s: float, kept_runs: int) -> list
     extra_d = [d for d in new["datasets"] if d not in env["datasets"]]
     if extra_d:
         why.append(f"it uses the dataset {', '.join(extra_d)}, which the approval didn't cover")
+    extra_k = [k for k in new["kinds"] if k != "pick" and k not in env.get("kinds", KINDS)]  # (a pick only reads results)
+    if extra_k:
+        why.append(f"it adds a kind of step the approved plan didn't have ({', '.join(extra_k)})")
+    going = [s for s in kept if s["status"] == "running" and s["kind"] in ("run", "search")]
     if env.get("gpu_s") is not None:
-        if new["est_s"] is None and new["runs"]:
+        if (new["est_s"] is None and new["runs"]) or any(s.get("est_s") is None for s in going):
             why.append("its GPU time can't be estimated, so it can't be checked against the approved time")
-        elif new["est_s"] is not None and spent_s + new["est_s"] > env["gpu_s"]:
-            why.append(f"it needs about {notebook.fmt_duration(spent_s + new['est_s']).removeprefix('about ')} of GPU time in all; "
-                       f"{notebook.fmt_duration(env['gpu_s']).removeprefix('about ')} was approved")
-    elif kept_runs + new["runs"] > env.get("runs", 0):
+        else:
+            total = spent_s + sum(s["est_s"] for s in going) + (new["est_s"] or 0)
+            if total > env["gpu_s"]:
+                why.append(f"it needs about {notebook.fmt_duration(total).removeprefix('about ')} of GPU time in all; "
+                           f"{notebook.fmt_duration(env['gpu_s']).removeprefix('about ')} was approved")
+        return why
+    # no estimate to go by: the work may not grow in any way that can be counted
+    started = [s for s in kept if s["kind"] in ("run", "search") and s["status"] != "skipped"]
+    if len(started) + new["runs"] > env.get("runs", 0):
         why.append(f"it has more runs than the {env.get('runs', 0)} that were approved")
+    if _epochs(started) + new["epochs"] > env.get("epochs", 0):
+        why.append(f"it trains for {_epochs(started) + new['epochs']} epochs in all; {env.get('epochs', 0)} were approved "
+                   "(there is no time estimate to go by, so the epochs are what was approved)")
+    extra_models = [m for m in new["models"] if m not in env.get("models", [])]
+    if extra_models:
+        why.append(f"it trains {', '.join(_labels().get(m, m) for m in extra_models)}, which wasn't in the approved plan")
+    if new["max_px"] > env.get("max_px", 0):
+        why.append(f"it trains at {new['max_px']} px; the approved plan went up to {env.get('max_px', 0)} px")
     return why
 
 
@@ -438,7 +478,7 @@ def state_text(c: sa.Connection, user: dict, agent_id: str | None = None) -> str
         if r["pending"]:
             lines.append("  A revision that goes beyond the approval waits for the user's OK.")
         out.append("\n".join(lines))
-    return "\n".join(out)
+    return safe("\n".join(out))   # (a step's note carries its run's error, which is anybody's text)
 
 
 # ---------------------------------------------------------------- the thread
@@ -642,14 +682,15 @@ def _refresh(c: sa.Connection, owner: dict, plan: dict, st: dict, env: dict, spe
     return True
 
 
-def _spent(c: sa.Connection, owner_id: str, steps: list[dict]) -> float:
+def _spent(c: sa.Connection, owner_id: str, steps: list[dict], finished_only: bool = False) -> float:
+    """The GPU time of a plan's runs so far (every try counts); `finished_only` leaves out what is still running."""
     ids = list({a["run_id"] for s in steps for a in s.get("attempts") or [] if a.get("run_id")})
     if not ids:
         return 0.0
     now, total = time.time(), 0.0
     for started, finished in c.execute(sa.select(db.runs.c.started, db.runs.c.finished)
                                        .where(db.runs.c.id.in_(ids), db.runs.c.owner_id == owner_id)).all():
-        if started:
+        if started and (finished or not finished_only):
             total += max(0.0, (finished or now) - started)
     return total
 
@@ -786,12 +827,15 @@ def revise(c: sa.Connection, user: dict, pid: str, raw: list, why: str | None) -
         c.execute(db.plans.update().where(db.plans.c.id == pid).values(
             steps=db.dumps(new), envelope=db.dumps(envelope_of(new)), updated=now, rev=r["rev"] + 1))
         return public(c, _row(c, user, pid)), []
-    reasons = beyond(env, new, _spent(c, user["id"], steps), sum(s["kind"] in ("run", "search") for s in kept))
+    reasons = beyond(env, new, kept, _spent(c, user["id"], steps, finished_only=True))
     if reasons:
-        both = envelope_of([s for s in kept if s["kind"] in ("run", "search")] + new)
+        both = envelope_of([s for s in kept if s["status"] != "skipped"] + new)   # what the OK would cover: the plan as changed
         pend = {"steps": new, "why": (why or "").strip()[:600] or None, "reasons": reasons,
                 "envelope": {**both, "machines": sorted(set(both["machines"]) | set(env["machines"])),
-                             "datasets": sorted(set(both["datasets"]) | set(env["datasets"]))}}
+                             "datasets": sorted(set(both["datasets"]) | set(env["datasets"])),
+                             "kinds": sorted(set(both["kinds"]) | set(env.get("kinds", []))),
+                             "models": sorted(set(both["models"]) | set(env.get("models", []))),
+                             "max_px": max(both["max_px"], env.get("max_px", 0))}}
         c.execute(db.plans.update().where(db.plans.c.id == pid).values(pending=db.dumps(pend), updated=now, rev=r["rev"] + 1))
         _say(c, r, f"A change to the plan \"{r['title']}\" goes beyond what was approved ({'; '.join(reasons)}). "
                    "It waits for your OK on the plan's card.")
@@ -818,7 +862,7 @@ def approve(c: sa.Connection, user: dict, pid: str) -> dict:
         # the plan went on while the change waited: a step that has started since stays as it started (not twice)
         started = {s["id"] for s in steps}
         new = [s for s in pend["steps"] if s["id"] not in started]
-        env = {**db.loads(r["envelope"], {}), **{k: pend["envelope"][k] for k in ("machines", "datasets", "runs", "est_s", "gpu_s")}}
+        env = {**db.loads(r["envelope"], {}), **{k: v for k, v in pend["envelope"].items() if k != "tries"}}
         c.execute(db.plans.update().where(db.plans.c.id == pid).values(
             steps=db.dumps(steps + new), envelope=db.dumps(env), pending=None, status="running", message=None,
             updated=now, rev=r["rev"] + 1))

@@ -165,7 +165,7 @@ function Message({ m, roomy }: { m: YetiMsg; roomy?: boolean }) {
   const u = m.usage;
   return (
     <div className="flex items-end gap-2.5">
-      <Yeti size={roomy ? 32 : 28} pose={m.streaming ? "think" : "idle"} className="mb-4" />
+      <Yeti size={roomy ? 32 : 28} pose={m.streaming ? "think" : "idle"} fps={m.streaming ? 15 : 4} className="mb-4" />
       <div className={cx("min-w-0 space-y-1.5", roomy ? "max-w-[min(680px,88%)]" : "flex-1")}>
         <ToolTrail m={m} />
         {(m.text || m.streaming) && (
@@ -218,7 +218,7 @@ function ActionCard({ m }: { m: YetiMsg }) {
     : state === "declined" ? "Left as it is." : state === "failed" ? note : null;
   return (
     <div className="flex items-end gap-2.5 animate-fade">
-      <Yeti size={28} pose={state === "working" ? "think" : state === "done" ? "happy" : "idle"} className="mb-1" />
+      <Yeti size={28} pose={state === "working" ? "think" : state === "done" ? "happy" : "idle"} fps={state === "working" ? 15 : 4} className="mb-1" />
       <div className="min-w-0 max-w-[440px] flex-1 rounded-2xl rounded-bl-md border border-line bg-surface p-3 shadow-soft">
         <div className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-fg">
           {d.show ? <MousePointerClick className="h-3.5 w-3.5 shrink-0 text-accent" /> : <Zap className="h-3.5 w-3.5 shrink-0 text-accent" />}
@@ -303,7 +303,7 @@ export function PlanCard({ p }: { p: Plan }) {
   const spin = (k: string) => (busy === k ? <Loader2 className="animate-spin" /> : null);
   return (
     <div className="flex items-end gap-2.5 animate-fade" data-plan={p.id}>
-      <Yeti size={28} pose={p.status === "running" ? "think" : p.status === "done" ? "happy" : "idle"} className="mb-1" />
+      <Yeti size={28} pose={p.status === "running" ? "think" : p.status === "done" ? "happy" : "idle"} fps={p.status === "running" ? 10 : 4} className="mb-1" />
       <div className="min-w-0 max-w-[560px] flex-1 rounded-2xl rounded-bl-md border border-line bg-surface p-3.5 shadow-soft">
         <div className="flex items-start gap-2">
           <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-accent" />

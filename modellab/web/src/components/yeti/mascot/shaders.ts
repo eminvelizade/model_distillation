@@ -569,25 +569,73 @@ uniform vec4 uSA[NS];
 uniform vec4 uSB[NS];    // (w: which colour)
 uniform vec4 uSR[NS];    // (w: roughness)
 uniform vec3 uSolC[6];
+uniform vec4 uSolB;      // a ball that holds every solid part (xyz centre, w radius): outside it they needn't be asked
 const mat3 TWIST = mat3(0.8, -0.6, 0.0, 0.36, 0.48, -0.8, 0.48, 0.64, 0.6);
-// one part: an ellipsoid, a round cone, a rounded box, a ring or a disc about an axis, or an arc of a ring facing forward
+vec3 gN = vec3(0.0, 1.0, 0.0);   // which way is out, where it was last worked out (gNat)
+vec3 gNat = vec3(1e3);
+// the kinds of part: a rounded box, a ring and a disc about an axis, an arc of a ring facing forward (and, from
+// COMMON, an ellipsoid and a round cone)
+float sdRBox(vec3 q, vec3 b, float r) { vec3 e = abs(q) - b + r; return length(max(e, 0.0)) + min(max(e.x, max(e.y, e.z)), 0.0) - r; }
+float sdRing(vec3 q, vec3 ax, float R, float r) { float h = dot(q, ax); return length(vec2(length(q - ax * h) - R, h)) - r; }
+float sdDisc(vec3 q, vec3 ax, vec3 R) {
+  float h = dot(q, ax);
+  vec2 e = abs(vec2(length(q - ax * h), h)) - R.xy + R.z;
+  return min(max(e.x, e.y), 0.0) + length(max(e, 0.0)) - R.z;
+}
+float sdArc(vec3 q, float up, vec3 R) {   // (Quilez's capped torus) up: 1 the arc's middle is up, -1 down; R.z: half its angle
+  q.y *= up; q.x = abs(q.x);
+  vec2 sc = vec2(sin(R.z), cos(R.z));
+  float k = sc.y * q.x > sc.x * q.y ? dot(q.xy, sc) : length(q.xy);
+  return sqrt(max(dot(q, q) + R.x * R.x - 2.0 * R.x * k, 0.0)) - R.y;
+}
+// The kinds of part fur grows on, with which way is out (the distance's slope) worked out alongside: an ellipsoid, a
+// round cone, a rounded box, and a layer over the first part between two heights (a hat, a scarf).
+float sdEllipsoidG(vec3 q, vec3 r, out vec3 g) {
+  vec3 q1 = q / r, q2 = q1 / r;
+  float k0 = length(q1), k1 = max(length(q2), 1e-5);
+  g = q2 / k1;
+  return k0 * (k0 - 1.0) / k1;
+}
+float sdRoundConeG(vec3 p, vec3 a, vec3 b, float r1, float r2, out vec3 g) {
+  vec3 ba = b - a; float l2 = dot(ba, ba); float rr = r1 - r2; float a2 = l2 - rr * rr; float il2 = 1.0 / l2;
+  vec3 pa = p - a; float y = dot(pa, ba); float z = y - l2;
+  vec3 xv = pa * l2 - ba * y; float x2 = dot(xv, xv); float y2 = y * y * l2; float z2 = z * z * l2;
+  float k = sign(rr) * rr * rr * x2;
+  if (sign(z) * a2 * z2 > k) { vec3 pb = p - b; g = pb / max(length(pb), 1e-5); return sqrt(x2 + z2) * il2 - r2; }
+  if (sign(y) * a2 * y2 < k) { g = pa / max(length(pa), 1e-5); return sqrt(x2 + y2) * il2 - r1; }
+  g = xv * (sqrt(a2 * il2) / max(sqrt(x2), 1e-6)) + ba * (rr * il2);
+  return (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
+}
+float sdRBoxG(vec3 q, vec3 b, float r, out vec3 g) {
+  vec3 e = abs(q) - b + r, m = max(e, 0.0);
+  float l = length(m);
+  g = sign(q) * (l > 1e-5 ? m / l : step(e.yzx, e.xyz) * step(e.zxy, e.xyz));
+  return l + min(max(e.x, max(e.y, e.z)), 0.0) - r;
+}
+// (smax, with the first one's share of the slope)
+float smaxW(float a, float b, float k, out float w) { float h = max(k - abs(a - b), 0.0) / k; w = a > b ? 1.0 - 0.5 * h : 0.5 * h; return max(a, b) + h * h * k * 0.25; }
+float layerD(float d0, float y, float thick, float y0, float y1) { return smax(smax(d0 - thick, y0 - y, 0.035), y - y1, 0.035); }
+float layerG(float d0, vec3 g0, float y, float thick, float y0, float y1, out vec3 g) {
+  float w;
+  float d = smaxW(d0 - thick, y0 - y, 0.035, w);
+  g = mix(vec3(0.0, -1.0, 0.0), g0, w);
+  d = smaxW(d, y - y1, 0.035, w);
+  g = mix(vec3(0.0, 1.0, 0.0), g, w);
+  return d;
+}
+// one part, whatever its kind (the general way; a look that is drawn a lot has its parts written out instead: see
+// glslFor in ./looks.ts)
 float partD(vec3 p, vec4 A, vec4 B, vec4 R) {
   int ty = int(A.w + 0.5);
   vec3 q = p - A.xyz;
   if (ty == 0) return sdEllipsoid(q, R.xyz);
   if (ty == 1) return sdRoundCone(p, A.xyz, B.xyz, R.x, R.y);
-  if (ty == 2) { vec3 e = abs(q) - B.xyz + R.x; return length(max(e, 0.0)) + min(max(e.x, max(e.y, e.z)), 0.0) - R.x; }
-  if (ty == 5) {           // (Quilez's capped torus) B.x: 1 the arc's middle is up, -1 down; R.z: half its angle
-    q.y *= B.x; q.x = abs(q.x);
-    vec2 sc = vec2(sin(R.z), cos(R.z));
-    float k = sc.y * q.x > sc.x * q.y ? dot(q.xy, sc) : length(q.xy);
-    return sqrt(max(dot(q, q) + R.x * R.x - 2.0 * R.x * k, 0.0)) - R.y;
-  }
-  float h = dot(q, B.xyz), rho = length(q - B.xyz * h);
-  if (ty == 3) return length(vec2(rho - R.x, h)) - R.y;
-  vec2 e = abs(vec2(rho, h)) - vec2(R.x, R.y) + R.z;
-  return min(max(e.x, e.y), 0.0) + length(max(e, 0.0)) - R.z;
+  if (ty == 2) return sdRBox(q, B.xyz, R.x);
+  if (ty == 5) return sdArc(q, B.x, R.xyz);
+  if (ty == 3) return sdRing(q, B.xyz, R.x, R.y);
+  return sdDisc(q, B.xyz, R.xyz);
 }
+/*CLOTH<*/
 float pileOf(float kind) { return kind < 0.5 ? 0.05 : kind < 1.5 ? 0.034 : kind < 2.5 ? 0.09 : 0.28; }
 // the fabric (with that share of each part's pile on it); and the pile's depth and its fur (rgb: dye, a: which) there
 float cloth(vec3 p, float pile, out float len, out vec4 fur) {
@@ -598,9 +646,8 @@ float cloth(vec3 p, float pile, out float len, out vec4 fur) {
     if (i >= uNF) break;
     float kind = uFR[i].w, li = pileOf(kind);
     float di;
-    if (uFA[i].w > 5.5) {   // a layer of knit over the body itself, between two heights (a hat, a scarf): it fits any shape
-      di = smax(smax(d0 - uFR[i].x, uFA[i].y - p.y, 0.035), p.y - uFB[i].y, 0.035);
-    } else di = i == 0 ? d0 : partD(p, uFA[i], uFB[i], uFR[i]);
+    if (uFA[i].w > 5.5) di = layerD(d0, p.y, uFR[i].x, uFA[i].y, uFB[i].y);   // a layer of knit over the body itself (a hat, a scarf): it fits any shape
+    else di = i == 0 ? d0 : partD(p, uFA[i], uFB[i], uFR[i]);
     di -= pile * li;
     vec4 fi = vec4(uFurC[int(kind + 0.5)], kind);
     if (i == 0) { d = di; len = li; fur = fi; continue; }
@@ -611,24 +658,38 @@ float cloth(vec3 p, float pile, out float len, out vec4 fur) {
   }
   return d;
 }
+// the fabric (no pile on it), with which way is out. The parts are lists here, so there's no formula for it: it comes
+// from four more readings of the distance, and only in the pile. The pile is thin beside the body's curve, so one
+// reading serves a stretch of the ray through it.
+float clothN(vec3 p, out float len, out vec4 fur, out vec3 n) {
+  float d = cloth(p, 0.0, len, fur);
+  n = gN;
+  if (d > len && d > max(0.01, 0.3 * gPix)) { gNat = vec3(1e3); return d; }
+  vec3 dn = p - gNat;
+  if (dot(dn, dn) > 0.0009) {
+    const vec2 k = vec2(1.0, -1.0);
+    const float e = 0.004;
+    float l2; vec4 f2;
+    gN = normalize(k.xyy * cloth(p + k.xyy * e, 0.0, l2, f2) + k.yyx * cloth(p + k.yyx * e, 0.0, l2, f2)
+                 + k.yxy * cloth(p + k.yxy * e, 0.0, l2, f2) + k.xxx * cloth(p + k.xxx * e, 0.0, l2, f2));
+    gNat = p;
+  }
+  n = gN;
+  return d;
+}
+/*>CLOTH*/
 float skinM(vec3 p, out Mat m, bool full) { float l; vec4 f; m = Mat(uMain, 0.0, 0.0); return cloth(p, 0.0, l, f); }
 float pileD(vec3 p) { float l; vec4 f; return cloth(p, 0.5, l, f); }
 // the fur at p: a short pile of curly fibres that lie every which way, in small whorls (like the pile of a soft toy)
 float furM(vec3 p, out Fur f) {
-  float len; vec4 fur;
-  float d = cloth(p, 0.0, len, fur);
+  float len; vec4 fur; vec3 n;
+  float d = clothN(p, len, fur, n);
   f.len = len; f.h = d / len; f.gap = d - len; f.ink = 0.0; f.top = 0.0; f.under = 0.0;
-  f.n = vec3(0.0, 1.0, 0.0); f.root = p; f.dir = f.n; f.alb = fur.rgb; f.fine = 62.0; f.gloss = 0.3;
+  f.n = n; f.root = p; f.dir = n; f.alb = fur.rgb; f.fine = 62.0; f.gloss = 0.3;
   if (f.gap > 0.0 && d > max(0.01, 0.3 * gPix)) return d;   // (not in the pile: the march only needs the distances)
-  const vec2 k = vec2(1.0, -1.0);
-  const float e = 0.004;
-  float l2; vec4 f2;
-  vec3 n = normalize(k.xyy * cloth(p + k.xyy * e, 0.0, l2, f2) + k.yyx * cloth(p + k.yyx * e, 0.0, l2, f2)
-                   + k.yxy * cloth(p + k.yxy * e, 0.0, l2, f2) + k.xxx * cloth(p + k.xxx * e, 0.0, l2, f2));
   vec3 s = p - n * d;                                  // the fabric below this point
   float hc = clamp(f.h, 0.0, 1.0), kind = fur.a;
   vec3 t1 = normalize(cross(n, abs(n.y) < 0.92 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0))), t2 = cross(n, t1);
-  f.n = n;
   if (kind > 2.5) {        // a tuft: long, fine fibres fanning out of a small core, drooping a little, swaying
     s = s + n * 0.14;      // (told apart by their direction from the core)
     float lock = snoise(TWIST * s * 46.0 + 3.0, 0.0);
@@ -649,7 +710,7 @@ float furM(vec3 p, out Fur f) {
   float knit = step(0.5, kind) * step(kind, 1.5), pom = step(1.5, kind);
   float grain = mix(25.0, 31.0, knit);
   vec3 q = TWIST * s * grain;
-  q += 1.5 * (vec3(snoise(q * 0.47 + 3.0, 0.0), snoise(q * 0.47 + 17.0, 0.0), snoise(q * 0.47 + 41.0, 0.0)) - 0.5);
+  q += 1.5 * (vec3(snoise(q * 0.47 + 3.0, 0.0), snoise(q * 0.47 + 17.0, 0.0), snoise(q * 0.47 + 41.0, 0.0)) - 0.5);   // (the grid wobbles, so patches aren't square)
   vec3 cell = floor(q), hsh = hash33(cell + 0.5);
   vec3 c0 = (cell + 0.5) * TWIST / grain;                    // the patch's middle (TWIST is a rotation: this undoes it)
   float ang = 6.2832 * hsh.x, lock = hsh.y;
@@ -666,6 +727,7 @@ float furM(vec3 p, out Fur f) {
   f.alb = mix(fur.rgb, vec3(1.0), 0.02 * smoothstep(0.35, 1.0, hc / max(f.top, 0.05)));   // (the tips scatter a trace of white light; the dye stays pure)
   return d;
 }
+/*SOLID<*/
 // the solid parts: glossy eyes, glasses, headphones and the like
 float solid(vec3 p, out vec3 col, out float rough) {
   float d = 1e3;
@@ -677,7 +739,16 @@ float solid(vec3 p, out vec3 col, out float rough) {
   }
   return d;
 }
+/*>SOLID*/
 float casters(vec3 p) { vec3 c; float r; return solid(p, c, r); }
+// The march asks for the solid parts at every step, and only needs them where it's near them: well outside the ball
+// that holds them all, its distance to the ball will do. (Only the march: a shadow measures how near its ray passes,
+// and would take the ball for something in the light's way.)
+float solidNear(vec3 p, out vec3 col, out float rough) {
+  float far = length(p - uSolB.xyz) - uSolB.w;
+  if (far > 0.06) { col = INK; rough = 0.2; return far; }
+  return solid(p, col, rough);
+}
 `;
 
 export const RENDER = /* glsl */ `
@@ -1042,8 +1113,8 @@ void main() {
   vec3 key = vec3(0.0), col = vec3(0.0);
   float lift = 0.0, depth = 0.0;
 #ifdef FUZZY
-  vec3 Cs = vec3(0.0);   // a solid part (a glossy eye, glasses) behind the fibres met so far,
-  float As = 0.0;        // ...and how much of the pixel is left for it
+  vec3 sAt = vec3(0.0), sCol = vec3(0.0);   // a solid part (a glossy eye, glasses) behind the fibres met so far: where, its colour,
+  float sRough = 0.0, As = 0.0;             // ...its roughness, and how much of the pixel is left for it
 #endif
   for (int i = 0; i < 200; i++) {
     vec3 p = ro + rd * t;
@@ -1051,13 +1122,8 @@ void main() {
     gPix = t * uPix;
 #ifdef FUZZY
     vec3 sc; float sr;
-    float sd = solid(p, sc, sr);
-    if (sd < 0.3 * gPix) {
-      vec3 n = solidNormal(p);
-      Cs = shadePlastic(n, V, sc, sr, calcAO(p + n * 0.002, n), softShadow(p + n * 0.01, uKey, 5.0));
-      As = 1.0 - A; hit = true;
-      break;
-    }
+    float sd = solidNear(p, sc, sr);
+    if (sd < 0.3 * gPix) { sAt = p; sCol = sc; sRough = sr; As = 1.0 - A; hit = true; break; }   // (lit below, once: not on every step)
 #endif
     Fur f;
     float d = furM(p, f);
@@ -1104,7 +1170,11 @@ void main() {
     if (A > 0.985) { Cp /= A; A = 1.0; }
   }
 #ifdef FUZZY
-  if (As > 0.0) { Cp += As * Cs; A = min(1.0, A + As); }
+  if (As > 0.0) {
+    vec3 n = solidNormal(sAt);
+    Cp += As * shadePlastic(n, V, sCol, sRough, calcAO(sAt + n * 0.002, n), softShadow(sAt + n * 0.01, uKey, 5.0));
+    A = min(1.0, A + As);
+  }
 #endif
 #else
 #ifdef SNOW

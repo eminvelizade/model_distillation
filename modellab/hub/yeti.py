@@ -124,8 +124,9 @@ Never say a plan has started or finished unless the <plans> block says so.
 - A <plans> block at the start of a message is the hub's own record of this user's plans: every step's real state, \
 written from the runs themselves. Trust it over your memory of earlier turns. To change a plan (the user asks, or a \
 step failed in a way the hub couldn't fix), use revise_plan: it replaces the steps that haven't started. A change \
-inside what was approved (same machines and datasets, within the approved GPU time) takes effect at once; one that \
-goes beyond it waits for the user's OK, and you say so.
+inside what was approved takes effect at once: the same machines and datasets, the kinds of step the plan already \
+had, and within the approved GPU time (or, when there was no estimate, no more runs or epochs, no other model and \
+no larger input than were approved). One that goes beyond it waits for the user's OK, and you say so.
 - When a step failed and the plan is waiting: read the run and its logs first, say in plain words what went wrong, \
 then either fix it with revise_plan or say what you need from the user. Don't call something fixed until the \
 <plans> block shows it. If you could not check something, say what you couldn't check and stop there; don't finish \
@@ -374,7 +375,7 @@ def page_note(c: sa.Connection, user: dict, page) -> str | None:
 
 def user_content(text: str, note: str | None) -> str:
     text = text.strip() or "(empty message)"
-    return f"<page>{note}</page>\n\n{text}" if note else text
+    return f"<page>{note.replace('<', '‹').replace('>', '›')}</page>\n\n{text}" if note else text   # (names in it are data)
 
 
 def build_messages(history: list[ChatMsg], note: str | None) -> list[dict]:

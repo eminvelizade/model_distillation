@@ -206,9 +206,13 @@ The `features` stage writes figures that I can look at and explain:
     learning rate after a NaN loss, a re-queue after an interruption; at most three tries, and only within the
     approved GPU time (the estimate times 1.5, plus 10 minutes).
   - Anything else stops the plan: the card says why and offers Retry the step, Skip it or Stop the plan.
-  - The agent can change a plan's steps that haven't started. A change inside what was approved (the same machines
-    and datasets, within the approved GPU time) takes effect at once; one that goes beyond it waits on the card for
-    the user's OK.
+  - Start approves the plan's machines and datasets, the kinds of step it has, its GPU time (the estimate times
+    1.5, plus 10 minutes) and the retries. With no estimate (no past runs of that model on that machine), the work
+    is counted instead: the number of runs, their epochs in all, their models and their largest input size.
+  - The agent can change a plan's steps that haven't started. A change inside what was approved takes effect at
+    once. One that goes beyond it waits on the card for the user's OK (**Approve the change**): another machine or
+    dataset, a kind of step the plan didn't have (an export nobody approved; a pick is free), more GPU time, or,
+    with no estimate, more runs, more epochs, another model or a larger input.
   - When a plan finishes or stops, the hub writes what happened into the conversation, and the agent follows up with
     a report the next time the conversation is on screen. A plan's runs carry the tag `plan:<id>`.
 - The corner button and the Chat entry show a red count of messages that arrived while the user was away.

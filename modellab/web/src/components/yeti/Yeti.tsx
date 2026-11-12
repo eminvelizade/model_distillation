@@ -13,8 +13,9 @@ const loadEngine = () => (engine ??= import("./mascot/engine").then((m) => { m.p
  *  says otherwise. Poses: idle (breathes, blinks, follows the pointer), wave (once, smiling: "I can explain this"),
  *  think (looks up, a sparkle or bubbles), happy (a hop), sleep (eyes closed, z's). Shows a still picture while the 3D
  *  renderer loads (a soft blob in its colour for a make-your-own one), and keeps it where WebGL isn't available. */
-export default function Yeti({ size = 64, pose = "idle", className, title, kind, look, fps, follow }: {
+export default function Yeti({ size = 64, pose = "idle", className, title, kind, look, fps, follow, thumb }: {
   size?: number; pose?: YetiPose; className?: string; title?: string; kind?: MascotKind; look?: AgentLook; fps?: number; follow?: boolean;
+  thumb?: boolean;   // a small still picture among many (the editor's shapes): drawn once, with the shared program
 }) {
   const chosen = useMascot().look;
   const L: AgentLook = look ?? (kind ? { base: kind } : chosen);
@@ -27,7 +28,7 @@ export default function Yeti({ size = 64, pose = "idle", className, title, kind,
     let alive = true;
     loadEngine().then((m) => {
       if (!alive || !host.current) return;
-      const opts = { pose, fps: fps ?? (small ? 15 : 30), follow: follow ?? !small, portrait: small };
+      const opts = { pose, fps: fps ?? (small ? 15 : 30), follow: follow ?? !small, portrait: small, still: thumb, general: thumb };
       view.current = isBuiltIn(L) ? new m.View(host.current, { kind: L.base, ...opts }) : new m.View(host.current, { kind: "fuzzy", look: L, ...opts });
       setLive(true);
     }).catch(() => undefined);   // no WebGL: the still picture stays

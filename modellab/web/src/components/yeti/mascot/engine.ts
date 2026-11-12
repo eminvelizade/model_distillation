@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Look, MascotKind, MascotPose } from "../mascots";
 import { COLOURS } from "../mascots";
-import { build, Built, MAX_FUR, MAX_SOLID, Part } from "./looks";
+import { build, Built, MAX_FUR, MAX_SOLID, PARKED, Part } from "./looks";
 import { BLOOM, BOP, COMMON, FUZZY, MOCHI, PIP, RENDER, RIME, TWINKLE, VERT } from "./shaders";
 
 /** The 3D mascots, drawn live with three.js.
@@ -80,10 +80,14 @@ const SPECS: Record<MascotKind, Spec> = {
 };
 
 /** The spec of a make-your-own mascot: its parts are lists (see ./looks.ts), so most of a Spec doesn't apply. */
-function fuzzySpec(b: Built, look: Look): Spec {
+function fuzzySpec(b: Built, look: Look, general: boolean): Spec {
   const main = COLOURS[look.colour] ?? COLOURS.lime, pale = look.colour === "snow";
+  // drawn for real, a look has its parts written out in the shader (three times cheaper to draw; one program for
+  // each set of kinds of part). `general` keeps the one program that reads any parts: for thumbnails, where a new
+  // program for each would cost more than it saves.
+  const glsl = general || !b.glsl ? FUZZY : FUZZY.replace(/\/\*CLOTH<\*\/[\s\S]*?\/\*>CLOTH\*\//, () => b.glsl!.cloth).replace(/\/\*SOLID<\*\/[\s\S]*?\/\*>SOLID\*\//, () => b.glsl!.solid);
   return {
-    glsl: FUZZY, box: b.box, cam: b.cam, top: b.top, shadow: b.shadow, eye: { x: 0, y: b.eyeY, rx: 0, ry: 0 }, eyeZ: 0, faceR: 1,
+    glsl, box: b.box, cam: b.cam, top: b.top, shadow: b.shadow, eye: { x: 0, y: b.eyeY, rx: 0, ry: 0 }, eyeZ: 0, faceR: 1,
     nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0], blush: [0, 0, 0, 0], rest: 0, prop: pale ? COLOURS.ice : main, exposure: 1.06,
     colors: { main, accent: main, blush: main, extra: main },
   };
@@ -165,12 +169,15 @@ function loop(now: number) {
 }
 
 // ---------------------------------------------------------------- one mascot
-/** kind "fuzzy" is a make-your-own mascot: `look` says which. */
-export type ViewOptions = { kind: MascotKind | "fuzzy"; look?: Look; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number; portrait?: boolean };
+/** kind "fuzzy" is a make-your-own mascot: `look` says which. `still`: one picture per change, no motion (a
+ *  thumbnail). `general`: draw a make-your-own mascot with the program that reads any parts (see fuzzySpec). */
+export type ViewOptions = { kind: MascotKind | "fuzzy"; look?: Look; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number; portrait?: boolean;
+  still?: boolean; general?: boolean };
 
 export class View {
   private K: Spec;
   private built: Built | null = null;   // a make-your-own mascot's parts
+  private still = false;                // a thumbnail: one picture per change
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private scene = new THREE.Scene();
@@ -205,7 +212,8 @@ export class View {
 
   constructor(private host: HTMLElement, o: ViewOptions) {
     if (o.kind === "fuzzy") this.built = build(o.look ?? { shape: "pom", colour: "lime", eyes: "bean", glasses: "none", extra: "none" });
-    const K = (this.K = this.built ? fuzzySpec(this.built, o.look!) : SPECS[o.kind as MascotKind]);
+    const K = (this.K = this.built ? fuzzySpec(this.built, o.look!, !!o.general) : SPECS[o.kind as MascotKind]);
+    this.still = !!o.still;
     this.fps = o.fps ?? 30;
     this.follow = o.follow ?? true;
     this.canvas = document.createElement("canvas");
@@ -245,7 +253,7 @@ export class View {
       Object.assign(this.uniforms, {
         uNF: { value: B.fur.length }, uFA: { value: v4s(MAX_FUR) }, uFB: { value: v4s(MAX_FUR) }, uFR: { value: v4s(MAX_FUR) },
         uFurC: { value: B.furC.map(C) }, uNS: { value: 0 }, uSA: { value: v4s(MAX_SOLID) }, uSB: { value: v4s(MAX_SOLID) },
-        uSR: { value: v4s(MAX_SOLID) }, uSolC: { value: B.solidC.map(C) },
+        uSR: { value: v4s(MAX_SOLID) }, uSolC: { value: B.solidC.map(C) }, uSolB: { value: new THREE.Vector4(0, 0, 0, 9) },
       });
       B.fur.slice(0, MAX_FUR).forEach((q, i) => {
         (this.uniforms.uFA.value as THREE.Vector4[])[i].set(q.a[0], q.a[1], q.a[2], q.ty);
@@ -343,6 +351,20 @@ export class View {
       (U.uSR.value as THREE.Vector4[])[i].set(q.r[0], q.r[1], q.r[2], q.rough ?? 0.2);
     }
     U.uNS.value = n;
+    // a ball round them all (their points, plus their size): outside it the shader skips the list
+    let cx = 0, cy = 0, cz = 0, k = 0;
+    const pts: [number, number, number, number][] = [];
+    for (let i = 0; i < n; i++) {
+      if (parts[i].a[1] <= PARKED + 1) continue;   // (an eye's unused places are parked far below)
+      const q = parts[i], reach = q.ty === 0 ? Math.max(q.r[0], q.r[1], q.r[2]) : q.ty === 1 ? Math.max(q.r[0], q.r[1]) : q.ty === 2 ? Math.hypot(q.b![0], q.b![1], q.b![2]) : q.r[0] + q.r[1];
+      pts.push([q.a[0], q.a[1], q.a[2], reach]);
+      if (q.ty === 1) pts.push([q.b![0], q.b![1], q.b![2], reach]);
+    }
+    for (const q of pts) { cx += q[0]; cy += q[1]; cz += q[2]; k++; }
+    if (k) { cx /= k; cy /= k; cz /= k; }
+    let rad = 0;
+    for (const q of pts) rad = Math.max(rad, Math.hypot(q[0] - cx, q[1] - cy, q[2] - cz) + q[3]);
+    (U.uSolB.value as THREE.Vector4).set(cx, cy, cz, k ? rad : -1);
   }
 
   setPose(p: MascotPose) {
@@ -381,7 +403,7 @@ export class View {
   /** Called by the loop: draws when it's time; returns whether this View wants more frames. */
   frame(now: number): boolean {
     if (!this.onScreen || this.w < 2) return false;
-    if (reduceMotion()) {               // still pictures: one frame per change
+    if (this.still || reduceMotion()) {               // still pictures: one frame per change
       if (this.dirty) { this.update(0); this.draw(); this.dirty = false; }
       return false;
     }

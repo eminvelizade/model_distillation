@@ -154,9 +154,11 @@ TOOLS = [
      "description": "Change a plan: replace its steps that haven't started with these (steps that ran stay, and a step "
                     "that failed is replaced by what you give). Use it when the user asks for a change to a plan, or "
                     "when a step failed in a way the hub couldn't fix and a different setting would. Inside what was "
-                    "approved (the same machines and datasets, within the approved GPU time) the change takes effect "
-                    "at once and the plan goes on; beyond it, the change waits for the user's OK on the plan's card: "
-                    "the result says which. New steps may build on the ids of steps that already ran.",
+                    "approved (the same machines and datasets, the kinds of step the plan already had, within the "
+                    "approved GPU time, or with no estimate no more runs, epochs, models or input size than were "
+                    "approved) the change takes effect at once and the plan goes on; beyond it, the change waits "
+                    "for the user's OK on the plan's card: the result says which. New steps may build on the ids of "
+                    "steps that already ran.",
      "input_schema": {"type": "object", "additionalProperties": False, "required": ["plan_id", "steps"], "properties": {
          "plan_id": {"type": "string", "maxLength": 32},
          "why": {"type": "string", "maxLength": 600, "description": "what changes and why, in a sentence the user will read"},

@@ -16,6 +16,7 @@ export type Part = { ty: number; a: V3; b?: V3; r: V3; k?: number; fur?: number;
 export const SOLID = { ink: 0, white: 1, accent: 2, dark: 3, leaf: 4, soft: 5 } as const;
 export const PILE = [0.05, 0.034, 0.09, 0.28];   // how far each fur stands off its fabric (as in the shader)
 export const MAX_FUR = 8, MAX_SOLID = 22;
+export const PARKED = -99;   // the height a solid part that isn't showing is put at (an eye's unused places)
 
 // ---------------------------------------------------------------- the same distance functions as the shader
 const len = (x: number, y: number, z = 0) => Math.hypot(x, y, z);
@@ -67,6 +68,61 @@ function meet(parts: Part[], from: V3, dir: V3, far = 6): number | null {
   return null;
 }
 
+// ---------------------------------------------------------------- a look's parts, written out
+const f = (x: number) => (Number.isInteger(x) ? `${x}.0` : `${+x.toFixed(5)}`);
+
+/** GLSL for cloth(), clothN() and solid() with these parts written out one after another, each as the kind it is. The
+ *  numbers still come from the uniform lists (so eyes can blink and glance); only the kinds, the furs and how softly
+ *  parts join are fixed in the code. Written out, each part also gives which way is out by formula, where the general
+ *  lists need four more readings of the whole shape for it. */
+export function glslFor(fur: Part[], solid: Part[]): { cloth: string; solid: string } | null {
+  if (fur.some((q) => q.ty > 2 && q.ty !== 6) || fur[0]?.ty === 6) return null;   // (fur only grows on these kinds: draw it the general way)
+  const u = (A: string, i: number) => `${A}[${i}]`;
+  const dist = (q: Part, i: number, A: string, B: string, R: string) => {
+    const a = u(A, i), b = u(B, i), r = u(R, i);
+    return q.ty === 0 ? `sdEllipsoid(p - ${a}.xyz, ${r}.xyz)` : q.ty === 1 ? `sdRoundCone(p, ${a}.xyz, ${b}.xyz, ${r}.x, ${r}.y)`
+      : q.ty === 2 ? `sdRBox(p - ${a}.xyz, ${b}.xyz, ${r}.x)` : q.ty === 3 ? `sdRing(p - ${a}.xyz, ${b}.xyz, ${r}.x, ${r}.y)`
+      : q.ty === 4 ? `sdDisc(p - ${a}.xyz, ${b}.xyz, ${r}.xyz)` : q.ty === 5 ? `sdArc(p - ${a}.xyz, ${b}.x, ${r}.xyz)`
+      : `layerD(d0, p.y, ${r}.x, ${a}.y, ${b}.y)`;   // 6: a layer over the first part
+  };
+  const slope = (q: Part, i: number, g: string) => {   // the same, with which way is out
+    const a = u("uFA", i), b = u("uFB", i), r = u("uFR", i);
+    return q.ty === 0 ? `sdEllipsoidG(p - ${a}.xyz, ${r}.xyz, ${g})` : q.ty === 1 ? `sdRoundConeG(p, ${a}.xyz, ${b}.xyz, ${r}.x, ${r}.y, ${g})`
+      : q.ty === 2 ? `sdRBoxG(p - ${a}.xyz, ${b}.xyz, ${r}.x, ${g})` : `layerG(d0, g0, p.y, ${r}.x, ${a}.y, ${b}.y, ${g})`;
+  };
+  const parts = fur.slice(0, MAX_FUR).map((q, i) => ({ q, i, L: f(PILE[q.fur ?? 0]), F: `vec4(uFurC[${q.fur ?? 0}], ${f(q.fur ?? 0)})`, k: q.k ?? 0 }));
+  const join = (L: string, F: string, k: number, n: string) => k > 0
+    ? `  h = clamp(0.5 + 0.5 * (di - d) / ${f(k)}, 0.0, 1.0); d = mix(di, d, h) - ${f(k)} * h * (1.0 - h); len = mix(${L}, len, h); fur = mix(${F}, fur, h);${n && " n = mix(gi, n, h);"}`
+    : `  if (di < d) { d = di; len = ${L}; fur = ${F};${n && " n = gi;"} }`;
+  const flat = parts.map(({ q, i, L, F, k }) => i === 0
+    ? `  float d0 = ${dist(q, 0, "uFA", "uFB", "uFR")};\n  float d = d0 - pile * ${L}, di, h;\n  len = ${L}; fur = ${F};`
+    : `  di = ${dist(q, i, "uFA", "uFB", "uFR")} - pile * ${L};\n${join(L, F, k, "")}`);
+  const sloped = parts.map(({ q, i, L, F, k }) => i === 0
+    ? `  vec3 g0, gi;\n  float d0 = ${slope(q, 0, "g0")};\n  float d = d0, di, h;\n  n = g0; len = ${L}; fur = ${F};`
+    : `  di = ${slope(q, i, "gi")};\n${join(L, F, k, "n")}`);
+  const cloth = `float pileOf(float kind) { return kind < 0.5 ? ${f(PILE[0])} : kind < 1.5 ? ${f(PILE[1])} : kind < 2.5 ? ${f(PILE[2])} : ${f(PILE[3])}; }
+float cloth(vec3 p, float pile, out float len, out vec4 fur) {
+${flat.join("\n")}
+  return d;
+}
+float clothN(vec3 p, out float len, out vec4 fur, out vec3 n) {
+${sloped.join("\n")}
+  n = normalize(n);
+  return d;
+}
+`;
+  const each = solid.slice(0, MAX_SOLID).map((q, i) =>
+    `  di = ${dist(q, i, "uSA", "uSB", "uSR")}; if (di < d) { d = di; col = uSolC[int(uSB[${i}].w + 0.5)]; rough = uSR[${i}].w; }`);
+  const sol = `float solid(vec3 p, out vec3 col, out float rough) {
+  float d = 1e3, di;
+  col = INK; rough = 0.2;
+${each.join("\n")}
+  return d;
+}
+`;
+  return { cloth, solid: sol };
+}
+
 // ---------------------------------------------------------------- bodies
 type Body = { parts: Part[]; eye: [number, number]; onBumps?: boolean; scale?: number };
 const E = (a: V3, r: V3, k?: number): Part => ({ ty: 0, a, r, k });
@@ -94,6 +150,10 @@ export const SHAPES = Object.keys(BODIES) as Look["shape"][];
 // ---------------------------------------------------------------- a look, built
 export type Built = {
   fur: Part[]; furC: string[]; solidC: string[];
+  /** cloth(), clothN() and solid() written out for this look's parts (no loop over a list): what the shader uses when
+   *  the look is drawn for real. Looks with the same kinds of part in the same order share it, and so share a program.
+   *  null: a part it can't write out, so the look is drawn the general way. */
+  glsl: { cloth: string; solid: string } | null;
   /** the solid parts for this moment: eyes (open, blinking, smiling or asleep, glancing gx, gy), then the fixed ones */
   solids: (mode: number, open: number, gx: number, gy: number) => Part[];
   box: number[]; top: number; cam: [number, number, number, number]; shadow: [number, number]; eyeY: number;
@@ -197,28 +257,35 @@ export function build(look: Look): Built {
     H = top + 0.3;
   }
 
+  // An eye is a few parts in fixed places: the dome (or the white), then a pupil or two glints where it has them, then
+  // an arc (the eye shut). What isn't showing is parked out of sight. So a look's list always has the same kinds of
+  // part in the same order, whatever its eyes are doing, and the shader can have them written out (glslFor).
+  const parked = (ty: number): Part => ({ ty, a: [0, PARKED, 0], b: [1, 0, 0], r: [0.001, 0.001, 0.001], col: SOLID.ink, rough: 0.5 });
+  const places = kind === "smile" ? [5] : kind === "googly" ? [0, 0, 5] : kind === "sparkle" ? [0, 0, 0, 5] : [0, 5];
   const solids = (mode: number, open: number, gx: number, gy: number): Part[] => {
     const o: Part[] = [];
     eyes.forEach((c, i) => {
       const sgn = i ? 1 : -1;
+      const slot = places.map(parked), arc = places.length - 1;
       if (mode > 0.5 || kind === "smile") {   // shut: a stitched arc, ∩ when smiling and ∪ when asleep
         const up = mode > 1.5 ? -1 : 1, r = Math.max(eyeR[0], 0.085) * (kind === "googly" ? 0.62 : 0.95);
-        o.push({ ty: 5, a: [c[0], c[1] - up * r * 0.45, c[2] - 0.012], b: [up, 0, 0], r: [r, 0.024, 1.15], col: SOLID.ink, rough: 0.55 });
-        return;
+        slot[arc] = { ty: 5, a: [c[0], c[1] - up * r * 0.45, c[2] - 0.012], b: [up, 0, 0], r: [r, 0.024, 1.15], col: SOLID.ink, rough: 0.55 };
+      } else {
+        const z = c[2] - sink;
+        if (kind === "googly") {
+          slot[0] = { ty: 0, a: [c[0], c[1], z], r: [eyeR[0], eyeR[1] * Math.max(open, 0.12), eyeR[2]], col: SOLID.white, rough: 0.12 };
+          const px = clamp(gx * 2.2, -1, 1) * 0.07 - sgn * 0.012, py = clamp(gy * 2.6, -1, 1) * 0.06;
+          const pz = eyeR[2] * Math.sqrt(Math.max(0.2, 1 - (px * px + py * py) / (eyeR[0] * eyeR[0])));
+          slot[1] = { ty: 0, a: [c[0] + px, c[1] + py, z + pz - 0.03], r: [0.105 * s, 0.105 * s * Math.max(open, 0.12), 0.05], col: SOLID.ink, rough: 0.08 };
+        } else {
+          slot[0] = { ty: 0, a: [c[0] + gx * 0.5, c[1] + gy * 0.5, z], r: [eyeR[0], eyeR[1] * Math.max(open, 0.1), eyeR[2]], col: SOLID.ink, rough: 0.08 };
+          if (kind === "sparkle" && open > 0.6) {
+            slot[1] = { ty: 0, a: [c[0] + gx * 0.5 - 0.036, c[1] + gy * 0.5 + 0.04, z + eyeR[2] * 0.83], r: [0.031, 0.031, 0.016], col: SOLID.white, rough: 0.3 };
+            slot[2] = { ty: 0, a: [c[0] + gx * 0.5 + 0.034, c[1] + gy * 0.5 - 0.038, z + eyeR[2] * 0.86], r: [0.015, 0.015, 0.01], col: SOLID.white, rough: 0.3 };
+          }
+        }
       }
-      const z = c[2] - sink;
-      if (kind === "googly") {
-        o.push({ ty: 0, a: [c[0], c[1], z], r: [eyeR[0], eyeR[1] * Math.max(open, 0.12), eyeR[2]], col: SOLID.white, rough: 0.12 });
-        const px = clamp(gx * 2.2, -1, 1) * 0.07 - sgn * 0.012, py = clamp(gy * 2.6, -1, 1) * 0.06;
-        const pz = eyeR[2] * Math.sqrt(Math.max(0.2, 1 - (px * px + py * py) / (eyeR[0] * eyeR[0])));
-        o.push({ ty: 0, a: [c[0] + px, c[1] + py, z + pz - 0.03], r: [0.105 * s, 0.105 * s * Math.max(open, 0.12), 0.05], col: SOLID.ink, rough: 0.08 });
-        return;
-      }
-      o.push({ ty: 0, a: [c[0] + gx * 0.5, c[1] + gy * 0.5, z], r: [eyeR[0], eyeR[1] * Math.max(open, 0.1), eyeR[2]], col: SOLID.ink, rough: 0.08 });
-      if (kind === "sparkle" && open > 0.6) {
-        o.push({ ty: 0, a: [c[0] + gx * 0.5 - 0.036, c[1] + gy * 0.5 + 0.04, z + eyeR[2] * 0.83], r: [0.031, 0.031, 0.016], col: SOLID.white, rough: 0.3 });
-        o.push({ ty: 0, a: [c[0] + gx * 0.5 + 0.034, c[1] + gy * 0.5 - 0.038, z + eyeR[2] * 0.86], r: [0.015, 0.015, 0.01], col: SOLID.white, rough: 0.3 });
-      }
+      o.push(...slot);
     });
     return o.concat(fixed);
   };
@@ -242,6 +309,7 @@ export function build(look: Look): Built {
   const w = Math.max(x1, -x0), dz = Math.max(z1, -z0), camY = 2.4, camZ = 9.8, mid = H * 0.5;
   const dist = Math.hypot(camY - mid, camZ), fov = (2 * Math.atan((Math.max(H * 0.5 + 0.08, w * 0.98) * 1.14) / dist) * 180) / Math.PI;
   return {
+    glsl: glslFor(fur, solids(0, 1, 0, 0)),
     fur, solids, furC: [main, look.extra === "sprout" ? COLOURS.leaf : accent, look.extra === "beanie" ? COLOURS.snow : accent, accent],   // body, knit (or leaves), pom, tuft
     solidC: ["#060608", "#f6f7f9", accent, "#23262d", "#3f9b2f", "#c9ced6"],
     box: [-w, -0.1, -dz, w, H + 0.06, dz], top, cam: [camY, camZ, mid * 0.97, fov], shadow: [w * 2.2, dz * 1.6], eyeY: ey,

@@ -108,7 +108,7 @@ export default function AgentEditor({ agent, canDelete, onClose }: { agent: Agen
                     <button key={k} type="button" role="radio" aria-checked={own.shape === k} onClick={() => { change({ shape: k }); hop(); }}
                       className={cx("flex flex-col items-center gap-0.5 rounded-xl px-1 pb-1.5 pt-1 text-2xs font-medium transition",
                         own.shape === k ? "bg-accent-soft text-fg ring-1 ring-inset ring-accent/25" : "text-muted hover:bg-raised/70 hover:text-fg")}>
-                      <Yeti look={{ base: "fuzzy", shape: k, colour: own.colour, eyes: own.eyes, glasses: "none", extra: "none" }} size={46} fps={6} follow={false} />
+                      <Yeti look={{ base: "fuzzy", shape: k, colour: own.colour, eyes: own.eyes, glasses: "none", extra: "none" }} size={46} thumb follow={false} />
                       {label}
                     </button>
                   ))}

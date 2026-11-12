@@ -31,12 +31,15 @@ and Axios pieces refused our reader, so nothing here rests on them.
 | | dots (OpenAI) | Grok Bot (xAI) | Muse (Meta) |
 |---|---|---|---|
 | What it is | a named, persistent agent with its own cloud computer and browser | named Bots, each with one main job, on a cloud computer | a personal agent behind an animated avatar |
-| How you reach it | one thread in ChatGPT, also Slack, Teams, text and calls | the Grok Bot app; two to six Bots can share a group chat | chat; voice and video calls with the avatar (US, since 5 November) |
+| How you reach it | one thread in ChatGPT, also Slack, Teams, text and calls | the Grok Bot app; two to six Bots can share a group chat | chat; voice and video calls with the avatar (US, since 5 November)† |
 | Work of several steps | keeps going between conversations, decides when to pause and wake, splits work among background agents; an Activity view shows progress, files and results | "finish jobs end to end, and only come back when something needs your approval"; Bots pass work and assign ownership among themselves | prepares a purchase and shows the total for approval |
 | Approval | an automatic review checks an action against your instructions, permissions, custom rules and safety rules: it proceeds, needs your approval, or is a step you do yourself. Custom rules: act without asking, act when told, ask first, hand off | Auto Review, on by default; cards say Allow once, Always allow or Deny; a card from background work expires after 30 minutes | you choose which apps it may connect to |
 | Memory | private notes on preferences, decisions and ongoing work | its role, stable preferences, summaries of earlier work | not covered |
 | When it goes wrong | "A completed run doesn't by itself confirm that the requested result was achieved"; the docs describe no retry | "takes your corrections"; no mechanism described | not covered |
-| The character | shape, colour, eyes, glasses, accessories; a name. Names and looks "help people tell agents apart" when several share a workspace | a name, a job, a description | Jolly: rename it, change its look, clothes and voice; it puts on headphones and types while it works |
+| The character | shape, colour, eyes, glasses, accessories; a name. Names and looks "help people tell agents apart" when several share a workspace | a name, a job, a description | Jolly: rename it, change its look, clothes and voice†; it puts on headphones and types while it works |
+
+† These two come from search-result summaries of press coverage, not from a page we read in full. They shape
+nothing we built: the calls are where we are heading, not what is here.
 
 **What reviewers say is still broken.** Five failures came up again and again, and each one shaped a decision
 below:
@@ -59,7 +62,7 @@ One more: friction. A booking took three separate approvals, and broad rules mea
 | they do | we do |
 |---|---|
 | start working, report later | the plan is shown first, with its steps and its estimated GPU time; nothing runs before Start |
-| an approval per consequential action | one Start approves the whole plan, inside an envelope: these machines and datasets, this much GPU time, three tries per step |
+| an approval per consequential action | one Start approves the whole plan, inside an envelope: these machines and datasets, these kinds of step, this much GPU time, three tries per step |
 | progress in a separate activity view | the plan's card shows every step, live, in the conversation |
 | the agent reports whether it worked | the hub writes each step's state from what happened to its run; the agent reads that, it doesn't write it |
 | no retry described | a failed run goes to the failure catalogue: a known failure is fixed and retried inside the envelope; anything else stops the plan and says what is missing |
@@ -364,8 +367,16 @@ A run step can wait for another (`after`: a quick test before the full run) and 
    question when the request leaves the method open. Writing a plan changes nothing: it is stored as proposed and
    shown as a card with every step, the machines, and the GPU time estimated from your own past runs.
 2. **You press Start.** That is your own request to the hub (`POST /api/plans/{id}/approve`); no tool can make it.
-   What it approves is an **envelope**: the plan's machines and datasets, its estimated GPU time times 1.5 plus ten
-   minutes, and three tries per step.
+   What it approves is an **envelope**:
+   - the plan's machines and datasets;
+   - the kinds of step it has (a plan with no export can't gain one unasked; a pick only reads results, so it
+     is free);
+   - its estimated GPU time times 1.5 plus ten minutes;
+   - three tries per step.
+
+   When the time can't be estimated (no past runs of that model on that machine to go by), the work is counted
+   instead: the number of runs, their epochs in all, their models and their largest input size. None of those may
+   grow without your OK.
 3. **The hub carries it out** (`modellab/hub/plans.py`), the way it runs a search: when one of the plan's runs
    finishes (its runs are tagged `plan:<id>`) and whenever the web app reads it. No page needs to be open.
 4. **Each step's state comes from its run**, not from what anyone said: queued, running with its progress, done
@@ -376,14 +387,18 @@ A run step can wait for another (`after`: a quick test before the full run) and 
    lasts, and the conversation says what was changed. Anything else (a failure nobody knows, a machine-level
    fault, a cancelled run) stops the plan: the card says why and offers Retry the step, Skip it or Stop the plan.
 6. **Claude can change it** (`revise_plan`): the steps that haven't started are replaced. Inside the envelope the
-   change takes effect at once; beyond it (another machine or dataset, more GPU time) it waits on the card for
-   your OK, and the plan goes on as approved meanwhile.
+   change takes effect at once; beyond it (another machine or dataset, a new kind of step, more GPU time, or more
+   counted work where there is no estimate) it waits on the card for your OK, and the plan goes on as approved
+   meanwhile. The time is added up from what the finished runs used, what the running steps were estimated to
+   need, and what the new steps are estimated to need.
 7. **When it ends, the hub writes what happened into the conversation** (an event, shown as a system line). The
    next time that conversation is on screen, the agent follows up by itself: the numbers, what was retried and why,
    what it could not check, one suggested next step, and the answer in the notebook entry when there is one.
 
 Text in an event is data: it is fenced in `<event>` tags, cannot close its own fence, and the prompt says no
-instruction is ever taken from it.
+instruction is ever taken from it. The same goes for the state of the plans (`<plans>`) and the note about the
+page you are on (`<page>`), which carry run names and error messages: angle brackets in them are replaced before
+Claude reads them.
 
 ### The team: agents, Chat and what they keep in mind
 

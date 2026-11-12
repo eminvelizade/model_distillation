@@ -246,9 +246,12 @@ on Chat says how many messages arrived while you were away.
   after an out-of-memory error (with twice the gradient accumulation), half the learning rate after a NaN loss, a
   re-queue after an interruption. The card and the conversation say what was changed.
 - Anything else stops the plan. The card says why and offers **Retry the step**, **Skip it** or **Stop the plan**.
-- What Start approves: the plan's machines and datasets, its estimated GPU time times 1.5 plus ten minutes, and
-  those retries. The agent can change steps that haven't started; a change that needs another machine, another
-  dataset or more GPU time waits on the card for **Approve the change**.
+- What Start approves: the plan's machines and datasets, the kinds of step it has, its estimated GPU time times
+  1.5 plus ten minutes, and those retries. With no estimate to go by (no past runs of that model on that machine),
+  the work is counted instead: the number of runs, their epochs in all, their models and their largest input size.
+- The agent can change steps that haven't started. A change that needs another machine or dataset, adds a kind of
+  step the plan didn't have (an export nobody approved), or needs more GPU time or more counted work, waits on the
+  card for **Approve the change**; the plan goes on as approved meanwhile.
 - When the plan ends, the hub notes what happened in the conversation, and the agent reports the next time you
   have that conversation open: the numbers, what was retried, what it couldn't check, and a next step.
 
@@ -435,8 +438,11 @@ Tested in a Linux sandbox without GPU:
 - Chat, agents and plans: the plan executor with simulated machines (one Start for a whole plan, runs queued and
   picked and exported with only agent events reaching the hub, an out-of-memory run fixed and retried, three tries
   and no fourth, an unknown error stopping the plan, retry and skip, a change beyond the approval waiting for the
-  user and a step that started meanwhile not queued twice, another user's plan unreachable), conversations and notes
-  against a mocked Claude API, and the web app in a browser with a real Claude model reached through OpenRouter:
+  user and a step that started meanwhile not queued twice, a plan with no time estimate not growing by runs,
+  epochs, models, input size or an unapproved export, a running step counting toward the approved time, text in a
+  run's name unable to close the `<plans>` block, another user's plan unreachable), conversations and notes
+  against a mocked Claude API (all of these on SQLite and on PostgreSQL), and the web app in a browser with a real
+  Claude model reached through OpenRouter:
   a plan written, started, run and reported; a plan finishing while the browser was closed; a change that needed
   another machine waiting for approval; an instruction planted in a failed run's error being ignored and pointed
   out. At 1440 px (light and dark) and 390 px.

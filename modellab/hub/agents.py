@@ -199,8 +199,7 @@ def card_record(text: str, d: dict) -> str:
     return f"(Card: {text}. Outcome: {outcome}.)"
 
 
-def _safe(text: str) -> str:
-    return text.replace("<", "‹").replace(">", "›")
+_safe = plans.safe   # text inside a fence can't close it
 
 
 def history(c: sa.Connection, aid: str) -> list[dict]:
@@ -277,7 +276,7 @@ def _ctx(c: sa.Connection, user: dict, page) -> tuple[str | None, str | None]:
     """(the context blocks a turn is sent with, the page note alone)."""
     note = yeti.page_note(c, user, page)
     state = plans.state_text(c, user)
-    blocks = ([f"<page>{note}</page>"] if note else []) + ([f"<plans>\n{state}\n</plans>"] if state else [])
+    blocks = ([f"<page>{_safe(note)}</page>"] if note else []) + ([f"<plans>\n{state}\n</plans>"] if state else [])
     return "\n".join(blocks) or None, note
 
 
