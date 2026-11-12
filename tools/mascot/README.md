@@ -155,22 +155,37 @@ are in this repository).
 - **Parts, not shapes.** The other mascots are each written out as a distance function. This one is two lists the
   engine fills in (`FUZZY` in `shaders.ts`): fur parts (the body, a hat, a scarf) and solid parts (eyes, glasses,
   headphones). A part is an ellipsoid, a round cone, a rounded box, a ring, a disc or an arc.
-- **Written out for each look.** A shader that reads any list of parts pays for it: a loop, a test of each part's
-  kind, and four more readings of the whole shape at every step to find which way is out. So when a look is drawn
-  for real, `glslFor` in `looks.ts` writes its parts out one after another, each as the kind it is, with which way
-  is out worked out by formula alongside the distance. The numbers still come from the lists, so the eyes can blink
-  and glance; an eye keeps the same parts in the same places whatever it is doing (what isn't showing is parked out
-  of sight), so the code never changes while a mascot is on screen. Looks with the same kinds of part share a
-  program. The general shader is kept for the editor's grid of shapes: eight small pictures, drawn once each
-  (`<Yeti thumb>`), where a program apiece would cost more than it saves.
-- **What it costs to draw.** One frame at 68 px on a 2x screen, on the software renderer the tests use (it runs
-  both sides of every branch, so this is the worst case, and only good for comparing): Bloom 71 ms, Dr. Mochi 19 ms,
-  a plain make-your-own look 49 ms, one with headphones 47 ms, one with sparkle eyes, round glasses and a beanie
-  90 ms. Read from the general lists, the same three took 158, 148 and 231 ms. The picture is the same to within
-  0.1 of a level in 255 on average. Two things to keep when changing this code: a solid part met on the way is lit
-  once, after the march (not inside its loop); and the ball that lets the march skip the solid parts is for the
-  march only (`solidNear`): a shadow measures how near its ray passes, and takes the ball for something in the
-  light's way.
+- **One program for all of them, and one of its own for a look that needs it.** The shader that reads any list of
+  parts is shared by every look, so a new look is ready at once. It pays for that at every step: a loop, a test of
+  each part's kind, and four more readings of the whole shape to find which way is out. `glslFor` in `looks.ts`
+  can instead write a look's parts out one after another, each as the kind it is, with which way is out worked out
+  by formula alongside the distance. That draws about two and a half times faster and looks the same, but it is a
+  program to compile for each look. So:
+  - every make-your-own mascot starts on the shared program;
+  - when frames come slowly, the loop gives the biggest one on screen a program of its own (`View.specialise`), one
+    at a time, and only after that draws everything with fewer pixels;
+  - the editor's grid of shapes never switches (`<Yeti thumb>`: eight small pictures, drawn once each).
+
+  The numbers still come from the lists either way, so the eyes can blink and glance. An eye keeps the same parts
+  in the same places whatever it is doing (what isn't showing is parked out of sight), so a look's own program
+  never changes while it is on screen, and looks with the same kinds of part share one.
+- **What it costs to draw.** Measured on the software renderer the tests use, so only good for comparing (a
+  graphics card is far faster at all of it, and we have not measured one). One frame at 68 px on a 2x screen:
+
+  | | shared program | its own program |
+  |---|---|---|
+  | a plain look | 124 ms | 50 ms |
+  | with googly eyes and headphones | 126 ms | 50 ms |
+  | with sparkle eyes, round glasses and a beanie | 210 ms | 93 ms |
+
+  Bloom takes 71 ms and Dr. Mochi 20 ms. Getting ready: the shared program takes about 1.4 s once, and then each
+  new look 3 to 36 ms; a program of its own takes 0.5 to 1.1 s for each look with different kinds of part. On
+  that renderer two mascots side by side had both switched after about 12 s. The pictures match what was drawn
+  before this change: 0.1 of a level in 255 off on average with a look's own program, 0.3 with the shared one.
+- **Two things to keep when changing this code.** A solid part met on the way is lit once, after the march, not
+  inside its loop. And the ball that lets the march skip the solid parts is for the march only (`solidNear`): a
+  shadow measures how near its ray passes, and takes the ball for something in the light's way, which showed as
+  dark creases across the body.
 - **Placed by solving.** `looks.ts` has the same distance functions in TypeScript and marches them to find the
   body's surface: where the front is at the eyes' height, how far out the side is, where the top is. Eyes are set
   into the pile there, glasses sit just in front of it with arms that run round the head, headphones span from side

@@ -150,9 +150,10 @@ export const SHAPES = Object.keys(BODIES) as Look["shape"][];
 // ---------------------------------------------------------------- a look, built
 export type Built = {
   fur: Part[]; furC: string[]; solidC: string[];
-  /** cloth(), clothN() and solid() written out for this look's parts (no loop over a list): what the shader uses when
-   *  the look is drawn for real. Looks with the same kinds of part in the same order share it, and so share a program.
-   *  null: a part it can't write out, so the look is drawn the general way. */
+  /** cloth(), clothN() and solid() written out for this look's parts (no loop over a list): what the shader uses
+   *  once the look has a program of its own (View.specialise in ./engine.ts). Looks with the same kinds of part in
+   *  the same order share it, and so share a program. null: a part it can't write out, so the look stays on the
+   *  program that reads any parts. */
   glsl: { cloth: string; solid: string } | null;
   /** the solid parts for this moment: eyes (open, blinking, smiling or asleep, glancing gx, gy), then the fixed ones */
   solids: (mode: number, open: number, gx: number, gy: number) => Part[];

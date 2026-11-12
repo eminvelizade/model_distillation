@@ -80,12 +80,13 @@ const SPECS: Record<MascotKind, Spec> = {
 };
 
 /** The spec of a make-your-own mascot: its parts are lists (see ./looks.ts), so most of a Spec doesn't apply. */
-function fuzzySpec(b: Built, look: Look, general: boolean): Spec {
+/** A make-your-own mascot's shader with this look's own parts written out in it (see glslFor), or null when a part
+ *  can't be written out. */
+const ownGlsl = (b: Built) => b.glsl && FUZZY.replace(/\/\*CLOTH<\*\/[\s\S]*?\/\*>CLOTH\*\//, () => b.glsl!.cloth).replace(/\/\*SOLID<\*\/[\s\S]*?\/\*>SOLID\*\//, () => b.glsl!.solid);
+
+function fuzzySpec(b: Built, look: Look): Spec {
   const main = COLOURS[look.colour] ?? COLOURS.lime, pale = look.colour === "snow";
-  // drawn for real, a look has its parts written out in the shader (three times cheaper to draw; one program for
-  // each set of kinds of part). `general` keeps the one program that reads any parts: for thumbnails, where a new
-  // program for each would cost more than it saves.
-  const glsl = general || !b.glsl ? FUZZY : FUZZY.replace(/\/\*CLOTH<\*\/[\s\S]*?\/\*>CLOTH\*\//, () => b.glsl!.cloth).replace(/\/\*SOLID<\*\/[\s\S]*?\/\*>SOLID\*\//, () => b.glsl!.solid);
+  const glsl = FUZZY;   // (the program that reads any parts: every look shares it, so each is ready at once. See View.specialise)
   return {
     glsl, box: b.box, cam: b.cam, top: b.top, shadow: b.shadow, eye: { x: 0, y: b.eyeY, rx: 0, ry: 0 }, eyeZ: 0, faceR: 1,
     nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0], blush: [0, 0, 0, 0], rest: 0, prop: pale ? COLOURS.ice : main, exposure: 1.06,
@@ -157,11 +158,18 @@ function kick() { if (!raf && !document.hidden) raf = requestAnimationFrame(loop
 function loop(now: number) {
   raf = 0;
   if (document.hidden) return;
-  // if frames come slower than ~40 fps, draw every mascot with fewer pixels (and more again when there's room)
+  // If frames come slower than ~40 fps: first give the biggest make-your-own mascot on screen a program of its own
+  // (one at a time: each has to be compiled); when none is left, draw every mascot with fewer pixels. (A gap of
+  // more than a second and a half is the tab coming back, not a slow frame.)
   const ms = lastLoop ? now - lastLoop : 16;
   lastLoop = now;
-  if (ms > 25 && ms < 200) { if (++slowFrames > 30 && quality > 0.6) { quality = Math.max(0.6, quality - 0.2); slowFrames = 0; views.forEach((v) => v.resize()); } }
-  else slowFrames = Math.max(0, slowFrames - 1);
+  if (ms > 25 && ms < 1500) {
+    if (++slowFrames > 16) {
+      const next = [...views].sort((a, b) => b.gain - a.gain)[0];
+      if (next?.gain) { next.specialise(); slowFrames = 0; }
+      else if (slowFrames > 30 && quality > 0.6) { quality = Math.max(0.6, quality - 0.2); slowFrames = 0; views.forEach((v) => v.resize()); }
+    }
+  } else slowFrames = Math.max(0, slowFrames - 1);
   let any = false;
   for (const v of views) if (v.frame(now)) any = true;
   if (any) raf = requestAnimationFrame(loop);
@@ -170,14 +178,16 @@ function loop(now: number) {
 
 // ---------------------------------------------------------------- one mascot
 /** kind "fuzzy" is a make-your-own mascot: `look` says which. `still`: one picture per change, no motion (a
- *  thumbnail). `general`: draw a make-your-own mascot with the program that reads any parts (see fuzzySpec). */
+ *  thumbnail). A make-your-own mascot starts on the program that reads any parts and gets one of its own when
+ *  frames come slowly (see View.specialise): `general` keeps it on the first for good, `own` starts it on the second. */
 export type ViewOptions = { kind: MascotKind | "fuzzy"; look?: Look; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number; portrait?: boolean;
-  still?: boolean; general?: boolean };
+  still?: boolean; general?: boolean; own?: boolean };
 
 export class View {
   private K: Spec;
   private built: Built | null = null;   // a make-your-own mascot's parts
   private still = false;                // a thumbnail: one picture per change
+  private own: string | null = null;    // a make-your-own mascot's shader with its own parts written out, until it is in use
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private scene = new THREE.Scene();
@@ -212,8 +222,9 @@ export class View {
 
   constructor(private host: HTMLElement, o: ViewOptions) {
     if (o.kind === "fuzzy") this.built = build(o.look ?? { shape: "pom", colour: "lime", eyes: "bean", glasses: "none", extra: "none" });
-    const K = (this.K = this.built ? fuzzySpec(this.built, o.look!, !!o.general) : SPECS[o.kind as MascotKind]);
+    const K = (this.K = this.built ? fuzzySpec(this.built, o.look!) : SPECS[o.kind as MascotKind]);
     this.still = !!o.still;
+    this.own = this.built && !o.general ? ownGlsl(this.built) : null;
     this.fps = o.fps ?? 30;
     this.follow = o.follow ?? true;
     this.canvas = document.createElement("canvas");
@@ -265,9 +276,9 @@ export class View {
     const box = new THREE.BoxGeometry(boxMax.x - boxMin.x, boxMax.y - boxMin.y, boxMax.z - boxMin.z);
     box.translate((boxMax.x + boxMin.x) / 2, (boxMax.y + boxMin.y) / 2, (boxMax.z + boxMin.z) / 2);
     this.geos.push(box);
-    this.mat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: COMMON + K.glsl + RENDER, uniforms: this.uniforms,
-      transparent: true, depthWrite: false, premultipliedAlpha: true });
+    this.mat = this.material(K.glsl);
     this.body = new THREE.Mesh(box, this.mat);
+    if (o.own) this.specialise();
     this.body.frustumCulled = false;
     this.root.add(this.squash);
     this.squash.add(this.body);
@@ -384,6 +395,29 @@ export class View {
     (this.uniforms.uFrostC.value as THREE.Color).set(dark ? "#cfe1f8" : "#3d82dc");   // frost: pale on dark, deeper blue on light
     this.dirty = true;
     kick();
+  }
+
+  private material(glsl: string) {
+    return new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: COMMON + glsl + RENDER, uniforms: this.uniforms,
+      transparent: true, depthWrite: false, premultipliedAlpha: true });
+  }
+
+  /** How much there is to gain by giving this mascot a program of its own: its pixels, or 0 when it has one, can't
+   *  have one, or isn't being drawn. */
+  get gain() { return this.own && this.onScreen && !this.still ? this.w * this.h : 0; }
+
+  /** Draw this make-your-own mascot with a program that has its own parts written out. It draws about two and a
+   *  half times faster and looks the same, but the program has to be compiled first (about a second on a software
+   *  renderer), where the one that reads any parts is shared by every look. So the loop calls this only when frames
+   *  come slowly, for the biggest mascot first. */
+  specialise() {
+    if (!this.own) return;
+    const old = this.mat;
+    this.mat = this.material(this.own);
+    this.own = null;
+    this.body.material = this.mat;
+    old.dispose();
+    this.dirty = true;
   }
 
   resize() {

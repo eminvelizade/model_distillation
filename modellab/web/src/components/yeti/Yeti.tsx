@@ -15,7 +15,7 @@ const loadEngine = () => (engine ??= import("./mascot/engine").then((m) => { m.p
  *  renderer loads (a soft blob in its colour for a make-your-own one), and keeps it where WebGL isn't available. */
 export default function Yeti({ size = 64, pose = "idle", className, title, kind, look, fps, follow, thumb }: {
   size?: number; pose?: YetiPose; className?: string; title?: string; kind?: MascotKind; look?: AgentLook; fps?: number; follow?: boolean;
-  thumb?: boolean;   // a small still picture among many (the editor's shapes): drawn once, with the shared program
+  thumb?: boolean;   // a small still picture among many (the editor's shapes): drawn once, and always with the shared program
 }) {
   const chosen = useMascot().look;
   const L: AgentLook = look ?? (kind ? { base: kind } : chosen);

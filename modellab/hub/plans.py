@@ -638,6 +638,10 @@ def _fix(c: sa.Connection, owner: dict, plan: dict, st: dict, run: dict, env: di
     return None
 
 
+EXPORT_LIMIT_S = 2 * 3600 + 600   # the agent gives an export two hours (agent/jobs.py); after that, no word means it was lost
+OFFLINE_S = 120                   # a machine not heard from for this long hasn't picked a request up
+
+
 def _exported(c: sa.Connection, owner: dict, st: dict) -> bool:
     """A running export step, from what its machine reported. Done means the files were written; whether the
     TensorRT engine was built is said either way (a machine without trtexec exports ONNX only)."""
@@ -648,11 +652,21 @@ def _exported(c: sa.Connection, owner: dict, st: dict) -> bool:
         st.update(status="failed", finished=now, note=f"The export of {name} is gone from its machine's list")
         return True
     if cmd["status"] in ("pending", "sent", "running"):
-        gone = c.execute(sa.select(db.machines.c.revoked).where(db.machines.c.id == cmd["machine_id"])).scalar()
-        if gone is None or gone:
+        m = c.execute(sa.select(db.machines.c.name, db.machines.c.revoked, db.machines.c.last_seen)
+                      .where(db.machines.c.id == cmd["machine_id"])).mappings().first()
+        if m is None or m["revoked"]:
             st.update(status="failed", finished=now, note=f"The machine was removed before it exported {name}")
             return True
-        return False
+        if cmd["status"] == "running" and now - (cmd["started"] or now) > EXPORT_LIMIT_S:
+            st.update(status="failed", finished=now, note=f"{m['name']} started exporting {name} and never reported how it went")
+            return True
+        # still out: say where it is (a machine that is switched off hasn't been asked yet)
+        away = cmd["status"] != "running" and now - (m["last_seen"] or 0) > OFFLINE_S
+        note = (f"Waiting for {m['name']} to come online to export {name}" if away
+                else f"Exporting {name} to ONNX and TensorRT on {m['name']}")
+        changed = st.get("note") != note
+        st["note"] = note
+        return changed
     if cmd["status"] != "done":
         why = (str(cmd["error"] or "").strip().splitlines() or ["no reason given"])[0][:300]
         st.update(status="failed", finished=cmd["finished"] or now, note=f"The export of {name} failed: {why}")
@@ -829,7 +843,8 @@ def on_command_final(c: sa.Connection, cmd: dict) -> None:
     """A machine reported an export (agent API). If a plan asked for it, the plan reads it now, with no page open."""
     if cmd.get("type") != "export" or cmd.get("status") not in ("done", "failed"):
         return
-    for (pid,) in c.execute(sa.select(db.plans.c.id).where(db.plans.c.owner_id == cmd["user_id"], db.plans.c.status == "running",
+    # (a plan that is waiting on another step's failure still reads its export)
+    for (pid,) in c.execute(sa.select(db.plans.c.id).where(db.plans.c.owner_id == cmd["user_id"], db.plans.c.status.in_(("running", "waiting")),
                                                           db.plans.c.steps.like(f'%"command": "{cmd["id"]}"%'))).all():
         advance_safe(c, pid)
 

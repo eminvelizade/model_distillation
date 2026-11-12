@@ -118,6 +118,8 @@ def test_a_plan_starts_only_with_the_users_post_and_goes_on_with_no_page_open(hu
 
 
 def test_an_export_step_is_done_only_when_the_machine_wrote_the_files(hub):  # noqa: F811
+    from modellab.hub import db
+
     u, agent, mid, aid = lab(hub)
     _, d = tool(hub, "propose_plan", aid, title="train and export", steps=[run_step(mid, "quick"), {"kind": "export", "from": "s1"}])
     pid = d["plan"]["id"]
@@ -141,6 +143,21 @@ def test_an_export_step_is_done_only_when_the_machine_wrote_the_files(hub):  # n
     assert row["status"] == "done" and row["steps"][1]["status"] == "done"
     assert row["steps"][1]["note"] == "Exported quick to ONNX only. TensorRT: not installed on this machine (no trtexec): ONNX only"
     assert "ONNX only" in thread(u, aid)["messages"][-1]["text"]
+    # an export that comes back while the plan waits on another step's failure is still read, with no page open;
+    # and while a machine is switched off the step says it is waiting for it, not that it is exporting
+    _, d = tool(hub, "propose_plan", aid, title="two things", steps=[run_step(mid, "crash"), {"kind": "export", "run_id": rid}])
+    p2 = d["plan"]["id"]
+    u.post(f"/api/plans/{p2}/approve")
+    assert plan_row(hub, p2)["steps"][1]["note"] == "Exporting quick to ONNX and TensorRT on tower"
+    end(agent, claim(agent)["id"], status="failed", error="Fatal Python error: Segmentation fault")
+    row = plan_row(hub, p2)
+    assert row["status"] == "waiting" and [s["status"] for s in row["steps"]] == ["failed", "running"]
+    with hub.state.engine.begin() as c:
+        c.execute(db.machines.update().where(db.machines.c.id == mid).values(last_seen=time.time() - 600))
+    assert u.get(f"/api/plans/{p2}").json()["steps"][1]["note"] == "Waiting for tower to come online to export quick"
+    exported(agent, u.get(f"/api/runs/{rid}/exports").json()[0]["id"], tensorrt="built")
+    row = plan_row(hub, p2)
+    assert row["status"] == "waiting" and [s["status"] for s in row["steps"]] == ["failed", "done"]
     # stopping a plan while its export is out says the export can't be called back
     _, d = tool(hub, "propose_plan", aid, title="export again", steps=[{"kind": "export", "run_id": rid}])
     u.post(f"/api/plans/{d['plan']['id']}/approve")
