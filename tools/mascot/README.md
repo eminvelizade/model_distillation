@@ -191,14 +191,14 @@ shader also says it in a comment at its top. In short:
 | material | what makes it | real relief |
 |---|---|---|
 | cotton | a matte lobe that stays bright to the edge, a pale haze, no highlight; a knit, a seam | no |
-| bouclé | curls of yarn (curves where warped wavy surfaces cut the body), soft, deep in colour between them | yes |
-| elastane | a lustre laid along the fibres, so highlights are long bands round the body; deep colour | no |
-| sugar | clear bricks of sugar over a jelly that light gets into; faces and grains that flash | yes |
+| bouclé | curls of yarn (curves where warped wavy surfaces cut the body), thick and thin, frayed, with more yarn under them | yes |
+| elastane | a lustre laid along the fibres, so highlights are long bands round the body; deep colour; sewn seams | no |
+| sugar | clear bricks of sugar and fine dust over a jelly that light gets into; faces and grains that flash | yes |
 | ice | a ray through the body gathers a milky core, bubbles and cracks; frost; the page shows through | no |
-| glass | colour from how much glass the light crossed; light trapped at the edges; the page shows through | no |
+| glass | colour from how much glass the light crossed; light trapped at the edges; the room and the page show through | no |
 | chrome | the studio mirrored, and the mascot mirrored in itself; a smudge | no |
 | ceramic | a glass coat over glaze that is pale on bulges and deep in hollows; crazing, a bare foot | no |
-| clay | matte and a little waxy; fingerprints, dents, a tool mark | no |
+| clay | matte and a little waxy; dents, fingerprints one over another | no |
 
 On the software renderer each costs less per frame than plush (see docs/MATERIALS.md).
 

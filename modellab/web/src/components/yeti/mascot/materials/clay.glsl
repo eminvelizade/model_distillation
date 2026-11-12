@@ -2,21 +2,22 @@
 //
 // Plasticine is matte with a faint waxy sheen: light gets a little way into it, so shade is soft and the shadow
 // line glows slightly, and there is only a broad, dull highlight. What makes it look hand-made is the surface:
-// fingerprints (fine parallel ridges that curve round, in patches where a thumb pressed), shallow dents from
-// fingers, a few straight grooves from a tool, and small pits. All of that is in the
-// normal and the tone here; the body's outline stays as the shape gives it. The prints fade to nothing as they get
-// smaller than a pixel.
+// shallow dents from fingers, and fingerprints (fine ridges that curve round and waver, in patches where a thumb
+// pressed, one over another as on anything handled). All of that is in the normal here; the body's outline stays as
+// the shape gives it. The prints fade to nothing as they get smaller than a pixel.
 //#header
 //#body
-// a patch of fingerprint at x (in patches): ridges that curve round the patch's middle; how strongly it pressed
-float clayPrint(vec3 p, out float press) {
-  vec3 x = p * 2.6, c = floor(x), f = fract(x) - 0.5;
-  vec3 hs = hash33(c);
+// a patch of fingerprint: ridges that arc across the patch; press: how strongly it was pressed. scale: patches
+// per unit.
+float clayPrint(vec3 p, float scale, out float press) {
+  vec3 x = p * scale, c = floor(x), f = fract(x) - 0.5;
+  vec3 hs = hash33(c + scale);
   vec3 o = f - (hs - 0.5) * 0.5;                           // from the middle of this press
-  press = smoothstep(0.5, 0.15, length(o)) * step(0.35, hs.z);   // (not every patch was pressed)
-  vec3 ax = normalize(hs - 0.5);
-  float r = length(o - ax * dot(o, ax)) + 0.35 * dot(o, ax);     // loops round an axis, drifting: a whorl
-  return sin(r * 2.6 / 0.011 * 0.3846 + 6.0 * hs.x);       // ridges 0.011 apart
+  press = smoothstep(0.55, 0.2, length(o)) * step(0.3, hs.z);   // (not every patch was pressed)
+  vec3 k = normalize(hash33(c + 31.0) - 0.5) * (0.25 + 0.6 * hs.y);   // the middle of its loops: mostly off the patch,
+  float r = length(o + k);                                       // so the ridges cross it as arcs, as on a thumb
+  r += 0.03 * (noiseAt(p + 40.0, 11.0) - 0.5) * scale;           // no ridge is a perfect arc
+  return sin(r / scale * 523.6 + 6.0 * hs.x);              // ridges 0.012 apart (about three times life size)
 }
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 tu, tv;
@@ -25,20 +26,25 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   float d0 = noiseAt(p + 12.0, 3.2) + 0.5 * noiseAt(p + 2.0, 7.5);
   vec3 N = n - (tu * (noiseAt(p + 12.0 + tu * 0.05, 3.2) + 0.5 * noiseAt(p + 2.0 + tu * 0.05, 7.5) - d0)
               + tv * (noiseAt(p + 12.0 + tv * 0.05, 3.2) + 0.5 * noiseAt(p + 2.0 + tv * 0.05, 7.5) - d0)) * 0.95;
-  // fingerprints
-  float seen = resolvedOn(0.011 * 0.36, dot(n, v));
-  float press, pa, pb;
-  float e = max(0.002, 0.6 * gPix);
-  float r0 = clayPrint(p, press);
-  N -= (tu * (clayPrint(p + tu * e, pa) - r0) + tv * (clayPrint(p + tv * e, pb) - r0)) / e * 0.0011 * press * seen;
-  // a couple of grooves from a modelling tool, and pits
-  float groove = exp(-sq((dot(p, normalize(vec3(-0.6, 0.7, 0.4))) - 0.2 + 0.02 * sin(p.x * 9.0)) / 0.014)) * smoothstep(0.2, 0.6, noiseAt(p + 30.0, 1.5));
-  float pit = smoothstep(0.88, 0.94, noiseAt(p + 5.0, 30.0)) * resolved(0.025);
+  // fingerprints: two sets of patches, and a later press wipes out most of the one under it
+  float seen = resolvedOn(0.012 * 0.3, dot(n, v));
+  float press = 0.0;
+  if (seen > 0.01) {
+    float pa, pb, un;
+    float e = max(0.0015, 0.6 * gPix);
+    vec3 q = p + 0.37;
+    float r0 = clayPrint(p, 2.6, pa), r1 = clayPrint(q, 3.7, pb);
+    vec2 da = vec2(clayPrint(p + tu * e, 2.6, un) - r0, clayPrint(p + tv * e, 2.6, un) - r0);
+    vec2 db = vec2(clayPrint(q + tu * e, 3.7, un) - r1, clayPrint(q + tv * e, 3.7, un) - r1);
+    vec2 d = da * pa * (1.0 - 0.75 * pb) + db * pb;
+    N -= (tu * d.x + tv * d.y) / e * 0.0006 * seen;
+    press = max(pa, pb);
+  }
   N = normalize(N);
   float open = occlusion(p, n), lit = shadowKey(p, n, 4.0);
 
   vec3 dye = uMain * 0.9;
-  vec3 alb = dye * (1.0 + 0.05 * (noiseAt(p, 3.0) - 0.5)) * (1.0 - 0.18 * min(groove, 1.0) * resolved(0.02)) * (1.0 - 0.3 * pit);
+  vec3 alb = dye * (1.0 + 0.05 * (noiseAt(p, 3.0) - 0.5));
   Surf s = surf(alb, mix(0.62, 0.5, press * 0.6));          // a pressed patch is a little smoother
   s.wrap = 0.3;                                             // light gets in: the shadow line is soft
   s.f0 = 0.035;

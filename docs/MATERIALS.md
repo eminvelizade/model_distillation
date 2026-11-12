@@ -13,19 +13,23 @@ guide.
 - **Cotton was researched in depth.** A research agent read 22 sources and wrote a long report; its findings are
   the cotton section below, and its sources are listed at the end with what was read and what was only seen in
   search results.
-- **The other eight were not.** The same research was planned for each and was cut off by a usage limit before it
-  produced reports. Their sections are written from what is generally known in the rendering literature, and the
-  works they name are **cited from memory and were not opened and checked for this page**. They are marked so.
+- **The other eight were not researched in depth.** The same research was planned for each and was cut off by a
+  usage limit before it produced reports. Afterwards the facts and figures in their sections, and the papers they
+  name, were looked up one at a time: a web search each, reading the excerpts it returned, not the papers
+  themselves. Each section says what that confirmed. How each material looks, and the choices in the shaders, rest
+  on general knowledge and were not checked against anything.
 - **Every material was judged by eye** on the same set of renders (large, close up, at 68 and 28 px, on the light
   and the dark theme, in white, charcoal, red and mint, with a hat, a scarf and glasses, and from three angles).
   Nothing was compared against photographs side by side.
-- **Two viewers who had not seen them were then asked what each was made of**, from a plain ball of each (large,
-  close up and small) with no names. One named seven of the ten and the other eight. Both took glass for jelly; one
-  took bouclé for a scouring pad, one took elastane for satin, and one took ice for art glass. Asked how convincing
-  each was as a photograph, they gave 4 to 7 out of 10 (ceramic 7, chrome 6, the rest 4 or 5). What gave each one
-  away, and what was changed because of it, is under [What the blind check changed](#what-the-blind-check-changed).
+- **AI viewers were then asked what each was made of, twice.** Each viewer was a fresh instance of the model with
+  no knowledge of the work, shown a plain ball of each material (the whole ball and a close-up) with no names.
+  They are not people, and a person may judge differently. Two looked before the fixes listed under
+  [What the blind checks changed](#what-the-blind-checks-changed) and two others after. Both times one named seven
+  of the ten and the other eight, and both times they rated the pictures 4 to 7 out of 10 as photographs. So the
+  materials are told apart, most are recognised, and none passes for a photograph. The changes made after the
+  second look (to bouclé, elastane and clay) have not been looked at blind.
 - **Speed was measured on a software renderer only** (no graphics card). There, one frame of a plain ball at 68 px
-  on a 2x screen takes about 56 ms in plush and 24 to 44 ms in the other materials with a look's own program; about
+  on a 2x screen takes about 56 ms in plush and 25 to 44 ms in the other materials with a look's own program; about
   157 ms and 70 to 131 ms with the shared one.
 
 ## Two rules that apply to all of them
@@ -58,38 +62,53 @@ guide.
 
 ## Bouclé
 
-*Curly, messy looped cloth: teddy fabric.* (From memory, not checked.)
+*Curly, messy looped cloth: teddy fabric.*
 
-- **The real thing:** a yarn that was overfed while it was spun buckles into loops and curls a few millimetres
-  across, which stand off the cloth every which way.
+*Looked up:* how the yarn is made. The rest is from memory.
+
+- **The real thing:** an effect yarn is fed faster than the core it is wound round, so the extra length buckles
+  into loops, and a third, binder thread holds them. The loops and curls (a few millimetres across: from memory)
+  stand off the cloth every which way.
 - **What tells it apart:** a nubby outline at any size, speckled shading even when small, deep saturated shade
   between the curls, and softness: no strand has a hard edge.
 - **How:** the curls are real relief, so they are in the outline and shade one another. Where a wavy surface in
   space (a warped gyroid) cuts the body, the cut is a curve that wanders and closes on itself like a loop of yarn.
-  Three sets of such curves at different scales, one over another, make the tangle; each strand is a rounded ridge
-  along its curve. Yarn is full of air, so a strand is shaded by a gentler slope than its true one, and its haze of
+  Three sets of such curves at different scales, one over another, make the tangle (the largest loops are 0.065
+  units across, about twice life size); each strand is a rounded ridge along its curve, thick in places and thin in
+  others, with a frayed edge and the slanting lines of its plies. The lowest set fills the gaps, so there are no
+  dark holes: under yarn there is more yarn. Yarn is full of air, so a strand is shaded by a gentler slope than its true one, and its haze of
   loose fibres glows by the body's slope rather than as a rim on every strand.
 - **Left out:** single fibres standing off the strands; the ply and twist of the yarn.
 
 ## Elastane
 
-*The stretch fabric of swimwear and athletic wear.* (From memory, not checked.)
+*The stretch fabric of swimwear and athletic wear.*
+
+*Looked up:* what the fibre is (a segmented polyurethane that stretches to four to eight times its length). How
+the cloth looks is from memory.
 
 - **The real thing:** a very fine knit of smooth synthetic filaments, pulled taut. No fuzz and no visible weave.
 - **What tells it apart:** deep saturated colour with a satin lustre. Smooth fibres lying side by side mirror a lamp
   into a streak that runs across them, so highlights are long soft bands that wrap round the body.
 - **How:** an anisotropic GGX lobe laid along the fibres (which run up the body), smooth along a fibre and rough
   across them, partly tinted by the dye; a dark, rich matte base; a tight sheen toward grazing angles; a very fine
-  rib in close-up; lustre that varies a little where the cloth is stretched more. At the very top, where "up the
+  knit in close-up (columns of small loops); lustre that varies a little where the cloth is stretched more. The
+  cloth is four panels sewn up the body with flat seams, none down the middle of the face: thread wrapped slantwise
+  between two rows of needle holes, with the cloth puckering a little beside it. The seams show on a large mascot
+  and fade out on a small one. At the very top, where "up the
   body" has no meaning, the streak fades out.
-- **Left out:** seams, and the paler tone of cloth stretched thin over a bulge.
+- **Left out:** the paler tone of cloth stretched thin over a bulge; folds.
 
 ## Sugar
 
-*A soft jelly sweet in the body's colour, rolled in coarse sugar.* (From memory, not checked.)
+*A soft jelly sweet in the body's colour, rolled in coarse sugar.*
 
-- **The real thing:** clear crystals of sucrose up to a millimetre across, lying every which way on a translucent
-  jelly. Sucrose reflects about 5 % of light head-on.
+*Looked up:* grain sizes (granulated sugar about 0.6 mm, coarse sugar 1 to 3 mm, sanding sugar between), and the
+sparkle method's source. Sucrose's index was found in one secondary source only (1.54, which reflects 4.5 %
+head-on; the shader uses 4.8 %). The rest is from memory.
+
+- **The real thing:** clear crystals of sucrose about a millimetre across, lying every which way on a translucent
+  jelly. Sucrose reflects a little under 5 % of light head-on.
 - **What tells it apart:** the rough, frosted outline; pinpoint flashes that come and go as it turns; colour that
   glows between and under the crystals; pale, frosted colour when small.
 - **How:** the crystals are real relief: one small brick in each cell of two jittered grids of different sizes,
@@ -104,11 +123,13 @@ guide.
 
 ## Ice
 
-*A figure carved from real ice.* (From memory, not checked.)
+*A figure carved from real ice.*
+
+*Looked up:* the index (1.310 at 546 nm) and why the middle is cloudy. The rest is from memory.
 
 - **The real thing:** nearly colourless, and it bends light less than glass (index 1.31), so it mirrors little
-  head-on and a lot at the edges. Air comes out of water as it freezes inward, so the middle is milky and holds
-  bubbles; stress leaves curved cracks; the surface is rippled by melting, wet, and frosted where it is dry.
+  head-on and a lot at the edges. Water holds more dissolved air than ice can, and it freezes from the outside in,
+  so the air is pushed ahead of the ice and trapped in the middle, which is milky and holds bubbles; stress leaves curved cracks; the surface is rippled by melting, wet, and frosted where it is dry.
 - **What tells it apart from glass:** the milky core, the cracks, the frost. Ice has no dye: the body's colour is
   only a blush in the thick parts.
 - **How:** a ray is bent at the rippled surface and followed through the body. On the way it gathers the core's
@@ -121,7 +142,9 @@ guide.
 
 ## Glass
 
-*Clear coloured glass, blown by hand.* (From memory, not checked.)
+*Clear coloured glass, blown by hand.*
+
+*Looked up:* the index (soda-lime glass, 1.51 to 1.52). The rest is from memory.
 
 - **The real thing:** no colour on its surface: all of it comes from how much glass the light crossed (Beer and
   Lambert's law), so thick parts are deep and thin parts pale. Index about 1.5.
@@ -137,7 +160,9 @@ guide.
 
 ## Chrome
 
-*Mirror-polished metal, tinted by the body's colour.* (From memory, not checked.)
+*Mirror-polished metal, tinted by the body's colour.*
+
+*From memory:* nothing here was looked up.
 
 - **The real thing:** a mirror has no look of its own. It is its surroundings, bent round the shape.
 - **What tells it apart:** the lamps' panels as crisp bright shapes, a bright floor under a darker room, a dark
@@ -149,7 +174,11 @@ guide.
 
 ## Ceramic
 
-*Glazed stoneware.* (From memory, not checked.)
+*Glazed stoneware.*
+
+*Looked up:* crazing (a glaze that contracts more than the clay as it cools is stretched over it and cracks) and
+breaking (a glaze thins over raised contours and shows a different colour there). That glaze lying thick in hollows
+is darker was confirmed; "pooling" as the word for it was not found defined. The rest is from memory.
 
 - **The real thing:** a layer of coloured glass melted onto a matte clay body. Molten glaze runs off bulges and
   edges, where it ends up thin and pale ("breaking"), and gathers in hollows, where it is thick and dark
@@ -164,35 +193,73 @@ guide.
 
 ## Clay
 
-*Modelling clay (plasticine), shaped by hand.* (From memory, not checked.)
+*Modelling clay (plasticine), shaped by hand.*
+
+*Looked up:* what Plasticine is made of (calcium salts, petroleum jelly and fatty acids, which is why it never
+dries) and how far apart the ridges of a fingerprint are (0.41 to 0.46 mm on average, so the shader's are about
+three and a half times life size). How it looks is from memory.
 
 - **The real thing:** matte with a faint waxy sheen. Light gets a little way into it.
 - **What tells it apart:** a soft shadow line that glows slightly, only a broad dull highlight, and a surface that
   was plainly touched: lumps, dents, fingerprints.
 - **How:** a matte surface with light wrapping past the shadow line and a little coming back from inside in a
   deeper tone. The surface is uneven at two scales (dents from fingers), with fingerprints in patches where a thumb
-  pressed (ridges 0.011 units apart that curve round), a groove from a tool and small pits. A pressed patch is a
-  little smoother than the rest.
-- **Left out:** seams smoothed over where parts were joined; lint (tried: it read as flecks stuck on).
+  pressed: ridges 0.012 units apart (about three and a half times life size) that arc across the patch and waver, in two sets
+  of patches so that one print lies over another. A pressed patch is a little smoother than the rest.
+- **Left out:** seams smoothed over where parts were joined; lint, pits and tool marks (tried: they read as flecks
+  and stains stuck on).
 
-## What the blind check changed
+## What the blind checks changed
 
-Two viewers who had not seen the materials looked at each on a plain ball and said what gave it away as drawn and
-not photographed. These are the things both or either said, and what was done.
+Each viewer also said what gave each material away as drawn and not photographed.
+
+**First look.** One viewer named seven of the ten and the other eight. Both took glass for jelly; one took bouclé
+for a scouring pad, one took elastane for satin, and one took ice for art glass. Scores out of 10 as a photograph:
+ceramic 7, chrome 6, the rest 4 or 5.
 
 | What they said | What was changed |
 |---|---|
 | Rings (moiré) on cotton, elastane and clay toward the outline | fine patterns now fade by the slant of the surface as well as by size (`resolvedOn()`); the knit is a little larger |
 | Glass looked like jelly: the same all through, with nothing seen behind it | the far side now sees the floor, the mascot's shadow and the walls, so the room shows through, bent |
-| Sugar crystals were all one size, opaque and without sparkle | crystals of many sizes, clear with white edges, tilted so that some flash; fine dust between them |
-| Bouclé strands looked melted | steeper strands with less noise on them, and deeper shade between |
+| Sugar crystals were all one size, opaque and without sparkle | more crystals, clear with white edges, tilted so that some flash; fine dust between them (they are still much of a size) |
+| Bouclé strands looked melted | steeper strands with less noise on them, and deeper shade between (this made it worse: see below) |
 | Ice: the streaks looked painted on | fewer and finer cracks, dimmer; what is behind shows through |
 | Chrome: the edges of the reflections were grainy | the scratches that caused it were removed |
-| Clay: the flecks looked stuck on | the lint was removed; fingerprints are drawn only where they resolve |
+| Clay: the flecks looked stuck on, and the one fingerprint was a set of perfect rings | the lint, pits and tool mark were removed; the prints are finer, arc across their patch, waver, and lie over one another |
 
-Not changed: the cracks in the ceramic glaze are all much the same size, plush tufts look flat in close-up, cotton
-and elastane have no seams or wrinkles, and the studio that chrome mirrors is plain. The scores above were given
-before these changes.
+**Second look**, by two other viewers, after those changes. Again one named seven and the other eight.
+
+| Material | Named, first look | Named, second look | Score, first | Score, second |
+|---|---|---|---|---|
+| Glass | neither (jelly, jelly) | both | 5, 5 | 5, 7 |
+| Cotton | both | both | 4, 4 | 5, 5 |
+| Sugar | both | both | 5, 5 | 5, 6 |
+| Chrome | both | both | 6, 6 | 6, 6 |
+| Clay | both | both | 4, 5 | 4, 4 |
+| Ice | one (the other: art glass) | one (the other: a glass marble) | 4, 4 | 4, 4 |
+| Elastane | one (the other: satin) | neither (rubber, satin) | 4, 4 | 4, 4 |
+| Bouclé | one (the other: a scouring pad) | neither (a scouring pad, twice) | 5, 4 | 4, 4 |
+| Plush (not changed) | both | both | 5, 5 | 5, 6 |
+| Ceramic (not changed) | both | both | 7, 7 | 7, 7 |
+
+Plush and ceramic were not changed between the two looks and their scores moved by a point at most, so a point is
+noise. By that measure the changes fixed glass, may have helped cotton and sugar a little, and did nothing for
+ice, clay, elastane or bouclé. Bouclé and elastane got worse at being named.
+
+**After the second look**, the two that neither viewer named were reworked, and clay's prints once more:
+
+- Bouclé (said: thick strands that melt into each other, dark gaps, a sculpted look): loops two thirds the size and
+  denser, yarn that is thick and thin with a frayed edge and visible plies, shallower relief, softer shading, and no
+  dark holes.
+- Elastane (said: it could be rubber or satin, the lines are ruled, nothing says cloth): sewn seams, and a knit of
+  small loops in place of ruled lines.
+- Clay (said: the prints are too large and too regular): finer ridges that arc and waver.
+
+**These last changes have not been looked at blind.** They were judged by the author's eye only.
+
+Not changed at all: the cracks in the ceramic glaze are all much the same size, plush tufts look flat in close-up,
+cotton has no seam in view and its stitches are too regular, the white in the ice reads as a picture on its surface
+and not as depth, and the studio that chrome mirrors is plain.
 
 ## The studio
 
@@ -227,9 +294,23 @@ from memory, and are in the report, not here):
 18. "Hairiness in yarn". https://textile-technology.blogspot.com/2008/04/hairiness-in-yarn.html
 19. Wikipedia, "Mercerised cotton" and "Poplin". https://en.wikipedia.org/wiki/Mercerised_cotton, https://en.wikipedia.org/wiki/Poplin
 
-**Named above from memory, not opened for this page:** Oren and Nayar 1994 and Fujii's variant; Walter et al. 2007
-(GGX); Burley 2012 and Kulla and Conty 2017 (anisotropic GGX); Karis 2013 (the split-sum fit); Lagarde and
-de Rousiers 2014 (specular occlusion); Wang and Bowles 2016 (sparkle); Zirr and Kaplanyan 2016, Chermain et al. 2020
-and Deliot and Belcour 2023 (glints: read about, not implemented); Barré-Brisebois and Bouchard 2011 (translucency);
-Quilez's articles on distance functions, soft shadows and ambient occlusion; Worley 1996 (cellular noise);
-Khronos PBR Neutral tone mapping.
+**Looked up for the other eight** (one web search each; the excerpts it returned were read, the pages were not
+opened in full):
+
+- Ice: Warren, "Optical properties of ice and snow", 2019 (index). https://pmc.ncbi.nlm.nih.gov/articles/PMC6501920 Purdue Materials Engineering, why ice cubes are cloudy. https://engineering.purdue.edu/MSE/AboutUs/GotMaterials/Other/yoder.html
+- Bouclé: a study of bouclé yarn's structure. https://link.springer.com/article/10.1007/s40034-021-00225-1 and https://nopr.niscpr.res.in/bitstream/123456789/39053/1/IJFTR%2041%284%29%20367-372.pdf
+- Elastane: CAMEO, "Spandex fiber". https://cameo.mfa.org/wiki/Spandex_fiber and https://www.fibersource.com/f-tutor/spandex/
+- Glass: soda-lime glass data. https://www.pgo-online.com/intl/soda-lime-glass.html
+- Sugar: grain sizes. https://bobsredmill.com/articles/what-is-sanding-sugar Sucrose's index (a secondary source). https://wiki.kidzsearch.com/wiki/Sucrose
+- Ceramic: Digitalfire's glossary and trouble-shooting pages. https://digitalfire.com/glossary/breaking+glaze, https://digitalfire.com/trouble/glaze+crazing, https://digitalfire.com/glossary/glaze+fit
+- Clay: Wikipedia, "Plasticine". https://en.wikipedia.org/wiki/Plasticine Ridge-to-ridge distance in fingerprints (a 1989 study, from its abstract). https://ojp.gov/ncjrs/virtual-library/abstracts/analysis-ridge-ridge-distance-fingerprints
+- Wang and Bowles, "A Robust and Flexible Real-Time Sparkle Effect", 2016. https://diglib.eg.org/bitstream/handle/10.2312/sre20161209/049-054.pdf
+- Karis, "Physically Based Shading on Mobile", 2014 (the fit to the split sum that `envBRDF` uses; its constants match). https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
+- Barré-Brisebois and Bouchard, "Approximating Translucency for a Fast, Cheap and Convincing Subsurface Scattering Look", 2011. https://ea.com/frostbite/news/approximating-translucency-for-a-fast-cheap-and-convincing-subsurface-scattering-look
+- Fujii's variant of Oren and Nayar's model (posted in 2012). https://lists.blender.org/pipermail/bf-cycles/2012-February/000578.html
+- Lagarde and de Rousiers, "Moving Frostbite to Physically Based Rendering", 2014 (found; the specular occlusion formula used here was not checked against it). https://blog.selfshadow.com/publications/s2014-shading-course/frostbite/s2014_pbs_frostbite_slides.pdf
+- Glints, read about and not implemented: Zirr and Kaplanyan 2016. https://research.nvidia.com/sites/default/files/pubs/2016-02_Real-time-Rendering-of/ZirrKaplanyan_MultiscaleI3D2016.pdf Chermain et al. 2020. https://diglib.eg.org/handle/10.1111/cgf14141 Deliot and Belcour 2023. https://arxiv.org/pdf/2306.05051
+
+**Still named from memory only:** Oren and Nayar 1994; Walter et al. 2007 (GGX); Burley 2012 and Kulla and Conty 2017
+(anisotropic GGX); Quilez's articles on distance functions, soft shadows and ambient occlusion; Worley 1996
+(cellular noise); Khronos PBR Neutral tone mapping.

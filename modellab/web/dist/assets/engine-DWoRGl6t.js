@@ -1,4 +1,4 @@
-import{g as nn}from"./index-DPwBLxQ8.js";/**
+import{g as nn}from"./index-bXXnNNkf.js";/**
  * @license
  * Copyright 2010-2024 Three.js Authors
  * SPDX-License-Identifier: MIT
@@ -4160,37 +4160,43 @@ vec4 seeThrough(vec3 shown, vec3 trans) {
 }
 `,qp=`// Boucle: curly, messy looped cloth (teddy fabric).
 //
-// Real boucle is knitted from a yarn that was overfed as it was spun, so it buckles into loops and curls 2 to 5 mm
-// across that stand off the cloth every which way. What you see is a tangle of fuzzy strands with deep, saturated
+// Real boucle is knitted from a yarn whose outer strand was fed faster than its core, so it buckles into loops and
+// curls a few millimetres across that stand off the cloth every which way. What you see is a tangle of fuzzy strands with deep, saturated
 // shade between them and a nubby outline. Here the strands are real relief. Where a wavy surface in space (a warped
-// gyroid) cuts the body, the cut is a curve that wanders and closes on itself like a loop of yarn; two such sets at
-// different scales, one over the other, make the tangle. Each strand is a rounded ridge along its curve, so the
+// gyroid) cuts the body, the cut is a curve that wanders and closes on itself like a loop of yarn; three such sets at
+// different scales, one over another, make the tangle, and the yarn is thick in places, thin in others and frayed. Each strand is a rounded ridge along its curve, so the
 // strands are in the outline and shade one another. They are lit as matte, fuzzy yarn (Oren & Nayar, with a
 // "Charlie" sheen), darker and deeper in colour down between them. Smaller than a pixel, the tangle becomes an even
 // nap of its average height and tone.
 //#header
-#define MAT_DISPLACE 0.036
+#define MAT_DISPLACE 0.027
 #define MAT_STEP 0.6
 //#body
-// how high the yarn stands at p: 0 between strands .. 1 on top of one
-float boucleYarn(vec3 p) {
-  // the upper strands: loops about 0.1 across
-  vec3 q = p * 30.0 + 1.9 * sin(p.zxy * 11.0 + vec3(0.0, 2.1, 4.2));
-  float a = abs(dot(sin(q), cos(q.yzx))) / 39.0;                 // about how far the nearest curve is, along the surface
+// how high the yarn stands at p: 0 between strands .. 1 on top of one. across: where p lies across the strand it is
+// on (0 its middle .. 1 its side)
+float boucleYarn(vec3 p, out float across) {
+  float thick = 0.82 + 0.36 * snoise(p * 12.0 + 7.0, 0.0);        // yarn is thick in places and thin in others,
+  float fray = 0.0022 * (snoise(p * 85.0, 0.0) - 0.5);            // and its edge is never clean
+  // the upper strands: loops about 0.065 across
+  vec3 q = p * 45.0 + 1.9 * sin(p.zxy * 16.0 + vec3(0.0, 2.1, 4.2));
+  float xa = (abs(dot(sin(q), cos(q.yzx))) / 58.0 + fray) / (0.013 * thick);   // how far the nearest curve is, in strand widths
   // the lower ones: tighter curls, turned another way
-  vec3 r = (p.yzx + p.zxy * 0.6) * 41.0 + 1.6 * sin(p * 15.0 + vec3(3.3, 1.2, 5.0));
-  float b = abs(dot(sin(r), cos(r.zxy))) / 54.0;
+  vec3 r = (p.yzx + p.zxy * 0.6) * 61.0 + 1.6 * sin(p * 22.0 + vec3(3.3, 1.2, 5.0));
+  float xb = (abs(dot(sin(r), cos(r.zxy))) / 80.0 + fray) / (0.011 * thick);
   // and under both, small tight curls that fill the gaps (there is always more yarn underneath)
-  vec3 u = (p.zxy - p.yzx * 0.5) * 68.0 + 1.3 * sin(p.yzx * 23.0 + vec3(1.1, 4.0, 2.3));
-  float c = abs(dot(sin(u), cos(u.yzx))) / 88.0;
-  float ha = sqrt(clamp(1.0 - a * a / (0.019 * 0.019), 0.0, 1.0));     // a strand is round: half a circle across
-  float hb = sqrt(clamp(1.0 - b * b / (0.016 * 0.016), 0.0, 1.0));
-  float hc = sqrt(clamp(1.0 - c * c / (0.011 * 0.011), 0.0, 1.0));
-  return max(max(ha, 0.74 * hb), 0.2 + 0.32 * hc);
+  vec3 u = (p.zxy - p.yzx * 0.5) * 100.0 + 1.3 * sin(p.yzx * 34.0 + vec3(1.1, 4.0, 2.3));
+  float xc = abs(dot(sin(u), cos(u.yzx))) / 130.0 / 0.0075;
+  float ha = sqrt(clamp(1.0 - xa * xa, 0.0, 1.0));                // a strand is round: half a circle across
+  float hb = 0.68 * sqrt(clamp(1.0 - xb * xb, 0.0, 1.0));
+  float hc = 0.3 + 0.3 * sqrt(clamp(1.0 - xc * xc, 0.0, 1.0));
+  across = ha >= max(hb, hc) ? xa : hb >= hc ? xb : min(xc, 1.0);
+  return max(max(ha, hb), hc);
 }
 float matDisplace(vec3 p) {
+  float seen = resolved(0.014), across;
+  if (seen < 0.01) return MAT_DISPLACE * 0.5;                    // too small to see a loop: the average, for nothing
   float clump = 0.8 + 0.4 * snoise(p * 5.0 + 3.0, 0.0);          // it stands taller in places
-  return MAT_DISPLACE * mix(0.5, boucleYarn(p) * clump, resolved(0.02));
+  return MAT_DISPLACE * mix(0.5, boucleYarn(p, across) * clump, seen);
 }
 float boucleMatte(vec3 n, vec3 l, vec3 v, float nl) {             // rough matte yarn (Oren & Nayar, as Fujii wrote it)
   const float sigma = 0.9;
@@ -4201,23 +4207,28 @@ float boucleMatte(vec3 n, vec3 l, vec3 v, float nl) {             // rough matte
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 tu, tv;
   frame(n, tu, tv);
-  float seen = resolved(0.02);
-  float e = max(0.003, 0.8 * gPix);
+  float seen = resolved(0.014);
+  float e = max(0.0022, 0.8 * gPix);
   float h = matDisplace(p) / MAT_DISPLACE;                         // 0 down between the strands .. 1 on top
   vec2 dh = vec2(matDisplace(p + tu * e) - matDisplace(p - tu * e), matDisplace(p + tv * e) - matDisplace(p - tv * e)) / (2.0 * e);
-  // the yarn's own fuzz: fine fibres wrapped round it, a little unruly
+  // the yarn's plies, twisted round it, and its fuzz: fine fibres, a little unruly
+  float across;
+  boucleYarn(p, across);
+  float plySeen = resolved(0.0045) * seen;
+  float ply = sin(across * 7.0 + dot(p, vec3(410.0, 380.0, 420.0)) + 5.0 * noiseAt(p + 3.0, 24.0));
   float fibre = noiseAt(p, 150.0) - 0.5;
   // A strand of yarn is soft and full of air: light gets round it, so it is shaded by a gentler slope than its
   // true one, roughened by the fibres wrapped round it. Its haze of loose fibres glows by the body's slope, not the
   // strand's (a halo over the whole tangle, not a rim on every strand).
-  vec3 N = normalize(n - (tu * dh.x + tv * dh.y) * 0.72 + (tu * fibre + tv * (noiseAt(p + 9.0, 150.0) - 0.5)) * 0.22 * seen);
+  vec3 N = normalize(n - (tu * dh.x + tv * dh.y) * 0.55 + (tu * fibre + tv * (noiseAt(p + 9.0, 150.0) - 0.5)) * 0.3 * seen
+                     + (tu + tv) * ply * 0.12 * plySeen);
   float open = occlusion(p, n), lit = shadowKey(p, n, 4.0);
   float deepIn = mix(1.0, smoothstep(0.0, 0.75, h), seen);         // how far up out of the tangle this point is (1: on top)
 
   vec3 dye = uMain * 0.94;
   vec3 deep = dye * dye * (1.0 / max(lum(dye), 0.05)) * 0.8;       // the same hue, more of it: light that bounced between strands
-  vec3 alb = mix(deep, dye, mix(0.35, 1.0, deepIn)) * (1.0 + 0.1 * fibre * seen) * (1.0 + 0.06 * (noiseAt(p, 4.0) - 0.5));
-  float gap = mix(0.42, 1.0, deepIn) * mix(0.6, 1.0, open);        // the strands above keep the sky and the lamps off what is below
+  vec3 alb = mix(deep, dye, mix(0.35, 1.0, deepIn)) * (1.0 + 0.1 * fibre * seen + 0.1 * ply * plySeen) * (1.0 + 0.06 * (noiseAt(p, 4.0) - 0.5));
+  float gap = mix(0.6, 1.0, deepIn) * mix(0.6, 1.0, open);         // the strands above keep the sky and the lamps off what is below
   vec3 fuzz = mix(dye, vec3(1.0), 0.45) * 0.42;
   float NoV = max(dot(n, v), 1e-3);
   vec3 col = (alb * skyIrr(N) + fuzz * sheenIBL(NoV, 0.6) * skyIrr(n)) * gap * open;
@@ -4323,21 +4334,22 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
 //
 // Plasticine is matte with a faint waxy sheen: light gets a little way into it, so shade is soft and the shadow
 // line glows slightly, and there is only a broad, dull highlight. What makes it look hand-made is the surface:
-// fingerprints (fine parallel ridges that curve round, in patches where a thumb pressed), shallow dents from
-// fingers, a few straight grooves from a tool, and small pits. All of that is in the
-// normal and the tone here; the body's outline stays as the shape gives it. The prints fade to nothing as they get
-// smaller than a pixel.
+// shallow dents from fingers, and fingerprints (fine ridges that curve round and waver, in patches where a thumb
+// pressed, one over another as on anything handled). All of that is in the normal here; the body's outline stays as
+// the shape gives it. The prints fade to nothing as they get smaller than a pixel.
 //#header
 //#body
-// a patch of fingerprint at x (in patches): ridges that curve round the patch's middle; how strongly it pressed
-float clayPrint(vec3 p, out float press) {
-  vec3 x = p * 2.6, c = floor(x), f = fract(x) - 0.5;
-  vec3 hs = hash33(c);
+// a patch of fingerprint: ridges that arc across the patch; press: how strongly it was pressed. scale: patches
+// per unit.
+float clayPrint(vec3 p, float scale, out float press) {
+  vec3 x = p * scale, c = floor(x), f = fract(x) - 0.5;
+  vec3 hs = hash33(c + scale);
   vec3 o = f - (hs - 0.5) * 0.5;                           // from the middle of this press
-  press = smoothstep(0.5, 0.15, length(o)) * step(0.35, hs.z);   // (not every patch was pressed)
-  vec3 ax = normalize(hs - 0.5);
-  float r = length(o - ax * dot(o, ax)) + 0.35 * dot(o, ax);     // loops round an axis, drifting: a whorl
-  return sin(r * 2.6 / 0.011 * 0.3846 + 6.0 * hs.x);       // ridges 0.011 apart
+  press = smoothstep(0.55, 0.2, length(o)) * step(0.3, hs.z);   // (not every patch was pressed)
+  vec3 k = normalize(hash33(c + 31.0) - 0.5) * (0.25 + 0.6 * hs.y);   // the middle of its loops: mostly off the patch,
+  float r = length(o + k);                                       // so the ridges cross it as arcs, as on a thumb
+  r += 0.03 * (noiseAt(p + 40.0, 11.0) - 0.5) * scale;           // no ridge is a perfect arc
+  return sin(r / scale * 523.6 + 6.0 * hs.x);              // ridges 0.012 apart (about three times life size)
 }
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 tu, tv;
@@ -4346,20 +4358,25 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   float d0 = noiseAt(p + 12.0, 3.2) + 0.5 * noiseAt(p + 2.0, 7.5);
   vec3 N = n - (tu * (noiseAt(p + 12.0 + tu * 0.05, 3.2) + 0.5 * noiseAt(p + 2.0 + tu * 0.05, 7.5) - d0)
               + tv * (noiseAt(p + 12.0 + tv * 0.05, 3.2) + 0.5 * noiseAt(p + 2.0 + tv * 0.05, 7.5) - d0)) * 0.95;
-  // fingerprints
-  float seen = resolvedOn(0.011 * 0.36, dot(n, v));
-  float press, pa, pb;
-  float e = max(0.002, 0.6 * gPix);
-  float r0 = clayPrint(p, press);
-  N -= (tu * (clayPrint(p + tu * e, pa) - r0) + tv * (clayPrint(p + tv * e, pb) - r0)) / e * 0.0011 * press * seen;
-  // a couple of grooves from a modelling tool, and pits
-  float groove = exp(-sq((dot(p, normalize(vec3(-0.6, 0.7, 0.4))) - 0.2 + 0.02 * sin(p.x * 9.0)) / 0.014)) * smoothstep(0.2, 0.6, noiseAt(p + 30.0, 1.5));
-  float pit = smoothstep(0.88, 0.94, noiseAt(p + 5.0, 30.0)) * resolved(0.025);
+  // fingerprints: two sets of patches, and a later press wipes out most of the one under it
+  float seen = resolvedOn(0.012 * 0.3, dot(n, v));
+  float press = 0.0;
+  if (seen > 0.01) {
+    float pa, pb, un;
+    float e = max(0.0015, 0.6 * gPix);
+    vec3 q = p + 0.37;
+    float r0 = clayPrint(p, 2.6, pa), r1 = clayPrint(q, 3.7, pb);
+    vec2 da = vec2(clayPrint(p + tu * e, 2.6, un) - r0, clayPrint(p + tv * e, 2.6, un) - r0);
+    vec2 db = vec2(clayPrint(q + tu * e, 3.7, un) - r1, clayPrint(q + tv * e, 3.7, un) - r1);
+    vec2 d = da * pa * (1.0 - 0.75 * pb) + db * pb;
+    N -= (tu * d.x + tv * d.y) / e * 0.0006 * seen;
+    press = max(pa, pb);
+  }
   N = normalize(N);
   float open = occlusion(p, n), lit = shadowKey(p, n, 4.0);
 
   vec3 dye = uMain * 0.9;
-  vec3 alb = dye * (1.0 + 0.05 * (noiseAt(p, 3.0) - 0.5)) * (1.0 - 0.18 * min(groove, 1.0) * resolved(0.02)) * (1.0 - 0.3 * pit);
+  vec3 alb = dye * (1.0 + 0.05 * (noiseAt(p, 3.0) - 0.5));
   Surf s = surf(alb, mix(0.62, 0.5, press * 0.6));          // a pressed patch is a little smoother
   s.wrap = 0.3;                                             // light gets in: the shadow line is soft
   s.f0 = 0.035;
@@ -4449,26 +4466,43 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
 // into a streak that runs across them (as brushed metal does), so the highlights are long soft bands that wrap round
 // the body, and the cloth brightens toward its edges. That is an anisotropic GGX lobe laid along the fibres (which
 // run up the body), part of it tinted by the dye, over a dark, rich matte base, with a tight sheen toward grazing
-// angles. In close-up there is a very fine rib, and the lustre is a little uneven where the cloth is stretched more.
+// angles. In close-up there is a very fine knit (columns of small loops), and the lustre is a little uneven where
+// the cloth is stretched more. The cloth is four panels sewn up the body with flat seams, as sportswear is: thread
+// wrapped slantwise between two rows of needle holes, and the cloth puckers a little beside each seam.
 //#header
 //#body
-const float ELASTANE_RIB = 0.009;   // one rib of the knit
+const float ELASTANE_RIB = 0.009;    // one column of the knit
+const float ELASTANE_SEAM = 0.013;   // half the width of a seam
 
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 across = around(p, n), along = cross(n, across);            // the fibres run up the body
   float ribSeen = resolvedOn(ELASTANE_RIB * 0.4, dot(n, v)) * smoothstep(0.1, 0.3, length(p.xz));
   float u = atan(p.x, p.z) * 0.9 / ELASTANE_RIB + 0.3 * sin(p.y * 9.0) + 0.5 * (noiseAt(p + 14.0, 11.0) - 0.5);   // (never ruler-straight)
-  float rib = cos(6.2832 * u);
-  vec3 N = normalize(n + across * rib * 0.07 * ribSeen);
+  float loop = cos(6.2832 * (p.y / (ELASTANE_RIB * 0.8) + 0.5 * floor(u + 0.5)));   // each column is small loops, half a loop off from the next
+  float rib = cos(6.2832 * u) * (0.72 + 0.28 * loop);
+  // the seams: four planes through the body's axis, a quarter turn apart, none down the middle of the face
+  float sd = (abs(p.x) - abs(p.z)) * 0.7071;                       // how far the nearest seam is
+  float seamSeen = resolved(0.006) * smoothstep(0.08, 0.26, length(p.xz));
+  vec3 sg = vec3(sign(p.x), 0.0, -sign(p.z)) * 0.7071;
+  vec3 st = normalize(sg - n * dot(sg, n) + 1e-4);                 // across the seam, along the surface
+  float band = (1.0 - smoothstep(ELASTANE_SEAM * 0.8, ELASTANE_SEAM, abs(sd))) * seamSeen;
+  float thread = sin((p.y + sd * 1.3) * 6.2832 / 0.0075);          // the thread, wrapped slantwise
+  float holes = exp(-sq((abs(sd) - ELASTANE_SEAM) / 0.0035)) * seamSeen;   // the two rows of needle holes
+  float pucker = sin(p.y * 6.2832 / 0.034 + 4.0 * noiseAt(p + 21.0, 5.0)) * exp(-max(abs(sd) - ELASTANE_SEAM, 0.0) / 0.04) * (1.0 - band) * seamSeen;
+  vec3 N = normalize(n + across * rib * 0.07 * ribSeen * (1.0 - band)
+                       + st * sign(sd) * holes * 0.5                // the seam stands a little proud of the cloth
+                       + along * (thread * 0.3 * band + pucker * 0.1));
   float open = occlusion(p, n), lit = shadowKey(p, n, 5.0);
   float NoV = max(dot(N, v), 1e-3);
 
   // stretched more in places: there the cloth is thinner, a touch paler and glossier
   float stretch = noiseAt(p + 3.0, 2.2);
   vec3 dye = uMain;
-  vec3 alb = pow(dye, vec3(1.18)) * mix(0.7, 0.82, stretch) * mix(1.0, 0.9 + 0.1 * rib, ribSeen);   // deep and saturated
+  vec3 alb = pow(dye, vec3(1.18)) * mix(0.72, 0.8, stretch) * mix(1.0, 0.9 + 0.1 * rib, ribSeen);   // deep and saturated
+  vec3 threadCol = mix(alb, vec3(lum(alb)), 0.25) * 1.3;           // matching thread: a little paler and duller than the cloth
+  alb = mix(alb, threadCol * (0.8 + 0.2 * thread), band) * (1.0 - 0.4 * holes);
   vec3 tint = mix(vec3(1.0), dye / max(max3(dye), 0.05), 0.5);                                      // the lustre takes some of the dye's colour
-  float aAlong = mix(0.15, 0.11, stretch), aAcross = 0.5;          // smooth along a fibre, rough across them
+  float aAlong = mix(0.13, 0.11, stretch), aAcross = 0.44;         // smooth along a fibre, rough across them
   float pole = smoothstep(0.05, 0.32, length(p.xz));               // (at the very top the fibres' direction has no meaning: no streak there)
   aAlong = mix(0.36, aAlong, pole); aAcross = mix(0.36, aAcross, pole);
 
@@ -4482,7 +4516,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
     float D = D_GGXaniso(max(dot(N, hv), 0.0), dot(along, hv), dot(across, hv), aAlong, aAcross);
     float V = V_GGXaniso(NoV, nl, dot(along, v), dot(across, v), dot(along, l), dot(across, l), aAlong, aAcross);
     float F = F_Schlick1(0.05, max(dot(v, hv), 0.0));
-    col += lampCol(i) * sh * nl * (alb * (1.0 - F) + tint * min(D * V, 8.0) * F * PI * 3.4);
+    col += lampCol(i) * sh * nl * (alb * (1.0 - F) + tint * min(D * V, 8.0) * F * PI * 3.4 * (1.0 - 0.75 * band));   // (thread is matte)
   }
   // a tight sheen toward grazing angles (filaments seen edge-on)
   col += tint * 0.26 * pow5(1.0 - NoV) * (skyIrr(N) * open + uBackCol * max(dot(N, uBack), 0.0) * open + uKeyCol * max(dot(N, uKey), 0.0) * lit * 0.5);
