@@ -55,7 +55,7 @@ MAX_HISTORY_CHARS = 120_000
 FOCUS = {"recommendation", "speed", "rounds", "seeds", "results", "features", "pca", "attention", "failure",
          "comparison", "champion", "checks", "datasets", "logs", "answer"}
 PAGE_KINDS = {"run", "search", "machine", "searches", "machines", "leaderboard", "compare", "queue", "new", "team",
-              "notebook", "entry", "other"}
+              "notebook", "entry", "chat", "other"}
 ITEM_RE = re.compile(r"^[A-Za-z0-9_.-]{1,100}:[A-Za-z0-9_.-]{1,64}$")
 PATH_RE = re.compile(r"[^A-Za-z0-9/_.:,=&?%-]")
 

@@ -6,9 +6,10 @@ import pip from "./stills/pip.webp";
 import rime from "./stills/rime.webp";
 import twinkle from "./stills/twinkle.webp";
 
-/** The assistant is one of ModelLab's mascots (Bloom, a furry cub modelled on a real plush, four plush ones and a snow golem). This file is the light part (names and
- *  still pictures); the 3D renderer (./mascot/engine.ts, with three.js) loads on demand. The hub's persona list
- *  (hub/yeti.py, MASCOTS) uses the same keys. */
+/** An agent looks like one of ModelLab's built-in mascots (Bloom, a furry cub modelled on a real plush, four plush ones
+ *  and a snow golem) or like one the user put together (a Look, below). This file is the light part (names, still
+ *  pictures, the options); the 3D renderer (./mascot/engine.ts, with three.js) loads on demand. The hub's persona
+ *  list (hub/yeti.py, MASCOTS) uses the same keys, and hub/agents.py the same options. */
 export type MascotKind = "bloom" | "mochi" | "bop" | "twinkle" | "pip" | "rime";
 export type MascotPose = "idle" | "wave" | "think" | "happy" | "sleep";
 
@@ -25,25 +26,31 @@ export const MASCOT_NAMES = Object.fromEntries(MASCOT_LIST.map((m) => [m.kind, m
 /** A still picture of each mascot (rendered from the 3D one): shown while the renderer loads, and where WebGL is off. */
 export const STILLS: Record<MascotKind, string> = { bloom, mochi, bop, twinkle, pip, rime };
 
-// ---------------------------------------------------------------- which mascot is the assistant (this browser)
-const KEY = "modellab-mascot";
+// ---------------------------------------------------------------- the agent on screen
+/** What an agent looks like: a built-in mascot, or a make-your-own one. Kept on the hub with the agent. */
+export type AgentLook = { base: MascotKind } | ({ base: "fuzzy" } & Look);
+export const isBuiltIn = (l: AgentLook): l is { base: MascotKind } => l.base !== "fuzzy";
+
+const KEY = "modellab-mascot";   // (where the choice lived before agents were kept on the hub: read once, to carry it over)
 const isKind = (v: unknown): v is MascotKind => MASCOT_LIST.some((m) => m.kind === v);
-let current: MascotKind = (() => { try { const v = localStorage.getItem(KEY); return isKind(v) ? v : "bloom"; } catch { return "bloom"; } })();
+/** The built-in mascot this browser had picked before agents existed (the first agent starts as it). */
+export const legacyMascot = (): MascotKind => { try { const v = localStorage.getItem(KEY); return isKind(v) ? v : "bloom"; } catch { return "bloom"; } };
+
+let current: { name: string; look: AgentLook } = { name: MASCOT_NAMES[legacyMascot()], look: { base: legacyMascot() } };
 const subs = new Set<() => void>();
 
-/** The mascot picked in this browser (outside React: the chat request names it, so Claude speaks as it). */
-export const currentMascot = (): MascotKind => current;
-
-export function setMascot(kind: MascotKind) {
-  if (kind === current) return;
-  current = kind;
-  try { localStorage.setItem(KEY, kind); } catch { /* private window: this tab only */ }
+/** The agent the user is talking to (set by YetiContext when the team loads or the user switches). */
+export function setCurrentAgent(name: string, look: AgentLook) {
+  if (name === current.name && JSON.stringify(look) === JSON.stringify(current.look)) return;
+  current = { name, look };
   subs.forEach((f) => f());
 }
 
-export function useMascot(): { kind: MascotKind; name: string } {
-  const kind = useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f); }; }, () => current);
-  return { kind, name: MASCOT_NAMES[kind] };
+/** The current agent's name and look. `kind` is its built-in mascot, or Bloom for a make-your-own one (for the places
+ *  that still need a still picture). */
+export function useMascot(): { kind: MascotKind; name: string; look: AgentLook } {
+  const c = useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f); }; }, () => current);
+  return { kind: isBuiltIn(c.look) ? c.look.base : "bloom", name: c.name, look: c.look };
 }
 
 // ---------------------------------------------------------------- make your own
@@ -72,3 +79,9 @@ export const LOOK_OPTIONS = {
     ["cap", "Cap"], ["tuft", "Tuft"]],
 } as const;
 export const DEFAULT_LOOK: Look = { shape: "pom", colour: "lime", accent: "ice", eyes: "bean", glasses: "none", extra: "none" };
+
+/** The colour an agent's thread takes (its messages' tint, its header): its dye, or its built-in mascot's main colour. */
+export function agentColour(look: AgentLook): string {
+  if (isBuiltIn(look)) return ({ bloom: "#3d82dc", mochi: "#f97316", bop: "#2a62f0", twinkle: "#eab308", pip: "#65a30d", rime: "#64748b" } as Record<MascotKind, string>)[look.base];
+  return look.colour === "snow" ? "#3d82dc" : look.colour === "ink" ? "#475569" : COLOURS[look.colour] ?? "#3d82dc";
+}
