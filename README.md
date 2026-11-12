@@ -67,6 +67,9 @@ Current version: **v0.1** (beta).
   step and its estimated GPU time, press Start once, and it runs on the hub with no page open. Each step is checked
   against what its run really did, and a run that fails for a known reason (out of memory, a NaN loss, an
   interruption) is fixed and tried again. [How to use it](docs/HUB.md#chat-agents-and-plans).
+- Each agent has a mascot: Bloom, or one you put together from a shape, a colour and one of ten materials (plush,
+  cotton, bouclé, elastane, sugar, ice, glass, chrome, glazed ceramic, clay), each drawn live by its own shader.
+  [What each material is and how it is drawn](docs/MATERIALS.md).
 - Where there's something to explain, the agent waves and offers it, and "Explain" buttons sit next to
   recommendations, results, figures, failures and machine checks.
 - They run on Claude, on your own account: paste an API key from your Claude Console account, or add ModelLab as a

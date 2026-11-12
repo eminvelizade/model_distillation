@@ -268,6 +268,10 @@ a colour, eyes, glasses and an extra. Every agent uses the same Claude model and
 
 ![The agent editor](screenshots/hub_22_agent_editor.png)
 
+The ten materials (what each is and how it is drawn: [MATERIALS.md](MATERIALS.md)):
+
+![The ten materials](screenshots/hub_23_materials.png)
+
 **Kept in mind** (under the team list) holds what your agents remember between conversations: a sentence for each
 correction you made or preference you stated ("use the tower for quick tests"). An agent adds a note when you
 correct it. You can add, change or remove notes, and every agent reads all of them before each answer.
