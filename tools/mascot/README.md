@@ -180,8 +180,9 @@ are in this repository).
 
   Bloom takes 71 ms and Dr. Mochi 20 ms. Getting ready: the shared program takes about 1.4 s once, and then each
   new look 3 to 36 ms; a program of its own takes 0.5 to 1.1 s for each look with different kinds of part. On
-  that renderer two mascots side by side had both switched after about 12 s. The pictures match what was drawn
-  before this change: 0.1 of a level in 255 off on average with a look's own program, 0.3 with the shared one.
+  that renderer two mascots side by side had both switched after about 12 s. The two programs draw the same
+  picture: across eight looks they differ by 0.1 to 0.4 of a level in 255 on average, and at most 0.6% of pixels
+  differ by more than 16 levels (a thin line along a scarf's edge), so a mascot doesn't change when it switches.
 - **Two things to keep when changing this code.** A solid part met on the way is lit once, after the march, not
   inside its loop. And the ball that lets the march skip the solid parts is for the march only (`solidNear`): a
   shadow measures how near its ray passes, and takes the ball for something in the light's way, which showed as
