@@ -242,6 +242,9 @@ on Chat says how many messages arrived while you were away.
 - A started plan runs on the hub. You can close the browser: the machines work through the runs, and the hub picks
   and exports when they finish. The card shows each step's real state (queued, running with its progress, done with
   its result).
+- An export step is done only when the machine reports the files written. Its line then says what was made: ONNX
+  and a TensorRT engine, or ONNX only with the reason (a machine without TensorRT can't build the engine). An export
+  that fails stops the plan with its error.
 - **When a run fails for a known reason, the plan fixes it and tries again**, up to three tries: half the batch
   after an out-of-memory error (with twice the gradient accumulation), half the learning rate after a NaN loss, a
   re-queue after an interruption. The card and the conversation say what was changed.
@@ -438,8 +441,9 @@ Tested in a Linux sandbox without GPU:
 - Chat, agents and plans: the plan executor with simulated machines (one Start for a whole plan, runs queued and
   picked and exported with only agent events reaching the hub, an out-of-memory run fixed and retried, three tries
   and no fourth, an unknown error stopping the plan, retry and skip, a change beyond the approval waiting for the
-  user and a step that started meanwhile not queued twice, a plan with no time estimate not growing by runs,
-  epochs, models, input size or an unapproved export, a running step counting toward the approved time, text in a
+  user and a step that started meanwhile not queued twice, an export step done only when the machine
+  reports the files (failed, retried, ONNX only), a plan with no time estimate not growing by runs, epochs, models,
+  input size or an unapproved export, a running step counting toward the approved time, text in a
   run's name unable to close the `<plans>` block, another user's plan unreachable), conversations and notes
   against a mocked Claude API (all of these on SQLite and on PostgreSQL), and the web app in a browser with a real
   Claude model reached through OpenRouter:

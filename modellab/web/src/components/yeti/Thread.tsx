@@ -279,11 +279,12 @@ function stepResult(s: PlanStep): string | null {
   if (s.status === "running" && s.run) return s.run.status === "queued" ? "queued" : `${Math.round(s.run.progress * 100)}%${s.run.stage ? ` · ${s.run.stage}` : ""}`;
   if (!r) return null;
   if (s.kind === "pick" && r.winner) return `${r.name ?? r.winner}${r.tie ? " (a tie)" : ""}`;
+  if (s.kind === "export") return s.status === "done" && r.tensorrt ? (r.tensorrt === "built" ? "ONNX · TensorRT" : "ONNX only") : null;
   if (r.map != null) return `mAP ${(r.map * 100).toFixed(1)}${r.latency_ms ? ` · ${r.latency_ms.toFixed(1)} ms` : ""}`;
   return null;
 }
 
-/** A plan: its steps as the hub reports them (from the runs themselves), and the user's own word on it: Start, Stop,
+/** A plan: its steps as the hub reports them (from the runs and the machines themselves), and the user's own word on it: Start, Stop,
  *  or, when a step failed in a way the hub couldn't fix, retry or skip. Nothing in it starts without that word. */
 export function PlanCard({ p }: { p: Plan }) {
   const y = useYeti();
@@ -327,6 +328,7 @@ export function PlanCard({ p }: { p: Plan }) {
                     {res && <span className="ml-auto shrink-0 font-mono text-[11.5px] tabular-nums text-muted">{res}</span>}
                   </div>
                   {s.detail && <div className="truncate text-2xs text-subtle" title={s.detail}>{s.detail}</div>}
+                  {s.kind === "export" && s.status === "done" && s.result?.folder && <div className="truncate font-mono text-2xs text-subtle" title={s.result.folder}>{s.result.folder}</div>}
                   {s.status === "running" && s.run && s.run.status === "running" && (
                     <div className="mt-1 h-1 overflow-hidden rounded-full bg-raised"><div className="h-full rounded-full bg-gradient-to-r from-ice-600 to-ice-300 transition-all duration-700" style={{ width: `${s.run.progress * 100}%` }} /></div>
                   )}

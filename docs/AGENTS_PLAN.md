@@ -64,7 +64,7 @@ One more: friction. A booking took three separate approvals, and broad rules mea
 | start working, report later | the plan is shown first, with its steps and its estimated GPU time; nothing runs before Start |
 | an approval per consequential action | one Start approves the whole plan, inside an envelope: these machines and datasets, these kinds of step, this much GPU time, three tries per step |
 | progress in a separate activity view | the plan's card shows every step, live, in the conversation |
-| the agent reports whether it worked | the hub writes each step's state from what happened to its run; the agent reads that, it doesn't write it |
+| the agent reports whether it worked | the hub writes each step's state from what happened: a run's from its run, an export's from the files the machine reports written. The agent reads that, it doesn't write it |
 | no retry described | a failed run goes to the failure catalogue: a known failure is fixed and retried inside the envelope; anything else stops the plan and says what is missing |
 | private notes | notes are listed in Chat; you can change or remove any of them, and they go into every answer |
 | reachable everywhere, always on | the conversation is kept on the hub, so a plan reports into it with no page open; unread counts show on the corner button and in the sidebar |
@@ -379,8 +379,11 @@ A run step can wait for another (`after`: a quick test before the full run) and 
    grow without your OK.
 3. **The hub carries it out** (`modellab/hub/plans.py`), the way it runs a search: when one of the plan's runs
    finishes (its runs are tagged `plan:<id>`) and whenever the web app reads it. No page needs to be open.
-4. **Each step's state comes from its run**, not from what anyone said: queued, running with its progress, done
-   with its result, or failed with its error.
+4. **Each step's state comes from what happened**, not from what anyone said. A run step: queued, running with
+   its progress, done with its result, or failed with its error. An export step: running from the moment the
+   machine is asked, and done only when the machine reports the files written, with whether the TensorRT engine was
+   built (a machine without TensorRT exports ONNX only, and the step says so). An export that fails stops the plan
+   like any failure nobody can fix.
 5. **A failed run is fixed when the failure is known.** The [failure catalogue](#fix-when-something-fails) is asked.
    Out of memory: half the batch, twice the gradient accumulation. A NaN loss: half the learning rate. An
    interruption: re-queued. The step is tried again, at most three times and only while the approved GPU time

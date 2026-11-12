@@ -49,6 +49,12 @@ def queue(u):
     return u.get("/api/queue").json()["runs"]
 
 
+def exported(agent, cid, tensorrt, files=("MODEL_CARD.md", "model.engine", "model.onnx"), **more):
+    """The machine reports an export it was asked for: the model card the agent sends (modellab/export.py)."""
+    card = {"tensorrt": tensorrt, "folder": "/data/runs/x/export", "files": {f: {"size": 1, "sha256": "0" * 64} for f in files}, **more}
+    assert agent.post(f"/agent/v1/commands/{cid}", json={"status": "done", "result": card}).status_code == 200
+
+
 def plan_row(app, pid):
     from modellab.hub import db
 
@@ -91,17 +97,56 @@ def test_a_plan_starts_only_with_the_users_post_and_goes_on_with_no_page_open(hu
     r2 = claim(agent)
     end(agent, r2["id"], map_=0.45)
     row = plan_row(hub, pid)
-    assert row["status"] == "done" and [s["status"] for s in row["steps"]] == ["done"] * 4
     pick = row["steps"][2]["result"]
     assert pick["winner"] == "s2" and pick["run_id"] == r2["id"] and "45.0 against 40.0" in pick["why"] and not pick["tie"]
+    # the export was asked of the machine. Asking isn't done: the step runs until the machine says what it wrote
+    assert row["status"] == "running" and [s["status"] for s in row["steps"]] == ["done", "done", "done", "running"]
     assert row["steps"][3]["result"]["run_id"] == r2["id"] and row["steps"][3]["result"]["stage"] == "finetune"
     cmds = u.get(f"/api/runs/{r2['id']}/exports").json()
-    assert len(cmds) == 1  # the export was asked of the machine
+    assert len(cmds) == 1 and cmds[0]["status"] == "pending" and not thread(u, aid)["wake"]
+    exported(agent, cmds[0]["id"], tensorrt="built", trt_latency_ms=1.84)
+    row = plan_row(hub, pid)
+    assert row["status"] == "done" and [s["status"] for s in row["steps"]] == ["done"] * 4
+    assert row["steps"][3]["note"] == "Exported nano-448: ONNX and a TensorRT engine (1.8 ms)"
+    assert row["steps"][3]["result"]["files"] == ["MODEL_CARD.md", "model.engine", "model.onnx"]
     # the thread holds the hub's report, and asks for the agent's follow-up when someone opens the chat
     t = thread(u, aid)
     ev = t["messages"][-1]
     assert ev["role"] == "event" and "finished" in ev["text"] and "mAP 45.0" in ev["text"] and t["wake"] is True
+    assert "ONNX and a TensorRT engine" in ev["text"]
     assert u.get("/api/agents").json()[0]["unread"] == 1
+
+
+def test_an_export_step_is_done_only_when_the_machine_wrote_the_files(hub):  # noqa: F811
+    u, agent, mid, aid = lab(hub)
+    _, d = tool(hub, "propose_plan", aid, title="train and export", steps=[run_step(mid, "quick"), {"kind": "export", "from": "s1"}])
+    pid = d["plan"]["id"]
+    u.post(f"/api/plans/{pid}/approve")
+    rid = claim(agent)["id"]
+    end(agent, rid, map_=0.5)
+    first = u.get(f"/api/runs/{rid}/exports").json()[0]["id"]
+    # the export fails on the machine: the step failed, the plan waits and says why (nothing is called done)
+    assert agent.post(f"/agent/v1/commands/{first}", json={"status": "failed", "error": "RuntimeError: ONNX export failed: unsupported op\n  at ..."}).status_code == 200
+    row = plan_row(hub, pid)
+    assert row["status"] == "waiting" and row["steps"][1]["status"] == "failed"
+    assert row["steps"][1]["note"] == "The export of quick failed: RuntimeError: ONNX export failed: unsupported op"
+    assert "failed" in thread(u, aid)["messages"][-1]["text"]
+    # retry asks the machine again; a machine with no TensorRT writes ONNX only, and the step says so
+    p = u.post(f"/api/plans/{pid}/resume", json={"how": "retry"}).json()
+    assert p["status"] == "running" and p["steps"][1]["status"] == "running"
+    cmds = u.get(f"/api/runs/{rid}/exports").json()
+    assert len(cmds) == 2 and cmds[0]["id"] != first
+    exported(agent, cmds[0]["id"], tensorrt="not installed on this machine (no trtexec): ONNX only", files=("MODEL_CARD.md", "model.onnx"))
+    row = plan_row(hub, pid)
+    assert row["status"] == "done" and row["steps"][1]["status"] == "done"
+    assert row["steps"][1]["note"] == "Exported quick to ONNX only. TensorRT: not installed on this machine (no trtexec): ONNX only"
+    assert "ONNX only" in thread(u, aid)["messages"][-1]["text"]
+    # stopping a plan while its export is out says the export can't be called back
+    _, d = tool(hub, "propose_plan", aid, title="export again", steps=[{"kind": "export", "run_id": rid}])
+    u.post(f"/api/plans/{d['plan']['id']}/approve")
+    p = u.post(f"/api/plans/{d['plan']['id']}/cancel").json()
+    assert p["status"] == "cancelled" and "may still finish" in p["steps"][0]["note"]
+    assert u.get(f"/api/runs/{rid}").json()["status"] == "done"   # (the run it exports is left alone)
 
 
 def test_a_failed_run_is_fixed_from_the_catalogue_then_the_plan_stops_and_says_why(hub):  # noqa: F811

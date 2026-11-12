@@ -10,14 +10,17 @@ against the user's own machines, datasets and runs, or a step that only reads re
 
 Claude writes a plan with the propose_plan tool, which changes nothing: the plan is stored as "proposed" and shown
 as a card in the chat. Approval is the user's own authenticated POST (/api/plans/{id}/approve), never a tool call.
-What they approve is an envelope: these machines and datasets, this much GPU time, this many tries per step. The
-executor refuses anything outside it, and a revision that goes beyond it waits for the user again.
+What they approve is an envelope: these machines and datasets, these kinds of step, this much GPU time (or, with
+no estimate, this much counted work), this many tries per step. The executor refuses anything outside it, and a
+revision that goes beyond it waits for the user again.
 
 Steps run on the hub (model.submit and friends), so a plan goes on with no page open. It moves forward the way a
-search does: when one of its runs finishes (agent events: its runs carry the tag plan:<id>) and whenever the web
-app reads it. advance() writes only if the row's rev is unchanged.
+search does: when one of its runs finishes (agent events: its runs carry the tag plan:<id>), when a machine
+reports an export it asked for, and whenever the web app reads it. advance() writes only if the row's rev is
+unchanged.
 
-Each step's state is written from what happened to its run, not from what anyone said. A failed run goes to the
+Each step's state is written from what happened, not from what anyone said: a run step from its run, an export
+step from what the machine reported (done only when it wrote the files, with whether TensorRT was built). A failed run goes to the
 failure catalogue (system1/failures.py). When the fix is one a plan may make on its own (half the batch after an
 out-of-memory error, half the learning rate after a NaN, a re-queue after an interruption), and the approved GPU
 time allows it, the step is tried again with that change, at most TRIES times, and the thread says so. Anything
@@ -557,8 +560,8 @@ def _start(c: sa.Connection, owner: dict, plan: dict, st: dict, by_id: dict[str,
             stage = stage or _result_of(c, run)["stage"]
             if not stage:
                 raise PlanError(f"{run['name']} has no fine-tune stage to export")
-            cmd = model.export_run(c, owner, rid, stage)
-            st.update(status="done", finished=now, run_id=rid, result={"run_id": rid, "name": run["name"], "stage": stage, "command": cmd.get("id")},
+            cmd = model.export_run(c, owner, rid, stage)   # (asked for; the step is done when the machine says the files are written)
+            st.update(status="running", run_id=rid, command=cmd["id"], result={"run_id": rid, "name": run["name"], "stage": stage},
                       note=f"Exporting {run['name']} to ONNX and TensorRT on its machine")
     except (PlanError, recipe.RecipeError) as e:
         st.update(status="failed", finished=now, note=str(e))
@@ -635,9 +638,44 @@ def _fix(c: sa.Connection, owner: dict, plan: dict, st: dict, run: dict, env: di
     return None
 
 
-def _refresh(c: sa.Connection, owner: dict, plan: dict, st: dict, env: dict, spent: float) -> bool:
-    """A running step, from what happened to its run or search. Returns whether it changed."""
+def _exported(c: sa.Connection, owner: dict, st: dict) -> bool:
+    """A running export step, from what its machine reported. Done means the files were written; whether the
+    TensorRT engine was built is said either way (a machine without trtexec exports ONNX only)."""
     now = time.time()
+    name = (st.get("result") or {}).get("name") or "the model"
+    cmd = c.execute(sa.select(db.commands).where(db.commands.c.id == st.get("command"), db.commands.c.user_id == owner["id"])).mappings().first()
+    if cmd is None:
+        st.update(status="failed", finished=now, note=f"The export of {name} is gone from its machine's list")
+        return True
+    if cmd["status"] in ("pending", "sent", "running"):
+        gone = c.execute(sa.select(db.machines.c.revoked).where(db.machines.c.id == cmd["machine_id"])).scalar()
+        if gone is None or gone:
+            st.update(status="failed", finished=now, note=f"The machine was removed before it exported {name}")
+            return True
+        return False
+    if cmd["status"] != "done":
+        why = (str(cmd["error"] or "").strip().splitlines() or ["no reason given"])[0][:300]
+        st.update(status="failed", finished=cmd["finished"] or now, note=f"The export of {name} failed: {why}")
+        return True
+    card = db.loads(cmd["result"], None)
+    card = card if isinstance(card, dict) else {}
+    files = sorted(str(f) for f in card["files"]) if isinstance(card.get("files"), dict) else []
+    trt = str(card.get("tensorrt") or "not reported")[:300]
+    lat = card.get("trt_latency_ms")
+    built = trt == "built"
+    note = (f"Exported {name}: ONNX and a TensorRT engine" + (f" ({lat:.1f} ms)" if isinstance(lat, (int, float)) else "") if built
+            else f"Exported {name} to ONNX only. TensorRT: {trt}")
+    st.update(status="done", finished=cmd["finished"] or now, note=note,
+              result={**(st.get("result") or {}), "files": files[:20], "folder": str(card.get("folder") or "")[:300] or None,
+                      "tensorrt": trt, "trt_latency_ms": lat if isinstance(lat, (int, float)) else None})
+    return True
+
+
+def _refresh(c: sa.Connection, owner: dict, plan: dict, st: dict, env: dict, spent: float) -> bool:
+    """A running step, from what happened to its run, its search or its export. Returns whether it changed."""
+    now = time.time()
+    if st["kind"] == "export":
+        return _exported(c, owner, st)
     if st["kind"] == "search":
         try:
             search.advance_safe(c, st["search_id"])
@@ -701,7 +739,7 @@ def _summary(steps: list[dict]) -> str:
         if s["status"] == "skipped":
             lines.append(f"{s['title']}: skipped")
         elif s["kind"] == "export":
-            lines.append(f"{s['title']}: {s.get('note') or 'started'}")
+            lines.append(f"{s['title']}: {s.get('note') or s['status']}")
         else:
             lines.append(f"{s['title']}: {_result_text(s) or s['status']}")
     return "; ".join(lines)
@@ -785,6 +823,15 @@ def on_run_final(c: sa.Connection, tags: list[str]) -> None:
             for (pid,) in c.execute(sa.select(db.plans.c.id).where(db.plans.c.status == "running",
                                                                   db.plans.c.steps.like(f'%"search_id": "{sid}"%'))).all():
                 advance_safe(c, pid)
+
+
+def on_command_final(c: sa.Connection, cmd: dict) -> None:
+    """A machine reported an export (agent API). If a plan asked for it, the plan reads it now, with no page open."""
+    if cmd.get("type") != "export" or cmd.get("status") not in ("done", "failed"):
+        return
+    for (pid,) in c.execute(sa.select(db.plans.c.id).where(db.plans.c.owner_id == cmd["user_id"], db.plans.c.status == "running",
+                                                          db.plans.c.steps.like(f'%"command": "{cmd["id"]}"%'))).all():
+        advance_safe(c, pid)
 
 
 # ---------------------------------------------------------------- writing, approving, changing
@@ -895,11 +942,12 @@ def cancel(c: sa.Connection, user: dict, pid: str) -> dict:
             try:
                 if s["kind"] == "search":
                     search.cancel(c, user, s["search_id"])
-                elif s.get("run_id"):
+                elif s["kind"] == "run" and s.get("run_id"):
                     model.cancel_run(c, user, s["run_id"])
             except HTTPException:
                 pass
-            s.update(status="cancelled", note="stopped with the plan")
+            # (an export already asked for can't be called back: it may still finish on its machine)
+            s.update(status="cancelled", note="stopped with the plan" + ("; its export may still finish on the machine" if s["kind"] == "export" else ""))
         elif s["status"] == "pending":
             s["status"] = "skipped"
     now = time.time()

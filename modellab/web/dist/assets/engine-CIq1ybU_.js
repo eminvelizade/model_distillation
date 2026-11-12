@@ -1,4 +1,4 @@
-import{C as tn}from"./index-BM3WSBNE.js";/**
+import{C as tn}from"./index-Bllm9r2X.js";/**
  * @license
  * Copyright 2010-2024 Three.js Authors
  * SPDX-License-Identifier: MIT

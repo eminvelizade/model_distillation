@@ -193,7 +193,8 @@ export interface PlanStep {
   id: string; kind: "run" | "search" | "pick" | "export"; title: string; detail: string | null; after?: string[];
   status: "pending" | "running" | "done" | "failed" | "skipped" | "cancelled"; note: string | null; est_s: number | null;
   run_id: string | null; search_id: string | null; tries: number; fixes: { what: string; why: string }[];
-  result: { map?: number | null; latency_ms?: number | null; name?: string; winner?: string; why?: string; tie?: boolean; run_id?: string } | null;
+  result: { map?: number | null; latency_ms?: number | null; name?: string; winner?: string; why?: string; tie?: boolean; run_id?: string;
+    tensorrt?: string; files?: string[]; folder?: string | null } | null;   // (an export: what the machine wrote)
   run?: { status: string; progress: number; stage: string | null; name: string };
 }
 export interface Plan {
