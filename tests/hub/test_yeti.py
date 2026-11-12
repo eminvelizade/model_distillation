@@ -300,7 +300,7 @@ def test_chat_speaks_as_the_chosen_mascot(hub, monkeypatch):  # noqa: F811
     from modellab.hub import yeti
 
     u, _ = finished_search(hub)
-    fake = FakeClaude([sse_message([{"type": "text", "text": "Hello from the lab!"}], "end_turn")])
+    fake = FakeClaude([sse_message([{"type": "text", "text": "Hello from the lab!"}], "end_turn")] * 2)
     monkeypatch.setattr(yeti, "make_client", fake.client)
     u.put("/api/assistant", json={"api_key": KEY})
     ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "who are you?"}], "mascot": "mochi"}))
@@ -308,7 +308,9 @@ def test_chat_speaks_as_the_chosen_mascot(hub, monkeypatch):  # noqa: F811
     system = fake.requests[1]["body"]["system"][0]["text"]
     assert system.startswith("You are Dr. Mochi,") and "lab coat" in system and "You are Bloom" not in system
     assert "{" not in system.split("# The ModelLab guide")[0]  # every placeholder filled in
-    assert u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "hi"}], "mascot": "clippy"}).status_code == 422
+    # a tab left open from before may name a mascot that is gone: it is answered as Bloom, not refused
+    ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "hi"}], "mascot": "clippy"}))
+    assert ev[-1]["type"] == "done" and fake.requests[2]["body"]["system"][0]["text"].startswith("You are Bloom,")
 
 
 def test_each_mascot_has_its_own_voice():
@@ -329,7 +331,6 @@ def test_each_mascot_has_its_own_voice():
     web = Path(yeti.__file__).parents[1] / "web/src/components/yeti/mascots.ts"
     kinds = re.findall(r'kind: "(\w+)", name: "([^"]+)"', web.read_text())
     assert dict(kinds) == {k: v[0] for k, v in yeti.MASCOTS.items()}
-    assert set(yeti.Mascot.__args__) == set(yeti.MASCOTS)
 
 
 def test_chat_errors_and_haiku_settings(hub, monkeypatch):  # noqa: F811

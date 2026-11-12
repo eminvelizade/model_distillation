@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 
 from modellab import ROOT
-from modellab.hub import Config, agent_api, api, browse, db, load_config, mcp, model, notebook, oauth, yeti
+from modellab.hub import Config, agent_api, agents, api, browse, db, load_config, mcp, model, notebook, oauth, plans, yeti
 from modellab.hub.system1 import service as system1
 
 WEB_DIST = ROOT / "modellab" / "web" / "dist"
@@ -71,6 +71,8 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     app.include_router(api.router)
     app.include_router(agent_api.router)
     app.include_router(yeti.router)  # Yeti: settings + chat (/api/assistant...)
+    app.include_router(agents.router)  # the agents and their threads (/api/agents..., /api/agent-notes)
+    app.include_router(plans.router)  # plans of several steps (/api/plans...)
     app.include_router(notebook.router)  # the lab's notebook (/api/notebook...)
     app.include_router(system1.router)  # one sentence → one decision (/api/assistant/decide, /api/actions)
     app.include_router(oauth.router)  # OAuth for the MCP connector (/.well-known/..., /oauth/...)
