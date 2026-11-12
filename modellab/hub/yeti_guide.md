@@ -203,7 +203,8 @@ The `features` stage writes figures that I can look at and explain:
     Runs that don't depend on each other are queued together; a step can wait for another (a quick test first).
   - An export step is done only when the machine reports the files written. Its line then says what was made:
     "ONNX and a TensorRT engine", or "ONNX only" with the reason (a machine without TensorRT's trtexec can't build
-    the engine). An export that fails stops the plan, with the error.
+    the engine). While it is out, the line says which machine is exporting, or that the plan is waiting for that
+    machine to come online. An export that fails stops the plan, with the error.
   - Each step shows what really happened to its run. A run that fails for a known reason is tried again with the
     catalogue's fix: half the batch (and twice the gradient accumulation) after an out-of-memory error, half the
     learning rate after a NaN loss, a re-queue after an interruption; at most three tries, and only within the

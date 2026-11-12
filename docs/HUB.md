@@ -243,8 +243,9 @@ on Chat says how many messages arrived while you were away.
   and exports when they finish. The card shows each step's real state (queued, running with its progress, done with
   its result).
 - An export step is done only when the machine reports the files written. Its line then says what was made: ONNX
-  and a TensorRT engine, or ONNX only with the reason (a machine without TensorRT can't build the engine). An export
-  that fails stops the plan with its error.
+  and a TensorRT engine, or ONNX only with the reason (a machine without TensorRT can't build the engine). While
+  the machine is switched off, the step says it is waiting for it. An export that fails stops the plan with its
+  error.
 - **When a run fails for a known reason, the plan fixes it and tries again**, up to three tries: half the batch
   after an out-of-memory error (with twice the gradient accumulation), half the learning rate after a NaN loss, a
   re-queue after an interruption. The card and the conversation say what was changed.
