@@ -27,6 +27,7 @@ export interface Diagnosis {
 }
 
 export const PATHS: Record<string, string> = {
+  notebook: "/notebook",
   new: "/", searches: "/search", queue: "/queue", machines: "/machines", leaderboard: "/leaderboard", compare: "/compare", team: "/team",
 };
 export const sel = {
@@ -142,6 +143,13 @@ const withFill = (path: string, values: Record<string, string>, clone?: string, 
   return `${path}?${q}`;
 };
 
+/** Find best model's address for a draft: its fields, plus the candidates, trainers and notebook entry. */
+function searchFill(v: Record<string, string>, x: Record<string, any>) {
+  const fill = { ...fillOf(v), ...(v.machine ? { machine: v.machine } : {}),
+    ...Object.fromEntries(["models", "teachers", "machines", "name", "notebook"].filter((k) => x[k] !== undefined).map((k) => [k, x[k]])) };
+  return `/search?${new URLSearchParams({ fill: JSON.stringify(fill), n: String(Date.now()) })}`;
+}
+
 /** Where a decision's action lives on screen, to ring it before (or instead of) carrying it out. */
 export function spotsFor(d: Decision): Spot[] {
   const v = d.values ?? {};
@@ -179,13 +187,14 @@ export function useCarryOut() {
       case "results.compare": nav(`/compare?items=${(x.items ?? []).join(",")}`); done = "Opened the comparison"; break;
       case "experiment.fill":
         if (v.machine) setMachineId(v.machine);
-        nav(withFill("/", x.name ? { ...v, name: x.name } : v)); highlight(fields(filled)); done = "Filled in New experiment"; break;
+        nav(withFill("/", x.name ? { ...v, name: x.name } : v, undefined, false, x.tag)); highlight(fields(filled));
+        done = "Filled in New experiment"; break;
       case "run.clone_edit":
         if (v.machine) setMachineId(v.machine);
         nav(withFill("/", v, v.run, false, x.tag)); highlight(fields(filled));
         done = `Cloned ${d.target ?? "the run"} into New experiment`; break;
       case "search.fill":
-        nav(withFill("/search", v, undefined, true)); highlight(fields(filled)); done = "Filled in Find best model"; break;
+        nav(searchFill(v, x)); highlight(fields(filled)); done = "Filled in Find best model"; break;
       case "dataset.fill_add":
         if (machine && !loc.pathname.endsWith(`/machines/${machine}`)) nav(`/machines/${machine}`);
         highlight([{ sel: sel.action("dataset.fill_add"), caption: "Add a dataset here" }]); done = "Here is Add dataset"; break;

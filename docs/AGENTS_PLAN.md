@@ -419,8 +419,13 @@ less (`modellab/hub/system1/service.py`). Through the hub a decision takes about
    these, or none"; its pick is shown as "looks like". A run started from a fix carries the tag `fix:<signature>`,
    and the card says how often that fix worked. Not built: fix cards on dataset checks and machine checks, the
    weight-file hash check, and self-healing search trials (they need standing permissions).
-5. **Collaborate**: idea → plan → drafts in the real forms → approval → watch → explanation, with each idea kept
-   together with its runs as the first notebook entries.
+5. **Collaborate** (built, except watching): an idea in your words becomes a notebook entry (`notebook_write`),
+   after Claude has searched the notebook for what was already learned. Claude works out the smallest fair test,
+   writes the plan with an estimated GPU time (`estimate_training`, from your own past runs), drafts it in the real
+   form (`draft_experiment`, or `draft_search` for Find best model) linked to the entry, and offers the card to
+   start it. When the entry's runs have finished, its page offers "Write up the answer", and Claude records the
+   answer with the numbers it rests on. Not built: Claude watching the runs and fixing them on its own while they
+   run (that needs standing permissions), and answering without being asked.
 6. **Find**: Hugging Face and web search, candidate cards, and imports through the model library and data import,
    after their Foundations.
 

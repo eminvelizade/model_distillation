@@ -20,6 +20,7 @@ PAGES = {
     "machines": "Machines: the GPU machines and their state",
     "compare": "Compare: results side by side",
     "team": "Team: users and their roles",
+    "notebook": "Notebook: the lab's questions and ideas, the runs that tested them and what was learned",
 }
 
 

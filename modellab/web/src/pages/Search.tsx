@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Gauge, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { ArrowRight, BookOpen, Gauge, Loader2, Sparkles, Wand2 } from "lucide-react";
 import { api, Catalog, DatasetInfo, fmt, MachineDetail, SearchPreview, SearchSpec } from "../api";
 import { useSession } from "../session";
 import { Button, Callout, Card, cx, Empty, Field, inputCls, PageHeader, relTime, Segmented, StatusPill, usePoll } from "../ui";
@@ -17,9 +17,11 @@ const numbers = (s: string): number[] | null => {
 
 type Form = Record<string, string | number | undefined>;
 
-function NewSearch({ onCreated, fill, onForm }: { onCreated: (id: string) => void; fill: Record<string, string> | null; onForm: (f: Form) => void }) {
+function NewSearch({ onCreated, fill, onForm }: { onCreated: (id: string) => void; fill: Record<string, any> | null; onForm: (f: Form) => void }) {
   const { machines, machineId } = useSession();
   const wantTarget = useRef<string | null>(null); // a target machine asked for before its dataset's machines were known
+  const wantTrainers = useRef<string[]>([]); // more machines that train, asked for the same way
+  const [entry, setEntry] = useState<string | undefined>(undefined); // the notebook entry this search is for
   const [cat, setCat] = useState<Catalog | null>(null);
   const [details, setDetails] = useState<Record<string, MachineDetail>>({});
   const [dataset, setDataset] = useState("");
@@ -62,7 +64,8 @@ function NewSearch({ onCreated, fill, onForm }: { onCreated: (id: string) => voi
   useEffect(() => {
     const hs = holders[dataset] ?? [];
     const first = hs.find((h) => h.mid === wantTarget.current)?.mid ?? hs.find((h) => h.mid === machineId)?.mid ?? hs[0]?.mid;
-    setPicked(first ? [first] : []);
+    const more = wantTrainers.current.filter((m) => m !== first && hs.some((h) => h.mid === m));
+    setPicked(first ? [first, ...more] : []);
     setTarget(first ?? "");
   }, [dataset, holders, machineId]);
 
@@ -73,6 +76,16 @@ function NewSearch({ onCreated, fill, onForm }: { onCreated: (id: string) => voi
     if (fill.speed_budget_ms) setSpeed(fill.speed_budget_ms);
     if (fill.epochs) setEpochs(fill.epochs);
     if (fill.gpu_hours) setHours(fill.gpu_hours);
+    if (Array.isArray(fill.models) && fill.models.length) setModels(fill.models);
+    if (Array.isArray(fill.teachers)) setTeachers(fill.teachers);
+    if (typeof fill.name === "string") setName(fill.name);
+    if (typeof fill.notebook === "string") setEntry(fill.notebook);
+    if (Array.isArray(fill.machines)) {
+      wantTrainers.current = fill.machines;
+      const hs = holders[fill.dataset ?? dataset] ?? [];
+      const ok = fill.machines.filter((m: string) => hs.some((h) => h.mid === m));
+      if (ok.length) setPicked((p) => [...new Set([...p, ...ok])]);
+    }
     if (fill.machine) {
       wantTarget.current = fill.machine;
       if ((holders[fill.dataset ?? dataset] ?? []).some((h) => h.mid === fill.machine)) {
@@ -113,7 +126,7 @@ function NewSearch({ onCreated, fill, onForm }: { onCreated: (id: string) => voi
 
   const start = () => {
     setBusy(true);
-    api.createSearch(body).then((s) => onCreated(s.id)).catch((e) => setError(String(e.message))).finally(() => setBusy(false));
+    api.createSearch({ ...body, ...(entry ? { notebook: entry } : {}) }).then((s) => onCreated(s.id)).catch((e) => setError(String(e.message))).finally(() => setBusy(false));
   };
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
   const dets = (cat?.detectors ?? []).filter((d) => !d.hidden);
@@ -130,6 +143,8 @@ function NewSearch({ onCreated, fill, onForm }: { onCreated: (id: string) => voi
     <Card title="New search" icon={<Wand2 className="h-4 w-4" />}
       description="Pick a dataset, a speed budget and the models to try. ModelLab times every candidate, trains the ones that fit in rounds, and keeps the best.">
       <div className="space-y-6">
+        {entry && <p className="flex items-center gap-1.5 text-xs text-muted"><BookOpen className="h-3.5 w-3.5 text-accent" />
+          For a <Link to={`/notebook/${entry}`} className="font-medium text-accent hover:underline">notebook entry</Link>: the search is linked to it when it starts.</p>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Dataset" yeti="dataset">
             <select className={inputCls} value={dataset} onChange={(e) => setDataset(e.target.value)}>
