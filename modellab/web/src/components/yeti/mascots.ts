@@ -45,3 +45,30 @@ export function useMascot(): { kind: MascotKind; name: string } {
   const kind = useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f); }; }, () => current);
   return { kind, name: MASCOT_NAMES[kind] };
 }
+
+// ---------------------------------------------------------------- make your own
+/** A mascot the user put together: a body of short curly pile in a colour, with eyes, and glasses or an extra if they
+ *  like. Drawn by the same renderer (mascot/looks.ts turns it into parts). */
+export type Look = {
+  shape: "pom" | "bean" | "drop" | "gumdrop" | "cub" | "frog" | "tofu" | "kitten";
+  colour: string;            // a key of COLOURS
+  accent?: string;           // the extra's colour (a key of COLOURS)
+  eyes: "bean" | "round" | "bead" | "googly" | "sparkle" | "smile";
+  glasses: "none" | "round" | "shades";
+  extra: "none" | "headphones" | "beanie" | "sprout" | "antenna" | "scarf" | "cap" | "tuft";
+};
+/** The dye colours: ModelLab's ice blues first, then the rest of a bright palette (no purple or pink: DESIGN.md). */
+export const COLOURS: Record<string, string> = {
+  ice: "#3d9bf2", sky: "#38c6f4", teal: "#12c2ad", mint: "#3ddc97", lime: "#a8dc38", sun: "#ffc928", tangerine: "#ff8a1f",
+  coral: "#ff6658", cherry: "#f0413c", cobalt: "#2a62f0", snow: "#f3f6fb", ink: "#3b4252", leaf: "#58c038",
+};
+export const LOOK_OPTIONS = {
+  shape: [["pom", "Pom"], ["bean", "Bean"], ["drop", "Drop"], ["gumdrop", "Gumdrop"], ["cub", "Cub"], ["frog", "Frog"], ["tofu", "Tofu"], ["kitten", "Kitten"]],
+  colour: [["ice", "Ice"], ["sky", "Sky"], ["teal", "Teal"], ["mint", "Mint"], ["lime", "Lime"], ["sun", "Sun"], ["tangerine", "Tangerine"],
+    ["coral", "Coral"], ["cherry", "Cherry"], ["cobalt", "Cobalt"], ["snow", "Snow"], ["ink", "Ink"]],
+  eyes: [["bean", "Bean"], ["round", "Round"], ["bead", "Bead"], ["googly", "Googly"], ["sparkle", "Sparkle"], ["smile", "Smile"]],
+  glasses: [["none", "None"], ["round", "Round"], ["shades", "Shades"]],
+  extra: [["none", "None"], ["headphones", "Headphones"], ["beanie", "Beanie"], ["sprout", "Sprout"], ["antenna", "Antenna"], ["scarf", "Scarf"],
+    ["cap", "Cap"], ["tuft", "Tuft"]],
+} as const;
+export const DEFAULT_LOOK: Look = { shape: "pom", colour: "lime", accent: "ice", eyes: "bean", glasses: "none", extra: "none" };

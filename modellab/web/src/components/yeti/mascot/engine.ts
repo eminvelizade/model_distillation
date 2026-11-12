@@ -1,6 +1,8 @@
 import * as THREE from "three";
-import type { MascotKind, MascotPose } from "../mascots";
-import { BLOOM, BOP, COMMON, MOCHI, PIP, RENDER, RIME, TWINKLE, VERT } from "./shaders";
+import type { Look, MascotKind, MascotPose } from "../mascots";
+import { COLOURS } from "../mascots";
+import { build, Built, MAX_FUR, MAX_SOLID, Part } from "./looks";
+import { BLOOM, BOP, COMMON, FUZZY, MOCHI, PIP, RENDER, RIME, TWINKLE, VERT } from "./shaders";
 
 /** The 3D mascots, drawn live with three.js.
  *
@@ -76,6 +78,16 @@ const SPECS: Record<MascotKind, Spec> = {
     colors: { main: "#f6f9fc", accent: "#7eb0ee", blush: "#7eb0ee", extra: "#7eb0ee" },   // snow; ice-400 for the frost
   },
 };
+
+/** The spec of a make-your-own mascot: its parts are lists (see ./looks.ts), so most of a Spec doesn't apply. */
+function fuzzySpec(b: Built, look: Look): Spec {
+  const main = COLOURS[look.colour] ?? COLOURS.lime, pale = look.colour === "snow";
+  return {
+    glsl: FUZZY, box: b.box, cam: b.cam, top: b.top, shadow: b.shadow, eye: { x: 0, y: b.eyeY, rx: 0, ry: 0 }, eyeZ: 0, faceR: 1,
+    nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0], blush: [0, 0, 0, 0], rest: 0, prop: pale ? COLOURS.ice : main, exposure: 1.06,
+    colors: { main, accent: main, blush: main, extra: main },
+  };
+}
 
 const C = (hex: string) => new THREE.Color(hex);
 const ease = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
@@ -153,10 +165,12 @@ function loop(now: number) {
 }
 
 // ---------------------------------------------------------------- one mascot
-export type ViewOptions = { kind: MascotKind; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number; portrait?: boolean };
+/** kind "fuzzy" is a make-your-own mascot: `look` says which. */
+export type ViewOptions = { kind: MascotKind | "fuzzy"; look?: Look; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number; portrait?: boolean };
 
 export class View {
   private K: Spec;
+  private built: Built | null = null;   // a make-your-own mascot's parts
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private scene = new THREE.Scene();
@@ -190,7 +204,8 @@ export class View {
   private BACK = new THREE.Vector3(0.25, 0.6, -0.76).normalize();   // rim light, behind and above
 
   constructor(private host: HTMLElement, o: ViewOptions) {
-    const K = (this.K = SPECS[o.kind]);
+    if (o.kind === "fuzzy") this.built = build(o.look ?? { shape: "pom", colour: "lime", eyes: "bean", glasses: "none", extra: "none" });
+    const K = (this.K = this.built ? fuzzySpec(this.built, o.look!) : SPECS[o.kind as MascotKind]);
     this.fps = o.fps ?? 30;
     this.follow = o.follow ?? true;
     this.canvas = document.createElement("canvas");
@@ -225,6 +240,20 @@ export class View {
       uSway: { value: 0 },
       uFrostT: { value: 0 }, uFrostR: { value: 1 }, uFrostC: { value: C("#3d82dc") }, uHead: { value: new THREE.Matrix3() },
     };
+    if (this.built) {   // the parts, as the lists the FUZZY shader reads
+      const B = this.built, v4s = (n: number) => Array.from({ length: n }, () => new THREE.Vector4());
+      Object.assign(this.uniforms, {
+        uNF: { value: B.fur.length }, uFA: { value: v4s(MAX_FUR) }, uFB: { value: v4s(MAX_FUR) }, uFR: { value: v4s(MAX_FUR) },
+        uFurC: { value: B.furC.map(C) }, uNS: { value: 0 }, uSA: { value: v4s(MAX_SOLID) }, uSB: { value: v4s(MAX_SOLID) },
+        uSR: { value: v4s(MAX_SOLID) }, uSolC: { value: B.solidC.map(C) },
+      });
+      B.fur.slice(0, MAX_FUR).forEach((q, i) => {
+        (this.uniforms.uFA.value as THREE.Vector4[])[i].set(q.a[0], q.a[1], q.a[2], q.ty);
+        (this.uniforms.uFB.value as THREE.Vector4[])[i].set(q.b?.[0] ?? 0, q.b?.[1] ?? 0, q.b?.[2] ?? 0, q.k ?? 0);
+        (this.uniforms.uFR.value as THREE.Vector4[])[i].set(q.r[0], q.r[1], q.r[2], q.fur ?? 0);
+      });
+      this.setSolids(B.solids(0, 1, 0, 0));
+    }
     const box = new THREE.BoxGeometry(boxMax.x - boxMin.x, boxMax.y - boxMin.y, boxMax.z - boxMin.z);
     box.translate((boxMax.x + boxMin.x) / 2, (boxMax.y + boxMin.y) / 2, (boxMax.z + boxMin.z) / 2);
     this.geos.push(box);
@@ -304,6 +333,17 @@ export class View {
   }
 
   private poke = () => { this.st.poke = 0; this.dirty = true; kick(); };
+
+  private setSolids(parts: Part[]) {
+    const U = this.uniforms, n = Math.min(parts.length, MAX_SOLID);
+    for (let i = 0; i < n; i++) {
+      const q = parts[i];
+      (U.uSA.value as THREE.Vector4[])[i].set(q.a[0], q.a[1], q.a[2], q.ty);
+      (U.uSB.value as THREE.Vector4[])[i].set(q.b?.[0] ?? 0, q.b?.[1] ?? 0, q.b?.[2] ?? 0, q.col ?? 0);
+      (U.uSR.value as THREE.Vector4[])[i].set(q.r[0], q.r[1], q.r[2], q.rough ?? 0.2);
+    }
+    U.uNS.value = n;
+  }
 
   setPose(p: MascotPose) {
     const st = this.st;
@@ -445,6 +485,7 @@ export class View {
     (U.uEye.value as THREE.Vector4[])[1].set(E.x + gx, E.y + gy, E.rx, E.ry);
     U.uEyeMode.value = mode;
     U.uEyeOpen.value = Math.max(0.05, open);
+    if (this.built) this.setSolids(this.built.solids(mode, open, gx, gy));   // its eyes are parts: open, blinking, smiling or shut
     U.uSway.value = reduce ? 0 : t * 1.4;
 
     const ears = K.ears;

@@ -551,11 +551,142 @@ float solid(vec3 p, out vec3 col, out float rough) { col = vec3(0.0); rough = 0.
 float casters(vec3 p) { return 1e3; }
 `;
 
+export const FUZZY = /* glsl */ `
+#define FUR
+#define FUZZY
+// The make-your-own mascots: a body (and a hat, a scarf) of short curly pile, with glossy eyes, glasses and other
+// solid parts. This one isn't written out as a shape: its parts are lists the engine fills in (./looks.ts builds them
+// from the chosen shape, eyes, glasses and extra, and places each on the body by marching this same distance field).
+const int NF = 8;        // fur parts
+const int NS = 22;       // solid parts
+uniform int uNF;
+uniform vec4 uFA[NF];    // xyz: a point (the centre, or one end); w: the part's type
+uniform vec4 uFB[NF];    // xyz: a second point, a half size or an axis; w: how softly it joins what's before it
+uniform vec4 uFR[NF];    // radii; w: which fur (0 body, 1 knit, 2 pom, 3 tuft)
+uniform vec3 uFurC[4];   // each fur's dye
+uniform int uNS;
+uniform vec4 uSA[NS];
+uniform vec4 uSB[NS];    // (w: which colour)
+uniform vec4 uSR[NS];    // (w: roughness)
+uniform vec3 uSolC[6];
+const mat3 TWIST = mat3(0.8, -0.6, 0.0, 0.36, 0.48, -0.8, 0.48, 0.64, 0.6);
+// one part: an ellipsoid, a round cone, a rounded box, a ring or a disc about an axis, or an arc of a ring facing forward
+float partD(vec3 p, vec4 A, vec4 B, vec4 R) {
+  int ty = int(A.w + 0.5);
+  vec3 q = p - A.xyz;
+  if (ty == 0) return sdEllipsoid(q, R.xyz);
+  if (ty == 1) return sdRoundCone(p, A.xyz, B.xyz, R.x, R.y);
+  if (ty == 2) { vec3 e = abs(q) - B.xyz + R.x; return length(max(e, 0.0)) + min(max(e.x, max(e.y, e.z)), 0.0) - R.x; }
+  if (ty == 5) {           // (Quilez's capped torus) B.x: 1 the arc's middle is up, -1 down; R.z: half its angle
+    q.y *= B.x; q.x = abs(q.x);
+    vec2 sc = vec2(sin(R.z), cos(R.z));
+    float k = sc.y * q.x > sc.x * q.y ? dot(q.xy, sc) : length(q.xy);
+    return sqrt(max(dot(q, q) + R.x * R.x - 2.0 * R.x * k, 0.0)) - R.y;
+  }
+  float h = dot(q, B.xyz), rho = length(q - B.xyz * h);
+  if (ty == 3) return length(vec2(rho - R.x, h)) - R.y;
+  vec2 e = abs(vec2(rho, h)) - vec2(R.x, R.y) + R.z;
+  return min(max(e.x, e.y), 0.0) + length(max(e, 0.0)) - R.z;
+}
+float pileOf(float kind) { return kind < 0.5 ? 0.05 : kind < 1.5 ? 0.034 : kind < 2.5 ? 0.09 : 0.28; }
+// the fabric (with that share of each part's pile on it); and the pile's depth and its fur (rgb: dye, a: which) there
+float cloth(vec3 p, float pile, out float len, out vec4 fur) {
+  float d = 1e3;
+  len = 0.05; fur = vec4(uFurC[0], 0.0);
+  float d0 = partD(p, uFA[0], uFB[0], uFR[0]);
+  for (int i = 0; i < NF; i++) {
+    if (i >= uNF) break;
+    float kind = uFR[i].w, li = pileOf(kind);
+    float di;
+    if (uFA[i].w > 5.5) {   // a layer of knit over the body itself, between two heights (a hat, a scarf): it fits any shape
+      di = smax(smax(d0 - uFR[i].x, uFA[i].y - p.y, 0.035), p.y - uFB[i].y, 0.035);
+    } else di = i == 0 ? d0 : partD(p, uFA[i], uFB[i], uFR[i]);
+    di -= pile * li;
+    vec4 fi = vec4(uFurC[int(kind + 0.5)], kind);
+    if (i == 0) { d = di; len = li; fur = fi; continue; }
+    float k = uFB[i].w;
+    float h = k > 0.0 ? clamp(0.5 + 0.5 * (di - d) / k, 0.0, 1.0) : step(d, di);
+    d = mix(di, d, h) - k * h * (1.0 - h);
+    len = mix(li, len, h); fur = mix(fi, fur, h);
+  }
+  return d;
+}
+float skinM(vec3 p, out Mat m, bool full) { float l; vec4 f; m = Mat(uMain, 0.0, 0.0); return cloth(p, 0.0, l, f); }
+float pileD(vec3 p) { float l; vec4 f; return cloth(p, 0.5, l, f); }
+// the fur at p: a short pile of curly fibres that lie every which way, in small whorls (like the pile of a soft toy)
+float furM(vec3 p, out Fur f) {
+  float len; vec4 fur;
+  float d = cloth(p, 0.0, len, fur);
+  f.len = len; f.h = d / len; f.gap = d - len; f.ink = 0.0; f.top = 0.0; f.under = 0.0;
+  f.n = vec3(0.0, 1.0, 0.0); f.root = p; f.dir = f.n; f.alb = fur.rgb; f.fine = 62.0; f.gloss = 0.3;
+  if (f.gap > 0.0 && d > max(0.01, 0.3 * gPix)) return d;   // (not in the pile: the march only needs the distances)
+  const vec2 k = vec2(1.0, -1.0);
+  const float e = 0.004;
+  float l2; vec4 f2;
+  vec3 n = normalize(k.xyy * cloth(p + k.xyy * e, 0.0, l2, f2) + k.yyx * cloth(p + k.yyx * e, 0.0, l2, f2)
+                   + k.yxy * cloth(p + k.yxy * e, 0.0, l2, f2) + k.xxx * cloth(p + k.xxx * e, 0.0, l2, f2));
+  vec3 s = p - n * d;                                  // the fabric below this point
+  float hc = clamp(f.h, 0.0, 1.0), kind = fur.a;
+  vec3 t1 = normalize(cross(n, abs(n.y) < 0.92 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0))), t2 = cross(n, t1);
+  f.n = n;
+  if (kind > 2.5) {        // a tuft: long, fine fibres fanning out of a small core, drooping a little, swaying
+    s = s + n * 0.14;      // (told apart by their direction from the core)
+    float lock = snoise(TWIST * s * 46.0 + 3.0, 0.0);
+    vec3 pull = normalize(vec3(n.x * 2.0 + 0.25 * sin(uSway * 0.7), -0.35, n.z * 2.0 + 0.15 * sin(uSway * 0.9 + 1.0)));
+    vec3 lay = pull - n * dot(pull, n);
+    lay = dot(lay, lay) > 1e-5 ? normalize(lay) : t1;
+    float reach = 0.35 * len * (0.75 + 0.5 * lock);
+    f.root = TWIST * (s - lay * reach * hc * (0.4 + 0.6 * hc));
+    f.dir = normalize(n * len + lay * reach * (0.4 + 1.2 * hc));
+    f.top = 0.3 + 0.3 * lock + 0.34 * snoise(s * 11.0 + 5.0, 0.0);
+    f.fine = 105.0; f.gloss = 0.8;
+    f.alb = mix(fur.rgb * 0.9, mix(fur.rgb, vec3(1.0), 0.35), smoothstep(0.55, 1.0, hc / max(f.top, 0.05)));
+    return d;
+  }
+  // which way the pile lies: it turns from whorl to whorl, and each lock a little more
+  // A short plush pile lies in small patches, each combed its own way, a few strands side by side. A patch is a cell of
+  // a wobbly grid; inside it the strands are the noise stretched along the way the patch lies.
+  float knit = step(0.5, kind) * step(kind, 1.5), pom = step(1.5, kind);
+  float grain = mix(25.0, 31.0, knit);
+  vec3 q = TWIST * s * grain;
+  q += 1.5 * (vec3(snoise(q * 0.47 + 3.0, 0.0), snoise(q * 0.47 + 17.0, 0.0), snoise(q * 0.47 + 41.0, 0.0)) - 0.5);
+  vec3 cell = floor(q), hsh = hash33(cell + 0.5);
+  vec3 c0 = (cell + 0.5) * TWIST / grain;                    // the patch's middle (TWIST is a rotation: this undoes it)
+  float ang = 6.2832 * hsh.x, lock = hsh.y;
+  vec3 lay = t1 * cos(ang) + t2 * sin(ang), side = cross(n, lay);
+  float along = dot(s - c0, lay);
+  float reach = mix(1.25, 0.8, pom) * len * (0.75 + 0.5 * lock);
+  vec3 root = s - lay * reach * hc * (0.4 + 0.6 * hc) - side * 0.0045 * sin(along * 85.0 + hsh.z * 6.2832);   // (strands bend a little)
+  root -= lay * dot(root - c0, lay) * (1.0 - 1.0 / mix(6.5, 3.0, pom));   // stretched along the lay: strands, not grains
+  f.root = TWIST * root;
+  f.dir = normalize(n * len + lay * reach * (0.4 + 1.2 * hc));
+  f.top = 0.82 + 0.18 * lock;                  // (a sheared pile: its fibres are all about as long)
+  f.fine = mix(175.0, 190.0, knit);
+  f.gloss = 0.08;
+  f.alb = mix(fur.rgb, vec3(1.0), 0.02 * smoothstep(0.35, 1.0, hc / max(f.top, 0.05)));   // (the tips scatter a trace of white light; the dye stays pure)
+  return d;
+}
+// the solid parts: glossy eyes, glasses, headphones and the like
+float solid(vec3 p, out vec3 col, out float rough) {
+  float d = 1e3;
+  col = INK; rough = 0.2;
+  for (int i = 0; i < NS; i++) {
+    if (i >= uNS) break;
+    float di = partD(p, uSA[i], uSB[i], uSR[i]);
+    if (di < d) { d = di; col = uSolC[int(uSB[i].w + 0.5)]; rough = uSR[i].w; }
+  }
+  return d;
+}
+float casters(vec3 p) { vec3 c; float r; return solid(p, c, r); }
+`;
+
 export const RENDER = /* glsl */ `
 float skinD(vec3 p) { Mat m; return skinM(p, m, false); }
 float solidD(vec3 p) { vec3 c; float r; return solid(p, c, r); }
 float mapD(vec3 p) { return min(skinD(p), solidD(p)); }
-#ifdef FUR
+#ifdef FUZZY
+float shadowD(vec3 p) { return min(pileD(p), casters(p) - 0.012); }
+#elif defined(FUR)
 float shadowD(vec3 p) { return pileD(p); }   // (fur casts its shadow from part-way up the pile)
 #else
 // (thin casters like glasses frames are thickened a little here, so the shadow march can't step over them in places)
@@ -584,6 +715,9 @@ float calcAO(vec3 p, vec3 n) {
 // a soft shadow from the softbox (Quilez's improved penumbra); a smaller k is a bigger, softer light
 float softShadow(vec3 ro, vec3 rd, float k) {
   float res = 1.0, t = 0.015, ph = 1e10;
+#ifdef FUZZY
+  t += 0.03 * ign(gl_FragCoord.xy);   // (a hat's brim shades a flat face: without this its penumbra shows the march's steps as rings)
+#endif
   for (int i = 0; i < 32; i++) {
     float h = shadowD(ro + rd * t);
     float y = h * h / (2.0 * ph);
@@ -687,8 +821,13 @@ void fabricTexture(vec3 p, inout vec3 N, out float grain, out float crush) {
 // soft outline, the depth and the locks for free. Where fibres are smaller than a pixel their average is used, so
 // nothing shimmers.
 const float FUR_OPACITY = 1.5;                  // how much of the light a fibre's width of fibre stops
+#ifdef FUZZY
+const vec3 FUR_SHADE = vec3(1.0);               // (a dyed pile takes its own colour in the shade, deeper)
+const vec3 FUR_FLOOR = vec3(1.0);
+#else
 const vec3 FUR_SHADE = vec3(0.8, 0.93, 1.0);    // the tint a pale pile takes in its own shade (the photo's: a cool blue),
 const vec3 FUR_FLOOR = vec3(0.7, 0.92, 1.15);   // ...and the light that comes up off the floor (the photo's blue blanket)
+#endif
 // how much of the noise is above a level (its values are near enough normal: mean 0.5, deviation 0.18)
 float above(float level) {
   float z = abs(level - 0.5) / 0.18, q = exp(-0.5 * z * z) / (1.64 * z + sqrt(0.76 * z * z + 4.0));
@@ -699,6 +838,12 @@ float fibres(Fur f, float h, float lod) {
   float hs = h / max(f.top, 1e-3);
   // locks of fibres, which end at the lock's own height; and a few single fibres that stand a little clear of them
   float level = hs < 1.0 ? 0.3 + 0.62 * hs * hs : 9.0, wisp = f.top > 0.3 ? 0.9 + 0.25 * max(h - f.top, 0.0) : 9.0;
+#ifdef FUZZY
+  if (f.fine > 120.0) {   // a short curly pile: strands of even thickness that end together, and no stray single fibres (a tuft has both)
+    level = hs < 1.0 ? 0.47 + 0.2 * hs * hs : 9.0;
+    wisp = 9.0;
+  }
+#endif
   float mean = 1.0 - (1.0 - above(level)) * (1.0 - above(wisp));
   if (lod >= 1.5) return mean;
   float fine = snoise(f.root * f.fine * 2.9 + 11.0, max(lod + 1.5, 0.0));
@@ -712,7 +857,11 @@ float fibres(Fur f, float h, float lod) {
 vec3 furLight(vec3 L, vec3 Lc, Fur f, vec3 V, float cover, vec3 again, float sh) {
   float NoL = dot(f.n, L);
   float w = 0.45 + 0.4 * lum(f.alb), wrap = clamp((NoL + w) / (1.0 + w), 0.0, 1.0);   // (the paler the pile, the further round the light gets)
+#ifdef FUZZY
+  float reach = exp(-1.05 * cover / max(0.7 * NoL + 0.3, 0.1));   // (a short pile is open: more light gets down into it)
+#else
   float reach = exp(-1.6 * cover / max(0.7 * NoL + 0.3, 0.1));
+#endif
   float TL = dot(f.dir, L), TV = dot(f.dir, V);
   float sL = sqrt(max(1.0 - TL * TL, 0.0)), sV = sqrt(max(1.0 - TV * TV, 0.0));
   vec3 diff = f.alb * mix(again, vec3(1.0), reach) * wrap * mix(1.0, sL, 0.3);
@@ -723,7 +872,11 @@ vec3 furLight(vec3 L, vec3 Lc, Fur f, vec3 V, float cover, vec3 again, float sh)
 // a fibre's colour: the key light's share comes back in 'key' (the studio's shadow falls on it afterwards, once per
 // pixel), the rest is returned
 vec3 shadeFur(vec3 p, Fur f, float cover, vec3 V, out vec3 key) {
+#ifdef FUZZY
+  vec3 again = 0.92 * pow(f.alb, vec3(0.5));   // (an open pile: the light that comes back out of it is less deep in colour)
+#else
   vec3 again = 0.85 * pow(f.alb, vec3(0.75)) * FUR_SHADE;
+#endif
   float occ = mix(0.55, 1.0, smoothstep(-0.05, 0.45, p.y + 0.25 * f.n.y));   // the floor hides the underside
   vec3 env = mix(uGround * FUR_FLOOR, uSky, dot(f.n, uUp) * 0.5 + 0.5);
   key = furLight(uKey, uKeyCol, f, V, cover, again, mix(0.75, 1.0, occ));
@@ -888,16 +1041,34 @@ void main() {
   vec3 Ck = vec3(0.0), sp = vec3(0.0), sn = vec3(0.0, 1.0, 0.0);   // the key light's share; where the fur's surface is
   vec3 key = vec3(0.0), col = vec3(0.0);
   float lift = 0.0, depth = 0.0;
+#ifdef FUZZY
+  vec3 Cs = vec3(0.0);   // a solid part (a glossy eye, glasses) behind the fibres met so far,
+  float As = 0.0;        // ...and how much of the pixel is left for it
+#endif
   for (int i = 0; i < 200; i++) {
     vec3 p = ro + rd * t;
     if (p.y < 0.0) break;                                  // the floor
     gPix = t * uPix;
+#ifdef FUZZY
+    vec3 sc; float sr;
+    float sd = solid(p, sc, sr);
+    if (sd < 0.3 * gPix) {
+      vec3 n = solidNormal(p);
+      Cs = shadePlastic(n, V, sc, sr, calcAO(p + n * 0.002, n), softShadow(p + n * 0.01, uKey, 5.0));
+      As = 1.0 - A; hit = true;
+      break;
+    }
+#endif
     Fur f;
     float d = furM(p, f);
     bool fabric = d < 0.3 * gPix;
     if (f.gap > 0.0 && !fabric) {                          // not in the pile yet (or out of it again)
       inside = false;
+#ifdef FUZZY
+      t += max(min(f.gap * 0.8, sd * 0.9), 0.3 * gPix);
+#else
       t += max(f.gap * 0.8, 0.5 * gPix);
+#endif
       if (t > tf) break;
       continue;
     }
@@ -919,7 +1090,11 @@ void main() {
       if (fabric) { hit = true; break; }
       if (A > 0.985) break;
     }
+#ifdef FUZZY
+    t += min(min(ds, max(0.9 * d, 0.3 * gPix)), max(0.9 * sd, 0.3 * gPix));
+#else
     t += min(ds, max(0.9 * d, 0.3 * gPix));
+#endif
     if (t > tf) break;
   }
   if (seen) {    // the studio's shadow on the key light, and the creases: once per pixel, where the fur's surface is
@@ -928,6 +1103,9 @@ void main() {
     Cp = Cp * mix(0.6, 1.0, ao) + Ck * sh * mix(0.75, 1.0, ao);
     if (A > 0.985) { Cp /= A; A = 1.0; }
   }
+#ifdef FUZZY
+  if (As > 0.0) { Cp += As * Cs; A = min(1.0, A + As); }
+#endif
 #else
 #ifdef SNOW
   const float FUZZ = 0.003;  // (snow has a crisp edge: this is only enough to smooth it)
