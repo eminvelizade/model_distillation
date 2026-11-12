@@ -190,8 +190,9 @@ The `features` stage writes figures that I can look at and explain:
   conversation per agent on the right. The corner button on every other page opens the same conversation in a small
   panel. Conversations are kept on the hub, so they are the same on every device.
 - **Agents.** Everyone starts with one (Bloom). The + in Chat adds another, up to 8; the pencil changes one. An
-  agent has a name, an optional role in the user's words ("keeps an eye on the overnight runs") and a look: a classic
-  mascot, or one put together from a shape, a colour, eyes, glasses and an extra. All agents use the same Claude model
+  agent has a name, an optional role in the user's words ("keeps an eye on the overnight runs") and a look: Bloom
+  (the fluffy white cub), or one put together from a shape, a material (plush, cotton, boucle, elastane, sugar, ice,
+  glass, chrome, glazed ceramic, clay), a colour, eyes, glasses and an extra. All agents use the same Claude model
   and the same tools; the role only shapes what an agent pays attention to.
 - **Kept in mind** (bottom of the team list): notes the agents keep between conversations, a sentence each: a
   correction the user made, or a standing preference. An agent adds one when it is corrected; the user can add,

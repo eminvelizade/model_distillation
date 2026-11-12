@@ -415,8 +415,9 @@ Claude reads them.
 - **Kept in mind.** Notes the agents keep between conversations: a correction you made, or a standing preference,
   a sentence each (`remember`). They are listed in Chat, where you can add, change or remove any of them, and they
   go into every answer of every agent. This is how a correction carries over.
-- **Looks.** A classic mascot, or one you put together: eight shapes, twelve colours, six kinds of eyes, glasses
-  and seven extras. Any combination fits, because each part is placed by solving against the body's surface.
+- **Looks.** Bloom, or one you put together: eight shapes, ten materials (plush, cotton, boucle, elastane, sugar,
+  ice, glass, chrome, glazed ceramic, clay), twelve colours, six kinds of eyes, glasses and seven extras. Any
+  combination fits, because each part is placed by solving against the body's surface.
 
 ### Find: datasets, models and papers online
 
@@ -599,10 +600,10 @@ less (`modellab/hub/system1/service.py`). Through the hub a decision takes about
 3. **Standing permissions**: which fixes, if any, may a search apply on its own at first? Proposed: none until the
    failure catalog has been tried on real failures, then out-of-memory retries first.
 4. **Sources beyond Hugging Face**: Roboflow Universe (it needs its own key), GitHub releases, arXiv?
-5. **Mascots**: should a mascot's character change how it acts (Rime asking fewer questions)? Proposed: no, only how
-   it talks.
-6. **Which classic mascots stay?** Bloom does. Dr. Mochi, Bop, Twinkle, Pip and Rime are still offered under
-   "Classic" in the agent editor; any of them can be retired once the make-your-own ones have been lived with.
+5. **Mascots**: should a mascot's character change how it acts (one asking fewer questions than another)? Proposed:
+   no, only how it talks.
+6. ~~Which classic mascots stay?~~ Decided: only Bloom. Dr. Mochi, Bop, Twinkle, Pip and Rime were removed; an agent
+   that looked like one of them looks like Bloom now.
 7. **One conversation per agent, or several?** One, like a contact in a messaging app, with "Fresh conversation"
    to clear it. Claude reads the last 80 messages; older ones stay on screen but aren't replayed, and what must
    last is in the notes and the notebook.

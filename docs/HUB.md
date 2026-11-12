@@ -193,8 +193,9 @@ with a short offer, and "Explain" buttons sit next to recommendations, results, 
 also carries out work: one action as a card, or several steps as a [plan](#chat-agents-and-plans).
 
 You start with one agent, Bloom, a fluffy white cub with real fur. Add others and change their names, roles and
-looks in [Chat](#chat-agents-and-plans). An agent looks like a classic mascot (Bloom, Dr. Mochi, Bop, Twinkle, Pip,
-or Rime the snow golem) or like one you put together. They are drawn live in 3D; how:
+looks in [Chat](#chat-agents-and-plans). An agent looks like Bloom or like one you put together: a shape, a
+material (plush, cotton, boucle, elastane, sugar, ice, glass, chrome, glazed ceramic or clay) and a colour. They are
+drawn live in 3D; how:
 [tools/mascot](../tools/mascot/README.md). (The code and this section's title still say Yeti, after the first mascot.)
 
 Yeti runs on Claude, with each user's own Claude account. Two ways, set up in Yeti's settings (the sliders icon):
@@ -262,8 +263,8 @@ on Chat says how many messages arrived while you were away.
 ![A run ran out of memory; the plan halved the batch and is trying again](screenshots/hub_21_plan_fixed.png)
 
 **Agents.** The + in Chat adds an agent (up to 8); the pencil changes one. Give it a name, say what it is for if
-you like ("keeps an eye on the overnight runs"), and choose its look: a classic mascot, or your own from a shape, a
-colour, eyes, glasses and an extra. Every agent uses the same Claude model and has the same tools and limits.
+you like ("keeps an eye on the overnight runs"), and choose its look: Bloom, or your own from a shape, a material,
+a colour, eyes, glasses and an extra. Every agent uses the same Claude model and has the same tools and limits.
 
 ![The agent editor](screenshots/hub_22_agent_editor.png)
 

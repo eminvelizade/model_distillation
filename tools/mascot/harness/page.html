@@ -5,8 +5,9 @@
   .cell { position: relative; }
 </style></head><body><div id="wrap"></div>
 <script type="module">
-// Harness: draws one or more mascots with the real engine. Query: kinds=a,b  size  pose  yaw pitch roll (degrees: orbit
-// the camera round the mascot)  dist  fov  ty (look-at height)  bg  dark=1  portrait=1  zoom
+// Harness: draws one or more mascots with the real engine. Query: kinds=a,b  looks=<json array of looks>  size  pose
+// yaw pitch (degrees: orbit the camera round the mascot)  dist  fov  ty (look-at height)  bg  dark=1  zoom
+// general=1 (the shared program)  own=1 (the look's own program)  noeyes=1 (a plain sample of a material)
 Math.random = () => 0;                         // the engine starts its clock at a random time: start at 0 (facing front)
 const q = new URLSearchParams(location.search);
 const num = (k, d) => (q.has(k) ? parseFloat(q.get(k)) : d);
@@ -26,7 +27,7 @@ for (const { kind, look } of items) {
   cell.className = "cell";
   cell.style.width = cell.style.height = size + "px";
   wrap.appendChild(cell);
-  const v = new View(cell, { kind, look, pose: q.get("pose") || "idle", follow: false, portrait: q.get("portrait") === "1", zoom: num("zoom", 1), general: q.get("general") === "1", own: q.get("own") === "1" });
+  const v = new View(cell, { kind, look, pose: q.get("pose") || "idle", follow: false, zoom: num("zoom", 1), general: q.get("general") === "1", own: q.get("own") === "1" });
   const vec = (k) => q.get(k).split(",").map(parseFloat);
   if (q.has("cam")) {                    // an exact camera: position, look-at, up, vertical fov, principal point offset (px)
     const cam = v.camera;
@@ -42,6 +43,10 @@ for (const { kind, look } of items) {
     cam.lookAt(0, ty, 0);
     if (q.has("fov")) { v.fov = num("fov", 18); cam.fov = v.fov; }
     v.resize();
+  }
+  if (q.get("noeyes") === "1" && v.built) {   // a plain sample of the material: no eyes (the general program reads however many parts there are)
+    v.built.solids = () => [];
+    v.update(0);
   }
   window.__views.push(v);
 }

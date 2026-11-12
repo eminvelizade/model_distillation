@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Lightbulb, Loader2, Pencil, Plus, Settings2, SquarePen, Trash2, X } from "lucide-react";
 import { Agent, AgentNote, api } from "../api";
 import { Button, Callout, cx, IconButton, inputCls, Modal, relTime } from "../ui";
-import AgentEditor from "../components/yeti/AgentEditor";
 import { agentColour } from "../components/yeti/mascots";
 import { Composer, ThreadView } from "../components/yeti/Thread";
 import Yeti from "../components/yeti/Yeti";
 import { useYeti, useYetiPage } from "../components/yeti/YetiContext";
+
+const AgentEditor = lazy(() => import("../components/yeti/AgentEditor"));   // (with its pictures of the materials: loaded when first opened)
 
 // Chat: the team on the left, the thread of the agent you are talking to on the right. The thread is kept on the hub,
 // so it is the same one the corner panel shows, and a plan reports into it while no page is open.
@@ -162,13 +163,13 @@ export default function Chat() {
             </div>
           )}
       </section>
-      {editing && <AgentEditor agent={editing === "new" ? null : editing} canDelete={y.agents.length > 1}
+      {editing && <Suspense fallback={null}><AgentEditor agent={editing === "new" ? null : editing} canDelete={y.agents.length > 1}
         onClose={async (saved, deleted) => {
           setEditing(null);
           if (!saved && !deleted) return;
           const list = await y.reloadAgents();
           if (saved) { y.selectAgent(saved.id); nav(`/chat/${saved.id}`); } else if (list[0]) { y.selectAgent(list[0].id); nav("/chat"); }
-        }} />}
+        }} /></Suspense>}
       {notes && <Notes onClose={() => setNotes(false)} />}
     </div>
   );

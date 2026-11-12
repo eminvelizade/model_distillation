@@ -320,7 +320,7 @@ export function build(look: Look): Built {
   const dist = Math.hypot(camY - mid, camZ), fov = (2 * Math.atan((Math.max(H * 0.5 + 0.08, w * 0.98) * 1.14) / dist) * 180) / Math.PI;
   // A body in a surface material: no pile, grown by SKIN instead; and the knit layers over it (a hat, a scarf) start
   // from its new surface, so they are no thicker than on plush.
-  const bare = (look.material ?? "plush") !== "plush";
+  const bare = (look.material ?? "plush") !== "plush", room = bare ? 0.07 : 0;
   if (bare) fur.forEach((q, i) => {
     if ((q.fur ?? 0) === 0) fur[i] = q.ty === 0 ? { ...q, r: [q.r[0] + SKIN, q.r[1] + SKIN, q.r[2] + SKIN] }
       : q.ty === 1 ? { ...q, r: [q.r[0] + SKIN, q.r[1] + SKIN, q.r[2]] }
@@ -331,6 +331,8 @@ export function build(look: Look): Built {
     glsl: glslFor(fur, solids(0, 1, 0, 0)), bare, pile: fur.some((q) => (q.fur ?? 0) !== 0),
     fur, solids, furC: [main, look.extra === "sprout" ? COLOURS.leaf : accent, look.extra === "beanie" ? COLOURS.snow : accent, accent],   // body, knit (or leaves), pom, tuft
     solidC: ["#060608", "#f6f7f9", accent, "#23262d", "#3f9b2f", "#c9ced6"],
-    box: [-w, -0.1, -dz, w, H + 0.06, dz], top, cam: [camY, camZ, mid * 0.97, fov], shadow: [w * 2.2, dz * 1.6], eyeY: ey,
+    // (a bare body may stand a little proud of its smooth shape, where its material has relief: room for that in the
+    // box that is marched; the camera's framing stays as it is for plush, so every material is the same size on screen)
+    box: [-w - room, -0.1, -dz - room, w + room, H + 0.06 + room, dz + room], top, cam: [camY, camZ, mid * 0.97, fov], shadow: [w * 2.2, dz * 1.6], eyeY: ey,
   };
 }

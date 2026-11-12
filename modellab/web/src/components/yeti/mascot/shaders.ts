@@ -884,9 +884,9 @@ void main() {
     if (A > 0.985) { Cp /= A; A = 1.0; }
   }
 #endif
-  if (As > 0.0) {
+  if (As > 0.0) {                           // a glossy part: it mirrors the same studio the body's material does
     vec3 n = solidNormal(sAt);
-    Cp += As * shadePlastic(n, V, sCol, sRough, calcAO(sAt + n * 0.002, n), softShadow(sAt + n * 0.01, uKey, 5.0));
+    Cp += As * shade(sAt, n, V, surf(sCol, max(sRough, 0.04)), calcAO(sAt + n * 0.002, n), softShadow(sAt + n * 0.01, uKey, 5.0));
     A = min(1.0, A + As);
   }
   gDetail = 1.0;
@@ -902,7 +902,7 @@ void main() {
     float cov = clamp((1.0 - sNearE) / 0.7, 0.0, 1.0);
     vec3 pe = ro + rd * sNearT;
     gDetail = 0.0;
-    vec3 c = shadePlastic(solidNormal(pe), V, sNearCol, sNearRough, 1.0, 1.0);
+    vec3 c = shade(pe, solidNormal(pe), V, surf(sNearCol, max(sNearRough, 0.04)), 1.0, 1.0);
     gDetail = 1.0;
     Cp = c * cov + Cp * (1.0 - cov); A = cov + A * (1.0 - cov);
   }

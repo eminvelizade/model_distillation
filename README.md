@@ -149,6 +149,6 @@ By part ([how they fit together](docs/PLATFORM.md)):
 | `modellab/agent/` | the machine agent on each GPU PC |
 | `modellab/web/` | the web UI (React) |
 | `recipes/` | experiment templates |
-| `tools/mascot/` | the 3D mascots (a furry cub, four plush and a snow golem): how they're drawn and how to add one ([guide](tools/mascot/README.md)) |
+| `tools/mascot/` | the 3D mascots (Bloom, a furry cub, and the ones you put together, in ten materials): how they're drawn, and how to add a shape or a material ([guide](tools/mascot/README.md)) |
 | `docs/` | guides and design notes |
 | `tests/` | tests (`python -m pytest tests/modellab tests/hub -q`) |
