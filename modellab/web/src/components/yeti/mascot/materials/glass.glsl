@@ -35,11 +35,14 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 clear = exp(dye * len);
   Studio behind = studioAt(q, outDir, 0.0);
   vec3 inside = (behind.key + behind.fill + behind.back + (lost ? behind.room * 0.6 : vec3(0.0))) * clear;
-  vec3 page = lost ? vec3(0.0) : clear;
+  // The far side looks at the floor, the mascot's own shadow on it, or a wall: the page gets through less where
+  // that is darker than the page, so the room shows through the glass, bent and upside down.
+  vec3 page = lost ? vec3(0.0) : clear * clamp(behind.room / max(uBackdrop, vec3(0.04)), 0.0, 1.0);
+  inside += clear * max(behind.room - uBackdrop, vec3(0.0)) * (lost ? 0.0 : 1.0);
   // No glass is perfectly clear: a little of the light inside it is scattered toward the eye, in the glass's own
   // colour. On a bright page it hardly shows; on a dark one it is what keeps the colour alive.
   float haze = (1.0 - exp(-len * 0.55)) * mix(0.07, 0.3, uDark);
-  inside += sqrt(exp(dye * 0.6)) * haze * (skyIrr(n) + uKeyCol * mix(0.3, 0.8, lit) + uFillCol * 0.5);
+  inside += exp(dye * mix(0.3, 0.9, uDark)) * haze * (skyIrr(n) + uKeyCol * mix(0.3, 0.8, lit) + uFillCol * 0.5);
   page *= 1.0 - haze;
   if (hit.a > 0.5) { inside = hit.rgb * clear; page = vec3(0.0); }       // the back of an eye
   return seeThrough(mirrored * F + (1.0 - F) * inside, (1.0 - F) * page);

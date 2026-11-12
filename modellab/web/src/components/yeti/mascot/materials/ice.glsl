@@ -30,7 +30,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
     float depth = -bodySmooth(s);                                           // how deep inside the body this is
     float air = snoise(s * 24.0 + 4.0, 0.0);                                // bubbles gather in the core
     milk += smoothstep(0.24, 0.6, depth) * (0.35 + 1.0 * smoothstep(0.6, 0.78, air));
-    crack += smoothstep(0.011, 0.0, abs(snoise(s * 1.2 + 9.0, 0.0) - 0.47)) * smoothstep(0.04, 0.16, depth);   // a crack is a curved sheet
+    crack += smoothstep(0.007, 0.0, abs(snoise(s * 1.0 + 9.0, 0.0) - 0.46)) * smoothstep(0.04, 0.16, depth);   // a crack is a curved sheet
   }
   milk = 1.0 - exp(-milk * len * 0.3);                                      // how much of the view the core's milk hides
   vec3 tint = mix(vec3(0.74, 0.9, 1.0), uMain, 0.42);                       // ice's own blue-green, and a blush of the body's colour
@@ -41,8 +41,9 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 lamps = behind.key + behind.fill + behind.back + (trapped ? behind.room : vec3(0.0));
   // the core scatters whatever light there is, through the tinted ice round it
   vec3 milkLit = mix(vec3(0.9, 0.96, 1.0), tint, 0.55) * (skyIrr(n) * 1.3 + uKeyCol * mix(0.3, 0.75, lit) + uBackCol * 0.45);
-  vec3 inside = lamps * clear * (trapped ? 0.7 : 1.0) * (1.0 - milk) + milkLit * milk + uKeyCol * min(crack, 1.0) * 0.9 * (1.0 - 0.5 * milk);
-  vec3 page = trapped ? vec3(0.0) : clear * (1.0 - milk);                   // how much of the page behind gets through
+  vec3 inside = lamps * clear * (trapped ? 0.7 : 1.0) * (1.0 - milk) + milkLit * milk + uKeyCol * min(crack, 1.0) * 0.7 * (1.0 - 0.5 * milk);
+  // how much of the page behind gets through: less where the far side looks at the mascot's own shadow or a wall
+  vec3 page = trapped ? vec3(0.0) : clear * (1.0 - milk) * clamp(behind.room / max(uBackdrop, vec3(0.04)), 0.0, 1.0);
   if (hit.a > 0.5) { inside = hit.rgb * clear * (1.0 - milk) + milkLit * milk; page = vec3(0.0); }   // the back of an eye
 
   // frost: dry patches, white and rough, that sparkle

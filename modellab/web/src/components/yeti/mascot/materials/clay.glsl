@@ -3,7 +3,7 @@
 // Plasticine is matte with a faint waxy sheen: light gets a little way into it, so shade is soft and the shadow
 // line glows slightly, and there is only a broad, dull highlight. What makes it look hand-made is the surface:
 // fingerprints (fine parallel ridges that curve round, in patches where a thumb pressed), shallow dents from
-// fingers, a few straight grooves from a tool, small pits, and the odd pale speck of lint. All of that is in the
+// fingers, a few straight grooves from a tool, and small pits. All of that is in the
 // normal and the tone here; the body's outline stays as the shape gives it. The prints fade to nothing as they get
 // smaller than a pixel.
 //#header
@@ -26,7 +26,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 N = n - (tu * (noiseAt(p + 12.0 + tu * 0.05, 3.2) + 0.5 * noiseAt(p + 2.0 + tu * 0.05, 7.5) - d0)
               + tv * (noiseAt(p + 12.0 + tv * 0.05, 3.2) + 0.5 * noiseAt(p + 2.0 + tv * 0.05, 7.5) - d0)) * 0.95;
   // fingerprints
-  float seen = resolved(0.011 * 0.6);
+  float seen = resolvedOn(0.011 * 0.36, dot(n, v));
   float press, pa, pb;
   float e = max(0.002, 0.6 * gPix);
   float r0 = clayPrint(p, press);
@@ -39,7 +39,6 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
 
   vec3 dye = uMain * 0.9;
   vec3 alb = dye * (1.0 + 0.05 * (noiseAt(p, 3.0) - 0.5)) * (1.0 - 0.18 * min(groove, 1.0) * resolved(0.02)) * (1.0 - 0.3 * pit);
-  alb = mix(alb, mix(alb, vec3(0.9), 0.5), smoothstep(0.93, 0.97, noiseAt(p + 20.0, 60.0)) * resolved(0.014) * 0.6);   // the odd speck of lint
   Surf s = surf(alb, mix(0.62, 0.5, press * 0.6));          // a pressed patch is a little smoother
   s.wrap = 0.3;                                             // light gets in: the shadow line is soft
   s.f0 = 0.035;

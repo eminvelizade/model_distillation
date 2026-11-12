@@ -1,4 +1,4 @@
-import{g as nn}from"./index-Bca6jUZN.js";/**
+import{g as nn}from"./index-DPwBLxQ8.js";/**
  * @license
  * Copyright 2010-2024 Three.js Authors
  * SPDX-License-Identifier: MIT
@@ -3912,6 +3912,9 @@ vec3 around(vec3 p, vec3 n) {
 // 1 where something this big (in the mascot's units) covers a few pixels, 0 where it is smaller than one. Fade fine
 // detail toward its average with this, so nothing shimmers at small sizes.
 float resolved(float size) { return 1.0 - smoothstep(0.35, 1.0, gPix / size); }
+// the same for a pattern lying on a surface seen at a slant (the cosine of its angle to the eye): a pixel covers
+// more of it there, so a pattern that is clear face-on would turn to rings toward the outline
+float resolvedOn(float size, float cosine) { return resolved(size * clamp(cosine, 0.05, 1.0)); }
 // noise at a frequency (cells per unit), filtered for this pixel
 float noiseAt(vec3 p, float freq) { return snoise(p * freq, log2(max(gPix * freq, 1e-6)) + 0.5); }
 
@@ -4207,14 +4210,14 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   // A strand of yarn is soft and full of air: light gets round it, so it is shaded by a gentler slope than its
   // true one, roughened by the fibres wrapped round it. Its haze of loose fibres glows by the body's slope, not the
   // strand's (a halo over the whole tangle, not a rim on every strand).
-  vec3 N = normalize(n - (tu * dh.x + tv * dh.y) * 0.5 + (tu * fibre + tv * (noiseAt(p + 9.0, 150.0) - 0.5)) * 0.5 * seen);
+  vec3 N = normalize(n - (tu * dh.x + tv * dh.y) * 0.72 + (tu * fibre + tv * (noiseAt(p + 9.0, 150.0) - 0.5)) * 0.22 * seen);
   float open = occlusion(p, n), lit = shadowKey(p, n, 4.0);
   float deepIn = mix(1.0, smoothstep(0.0, 0.75, h), seen);         // how far up out of the tangle this point is (1: on top)
 
   vec3 dye = uMain * 0.94;
   vec3 deep = dye * dye * (1.0 / max(lum(dye), 0.05)) * 0.8;       // the same hue, more of it: light that bounced between strands
   vec3 alb = mix(deep, dye, mix(0.35, 1.0, deepIn)) * (1.0 + 0.1 * fibre * seen) * (1.0 + 0.06 * (noiseAt(p, 4.0) - 0.5));
-  float gap = mix(0.5, 1.0, deepIn) * mix(0.6, 1.0, open);         // the strands above keep the sky and the lamps off what is below
+  float gap = mix(0.42, 1.0, deepIn) * mix(0.6, 1.0, open);        // the strands above keep the sky and the lamps off what is below
   vec3 fuzz = mix(dye, vec3(1.0), 0.45) * 0.42;
   float NoV = max(dot(n, v), 1e-3);
   vec3 col = (alb * skyIrr(N) + fuzz * sheenIBL(NoV, 0.6) * skyIrr(n)) * gap * open;
@@ -4283,20 +4286,18 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
 // A mirror has no look of its own: it is the studio, bent round the body. So the work is in what it mirrors (the
 // lamps' panels, the bright floor under a darker room, the dark side where the camera stands) and in the mascot
 // mirrored in itself, once (an ear in the head). What makes it a real object and not a perfect one is very small:
-// the surface wavers by a hair (so straight edges in the reflections wobble), there are hairline scratches from
-// polishing that only show in close-up, and a smudge or two where the mirror is a little dull. Snow is silver, sun
-// is gold, ink is black chrome; the other colours are tinted chrome.
+// the surface wavers by a hair (so straight edges in the reflections wobble), and there is a smudge or two where
+// the mirror is a little dull. Snow is silver, sun is gold, ink is black chrome; the other colours are tinted
+// chrome.
 //#header
 //#body
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 tu, tv;
   frame(n, tu, tv);
-  // the faintest waviness, and hairline scratches in close-up
+  // the faintest waviness
   float w0 = noiseAt(p + 4.0, 4.5);
   vec3 N = n + (tu * (noiseAt(p + 4.0 + tu * 0.05, 4.5) - w0) + tv * (noiseAt(p + 4.0 + tv * 0.05, 4.5) - w0)) * 0.16;
-  vec3 sdir = normalize(vec3(0.7, 0.3, 0.65));
-  float scratch = (noiseAt(p * (vec3(1.0) + 30.0 * abs(sdir.yzx)), 55.0) - 0.5) * resolved(0.012);
-  N = normalize(N + cross(n, sdir) * scratch * 0.05);
+  N = normalize(N);
   float smudge = smoothstep(0.55, 0.8, noiseAt(p + 8.0, 1.7));              // a fingermark: the mirror is a little dull there
   float blur = 0.0006 + 0.02 * smudge;
   float open = occlusion(p, n);
@@ -4323,7 +4324,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
 // Plasticine is matte with a faint waxy sheen: light gets a little way into it, so shade is soft and the shadow
 // line glows slightly, and there is only a broad, dull highlight. What makes it look hand-made is the surface:
 // fingerprints (fine parallel ridges that curve round, in patches where a thumb pressed), shallow dents from
-// fingers, a few straight grooves from a tool, small pits, and the odd pale speck of lint. All of that is in the
+// fingers, a few straight grooves from a tool, and small pits. All of that is in the
 // normal and the tone here; the body's outline stays as the shape gives it. The prints fade to nothing as they get
 // smaller than a pixel.
 //#header
@@ -4346,7 +4347,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 N = n - (tu * (noiseAt(p + 12.0 + tu * 0.05, 3.2) + 0.5 * noiseAt(p + 2.0 + tu * 0.05, 7.5) - d0)
               + tv * (noiseAt(p + 12.0 + tv * 0.05, 3.2) + 0.5 * noiseAt(p + 2.0 + tv * 0.05, 7.5) - d0)) * 0.95;
   // fingerprints
-  float seen = resolved(0.011 * 0.6);
+  float seen = resolvedOn(0.011 * 0.36, dot(n, v));
   float press, pa, pb;
   float e = max(0.002, 0.6 * gPix);
   float r0 = clayPrint(p, press);
@@ -4359,7 +4360,6 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
 
   vec3 dye = uMain * 0.9;
   vec3 alb = dye * (1.0 + 0.05 * (noiseAt(p, 3.0) - 0.5)) * (1.0 - 0.18 * min(groove, 1.0) * resolved(0.02)) * (1.0 - 0.3 * pit);
-  alb = mix(alb, mix(alb, vec3(0.9), 0.5), smoothstep(0.93, 0.97, noiseAt(p + 20.0, 60.0)) * resolved(0.014) * 0.6);   // the odd speck of lint
   Surf s = surf(alb, mix(0.62, 0.5, press * 0.6));          // a pressed patch is a little smoother
   s.wrap = 0.3;                                             // light gets in: the shadow line is soft
   s.f0 = 0.035;
@@ -4380,8 +4380,8 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
 // tone as it gets smaller than a pixel, so small views are clean.
 //#header
 //#body
-const float COTTON_WALE = 0.014;    // the width of one column of stitches (twice life size: it shows a little sooner)
-const float COTTON_ROW = 0.0115;    // the height of one stitch
+const float COTTON_WALE = 0.021;    // the width of one column of stitches (three times life size: it shows a little sooner)
+const float COTTON_ROW = 0.0172;    // the height of one stitch
 
 // the knit's height at (round the body, up it), 0 in the grooves .. 1 on the yarn. fine: how well a single stitch is
 // resolved (0: only the columns show, the stitches are their average)
@@ -4406,8 +4406,8 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   // where on the cloth: round the body and up it. (The join in "round" is at the back, under a seam.)
   vec2 uv = vec2(atan(p.x, p.z) * 0.9, p.y);
   // (the columns pinch together at the very top, and crowd toward the outline: none there)
-  float knitSeen = resolved(COTTON_WALE * 0.8) * smoothstep(0.1, 0.3, length(p.xz)) * smoothstep(0.12, 0.45, dot(n, v));
-  float fine = resolved(COTTON_ROW * 0.45);
+  float knitSeen = resolvedOn(COTTON_WALE * 0.36, dot(n, v)) * smoothstep(0.1, 0.3, length(p.xz));
+  float fine = resolvedOn(COTTON_ROW * 0.3, dot(n, v));
   float e = max(0.0025, gPix);
   float h = cottonKnit(uv, fine);
   vec2 dh = vec2(cottonKnit(uv + vec2(e, 0.0), fine) - h, cottonKnit(uv + vec2(0.0, e), fine) - h) / e;
@@ -4431,7 +4431,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   alb = mix(deep * 0.8, alb, mix(0.55, 1.0, open));                     // creases gather colour
 
   vec3 col = alb * skyIrr(N) * open;
-  vec3 fuzz = mix(dye, vec3(1.0), 0.55) * 0.3;                         // a pale haze of stray fibres
+  vec3 fuzz = mix(dye, vec3(1.0), 0.55) * 0.42;                        // a pale haze of stray fibres
   float NoV = max(dot(N, v), 1e-3);
   col += fuzz * sheenIBL(NoV, 0.7) * skyIrr(N) * open;
   for (int i = 0; i < 3; i++) {
@@ -4456,8 +4456,8 @@ const float ELASTANE_RIB = 0.009;   // one rib of the knit
 
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 across = around(p, n), along = cross(n, across);            // the fibres run up the body
-  float ribSeen = resolved(ELASTANE_RIB * 0.7) * smoothstep(0.1, 0.3, length(p.xz)) * smoothstep(0.12, 0.45, dot(n, v));
-  float u = atan(p.x, p.z) * 0.9 / ELASTANE_RIB + 0.3 * sin(p.y * 9.0);
+  float ribSeen = resolvedOn(ELASTANE_RIB * 0.4, dot(n, v)) * smoothstep(0.1, 0.3, length(p.xz));
+  float u = atan(p.x, p.z) * 0.9 / ELASTANE_RIB + 0.3 * sin(p.y * 9.0) + 0.5 * (noiseAt(p + 14.0, 11.0) - 0.5);   // (never ruler-straight)
   float rib = cos(6.2832 * u);
   vec3 N = normalize(n + across * rib * 0.07 * ribSeen);
   float open = occlusion(p, n), lit = shadowKey(p, n, 5.0);
@@ -4525,11 +4525,14 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 clear = exp(dye * len);
   Studio behind = studioAt(q, outDir, 0.0);
   vec3 inside = (behind.key + behind.fill + behind.back + (lost ? behind.room * 0.6 : vec3(0.0))) * clear;
-  vec3 page = lost ? vec3(0.0) : clear;
+  // The far side looks at the floor, the mascot's own shadow on it, or a wall: the page gets through less where
+  // that is darker than the page, so the room shows through the glass, bent and upside down.
+  vec3 page = lost ? vec3(0.0) : clear * clamp(behind.room / max(uBackdrop, vec3(0.04)), 0.0, 1.0);
+  inside += clear * max(behind.room - uBackdrop, vec3(0.0)) * (lost ? 0.0 : 1.0);
   // No glass is perfectly clear: a little of the light inside it is scattered toward the eye, in the glass's own
   // colour. On a bright page it hardly shows; on a dark one it is what keeps the colour alive.
   float haze = (1.0 - exp(-len * 0.55)) * mix(0.07, 0.3, uDark);
-  inside += sqrt(exp(dye * 0.6)) * haze * (skyIrr(n) + uKeyCol * mix(0.3, 0.8, lit) + uFillCol * 0.5);
+  inside += exp(dye * mix(0.3, 0.9, uDark)) * haze * (skyIrr(n) + uKeyCol * mix(0.3, 0.8, lit) + uFillCol * 0.5);
   page *= 1.0 - haze;
   if (hit.a > 0.5) { inside = hit.rgb * clear; page = vec3(0.0); }       // the back of an eye
   return seeThrough(mirrored * F + (1.0 - F) * inside, (1.0 - F) * page);
@@ -4566,7 +4569,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
     float depth = -bodySmooth(s);                                           // how deep inside the body this is
     float air = snoise(s * 24.0 + 4.0, 0.0);                                // bubbles gather in the core
     milk += smoothstep(0.24, 0.6, depth) * (0.35 + 1.0 * smoothstep(0.6, 0.78, air));
-    crack += smoothstep(0.011, 0.0, abs(snoise(s * 1.2 + 9.0, 0.0) - 0.47)) * smoothstep(0.04, 0.16, depth);   // a crack is a curved sheet
+    crack += smoothstep(0.007, 0.0, abs(snoise(s * 1.0 + 9.0, 0.0) - 0.46)) * smoothstep(0.04, 0.16, depth);   // a crack is a curved sheet
   }
   milk = 1.0 - exp(-milk * len * 0.3);                                      // how much of the view the core's milk hides
   vec3 tint = mix(vec3(0.74, 0.9, 1.0), uMain, 0.42);                       // ice's own blue-green, and a blush of the body's colour
@@ -4577,8 +4580,9 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 lamps = behind.key + behind.fill + behind.back + (trapped ? behind.room : vec3(0.0));
   // the core scatters whatever light there is, through the tinted ice round it
   vec3 milkLit = mix(vec3(0.9, 0.96, 1.0), tint, 0.55) * (skyIrr(n) * 1.3 + uKeyCol * mix(0.3, 0.75, lit) + uBackCol * 0.45);
-  vec3 inside = lamps * clear * (trapped ? 0.7 : 1.0) * (1.0 - milk) + milkLit * milk + uKeyCol * min(crack, 1.0) * 0.9 * (1.0 - 0.5 * milk);
-  vec3 page = trapped ? vec3(0.0) : clear * (1.0 - milk);                   // how much of the page behind gets through
+  vec3 inside = lamps * clear * (trapped ? 0.7 : 1.0) * (1.0 - milk) + milkLit * milk + uKeyCol * min(crack, 1.0) * 0.7 * (1.0 - 0.5 * milk);
+  // how much of the page behind gets through: less where the far side looks at the mascot's own shadow or a wall
+  vec3 page = trapped ? vec3(0.0) : clear * (1.0 - milk) * clamp(behind.room / max(uBackdrop, vec3(0.04)), 0.0, 1.0);
   if (hit.a > 0.5) { inside = hit.rgb * clear * (1.0 - milk) + milkLit * milk; page = vec3(0.0); }   // the back of an eye
 
   // frost: dry patches, white and rough, that sparkle
@@ -4615,7 +4619,7 @@ float sugarGrid(vec3 g, out float id) {
     vec3 o = g - (c + 0.15 + 0.7 * hs);                    // from the crystal's middle
     vec3 ax = normalize(hash33(c + 17.0) - 0.5);
     vec3 q = o - 2.0 * ax * dot(ax, o);                    // its own frame (a mirror image of a brick is a brick, turned)
-    vec3 b = abs(q) - (0.19 + 0.17 * hs.yzx);              // a little brick, each its own size
+    vec3 b = abs(q) - (0.19 + 0.27 * hs.yzx);              // a little brick, each its own size
     float k = clamp(-max(b.x, max(b.y, b.z)) / 0.1, 0.0, 1.0);   // flat faces, sharp sides
     if (k > best) { best = k; id = hs.x; }
   }
@@ -4629,7 +4633,11 @@ float sugarCrystals(vec3 p, out float id) {
   id = a > b ? ia : ib;
   return max(a, b);
 }
-float matDisplace(vec3 p) { float id; return MAT_DISPLACE * mix(0.35, sugarCrystals(p, id), resolved(0.016)); }
+float matDisplace(vec3 p) {
+  float seen = resolved(0.016), id;
+  if (seen < 0.01) return MAT_DISPLACE * 0.35;             // too small to see a crystal: the average, for nothing
+  return MAT_DISPLACE * mix(0.35, sugarCrystals(p, id), seen);
+}
 
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 tu, tv;
@@ -4641,8 +4649,9 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 N = normalize(n - (tu * dh.x + tv * dh.y) * 0.9);     // a crystal's face
   float id;
   sugarCrystals(p, id);
-  float sugar = mix(0.4, smoothstep(0.03, 0.3, h), seen);    // how much of this pixel is crystal
-  N = normalize(N + (fract(id * vec3(17.3, 29.7, 43.1)) - 0.5) * 0.8 * sugar * seen);   // each crystal lies its own way: its top face too
+  float crystal = smoothstep(0.03, 0.3, h);                  // on one of the big crystals
+  float sugar = mix(0.55, max(crystal, 0.4), seen);          // how much of this pixel is sugar: between the big crystals lies fine dust
+  N = normalize(N + (fract(id * vec3(17.3, 29.7, 43.1)) - 0.5) * 1.3 * crystal * seen);   // each crystal lies its own way: its top face too
   float open = occlusion(p, n), lit = shadowKey(p, n, 5.0);
   float NoV = max(dot(n, v), 1e-3);
 
@@ -4656,17 +4665,18 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 jel = jelly * E + sqrt(jelly) * glow;
   jel += studioLight(studioAt(p, reflect(-v, n), 0.1), specOcclusion(NoV, open, 0.3), lit) * envBRDF(vec3(0.04), 0.32, NoV) * 0.7;   // moist
 
-  // the sugar: a crystal is clear. Some of the jelly shows through it, the rest is light scattered by its faces and
-  // flaws (white); each crystal is clearer or cloudier than the next.
-  float cloudy = mix(0.75, 0.45 + 0.5 * id, seen);
+  // the sugar: a crystal is clear, so the jelly shows through its faces. Its edges and its flaws scatter light
+  // (white), and each crystal is clearer or cloudier than the next.
+  float edge = crystal * (1.0 - smoothstep(0.45, 0.95, h));   // the bevel round a crystal's top face
+  float cloudy = mix(0.5, mix(0.62, clamp(0.1 + 0.42 * id * id + 0.6 * edge, 0.0, 1.0), crystal), seen);   // (dust is cloudier: more faces)
   vec3 Es = skyIrr(N) * open;
   for (int i = 0; i < 3; i++) Es += lampCol(i) * max(dot(N, lampDir(i)), 0.0) * (i == 0 ? lit : mix(0.6, 1.0, open));
   vec3 sug = mix(jel * 1.1, vec3(0.95) * Es, cloudy);
   float NoVf = max(dot(N, v), 1e-3);
-  sug += studioLight(studioAt(p, reflect(-v, N), 0.02), open, lit) * F_Schlick1(0.048, NoVf) * seen * 2.6;   // a face mirroring the studio
+  sug += studioLight(studioAt(p, reflect(-v, N), 0.02), open, lit) * F_Schlick1(0.048, NoVf) * seen * crystal * 4.0;   // a face mirroring the studio
   // grains that flash: fine ones, and a few bigger ones that still show when the mascot is small
-  vec2 g = glints(p, n, v, 0.024, 0.75, 1.0, 0.972) + 0.7 * glints(p + 3.1, n, v, 0.075, 0.55, 1.0, 0.965);
-  vec3 col = mix(jel, sug, sugar) + uKeyCol * g.x * lit * 6.0 + (uFillCol + uBackCol) * g.y * 3.0 * open;
+  vec2 g = glints(p, n, v, 0.024, 0.8, 1.0, 0.96) + 0.7 * glints(p + 3.1, n, v, 0.075, 0.6, 1.0, 0.955);
+  vec3 col = mix(jel, sug, sugar) + uKeyCol * g.x * lit * 9.0 + (uFillCol + uBackCol) * g.y * 4.5 * open;
   return vec4(col, 1.0);
 }
 `,tm=Xp,Ao={cotton:Zp,boucle:qp,elastane:jp,sugar:em,ice:Qp,glass:Jp,chrome:Kp,ceramic:Yp,clay:$p};function nm(i){const e=Ao[i]??Ao.cotton,t=e.indexOf("//#body");if(t<0)return{header:"",body:e};const n=e.indexOf("//#header");return{header:n>=0?e.slice(n,t):"",body:e.slice(t)}}const im=`

@@ -50,14 +50,14 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   // A strand of yarn is soft and full of air: light gets round it, so it is shaded by a gentler slope than its
   // true one, roughened by the fibres wrapped round it. Its haze of loose fibres glows by the body's slope, not the
   // strand's (a halo over the whole tangle, not a rim on every strand).
-  vec3 N = normalize(n - (tu * dh.x + tv * dh.y) * 0.5 + (tu * fibre + tv * (noiseAt(p + 9.0, 150.0) - 0.5)) * 0.5 * seen);
+  vec3 N = normalize(n - (tu * dh.x + tv * dh.y) * 0.72 + (tu * fibre + tv * (noiseAt(p + 9.0, 150.0) - 0.5)) * 0.22 * seen);
   float open = occlusion(p, n), lit = shadowKey(p, n, 4.0);
   float deepIn = mix(1.0, smoothstep(0.0, 0.75, h), seen);         // how far up out of the tangle this point is (1: on top)
 
   vec3 dye = uMain * 0.94;
   vec3 deep = dye * dye * (1.0 / max(lum(dye), 0.05)) * 0.8;       // the same hue, more of it: light that bounced between strands
   vec3 alb = mix(deep, dye, mix(0.35, 1.0, deepIn)) * (1.0 + 0.1 * fibre * seen) * (1.0 + 0.06 * (noiseAt(p, 4.0) - 0.5));
-  float gap = mix(0.5, 1.0, deepIn) * mix(0.6, 1.0, open);         // the strands above keep the sky and the lamps off what is below
+  float gap = mix(0.42, 1.0, deepIn) * mix(0.6, 1.0, open);        // the strands above keep the sky and the lamps off what is below
   vec3 fuzz = mix(dye, vec3(1.0), 0.45) * 0.42;
   float NoV = max(dot(n, v), 1e-3);
   vec3 col = (alb * skyIrr(N) + fuzz * sheenIBL(NoV, 0.6) * skyIrr(n)) * gap * open;

@@ -56,6 +56,9 @@ vec3 around(vec3 p, vec3 n) {
 // 1 where something this big (in the mascot's units) covers a few pixels, 0 where it is smaller than one. Fade fine
 // detail toward its average with this, so nothing shimmers at small sizes.
 float resolved(float size) { return 1.0 - smoothstep(0.35, 1.0, gPix / size); }
+// the same for a pattern lying on a surface seen at a slant (the cosine of its angle to the eye): a pixel covers
+// more of it there, so a pattern that is clear face-on would turn to rings toward the outline
+float resolvedOn(float size, float cosine) { return resolved(size * clamp(cosine, 0.05, 1.0)); }
 // noise at a frequency (cells per unit), filtered for this pixel
 float noiseAt(vec3 p, float freq) { return snoise(p * freq, log2(max(gPix * freq, 1e-6)) + 0.5); }
 

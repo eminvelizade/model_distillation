@@ -22,7 +22,7 @@ float sugarGrid(vec3 g, out float id) {
     vec3 o = g - (c + 0.15 + 0.7 * hs);                    // from the crystal's middle
     vec3 ax = normalize(hash33(c + 17.0) - 0.5);
     vec3 q = o - 2.0 * ax * dot(ax, o);                    // its own frame (a mirror image of a brick is a brick, turned)
-    vec3 b = abs(q) - (0.19 + 0.17 * hs.yzx);              // a little brick, each its own size
+    vec3 b = abs(q) - (0.19 + 0.27 * hs.yzx);              // a little brick, each its own size
     float k = clamp(-max(b.x, max(b.y, b.z)) / 0.1, 0.0, 1.0);   // flat faces, sharp sides
     if (k > best) { best = k; id = hs.x; }
   }
@@ -36,7 +36,11 @@ float sugarCrystals(vec3 p, out float id) {
   id = a > b ? ia : ib;
   return max(a, b);
 }
-float matDisplace(vec3 p) { float id; return MAT_DISPLACE * mix(0.35, sugarCrystals(p, id), resolved(0.016)); }
+float matDisplace(vec3 p) {
+  float seen = resolved(0.016), id;
+  if (seen < 0.01) return MAT_DISPLACE * 0.35;             // too small to see a crystal: the average, for nothing
+  return MAT_DISPLACE * mix(0.35, sugarCrystals(p, id), seen);
+}
 
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 tu, tv;
@@ -48,8 +52,9 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 N = normalize(n - (tu * dh.x + tv * dh.y) * 0.9);     // a crystal's face
   float id;
   sugarCrystals(p, id);
-  float sugar = mix(0.4, smoothstep(0.03, 0.3, h), seen);    // how much of this pixel is crystal
-  N = normalize(N + (fract(id * vec3(17.3, 29.7, 43.1)) - 0.5) * 0.8 * sugar * seen);   // each crystal lies its own way: its top face too
+  float crystal = smoothstep(0.03, 0.3, h);                  // on one of the big crystals
+  float sugar = mix(0.55, max(crystal, 0.4), seen);          // how much of this pixel is sugar: between the big crystals lies fine dust
+  N = normalize(N + (fract(id * vec3(17.3, 29.7, 43.1)) - 0.5) * 1.3 * crystal * seen);   // each crystal lies its own way: its top face too
   float open = occlusion(p, n), lit = shadowKey(p, n, 5.0);
   float NoV = max(dot(n, v), 1e-3);
 
@@ -63,16 +68,17 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 jel = jelly * E + sqrt(jelly) * glow;
   jel += studioLight(studioAt(p, reflect(-v, n), 0.1), specOcclusion(NoV, open, 0.3), lit) * envBRDF(vec3(0.04), 0.32, NoV) * 0.7;   // moist
 
-  // the sugar: a crystal is clear. Some of the jelly shows through it, the rest is light scattered by its faces and
-  // flaws (white); each crystal is clearer or cloudier than the next.
-  float cloudy = mix(0.75, 0.45 + 0.5 * id, seen);
+  // the sugar: a crystal is clear, so the jelly shows through its faces. Its edges and its flaws scatter light
+  // (white), and each crystal is clearer or cloudier than the next.
+  float edge = crystal * (1.0 - smoothstep(0.45, 0.95, h));   // the bevel round a crystal's top face
+  float cloudy = mix(0.5, mix(0.62, clamp(0.1 + 0.42 * id * id + 0.6 * edge, 0.0, 1.0), crystal), seen);   // (dust is cloudier: more faces)
   vec3 Es = skyIrr(N) * open;
   for (int i = 0; i < 3; i++) Es += lampCol(i) * max(dot(N, lampDir(i)), 0.0) * (i == 0 ? lit : mix(0.6, 1.0, open));
   vec3 sug = mix(jel * 1.1, vec3(0.95) * Es, cloudy);
   float NoVf = max(dot(N, v), 1e-3);
-  sug += studioLight(studioAt(p, reflect(-v, N), 0.02), open, lit) * F_Schlick1(0.048, NoVf) * seen * 2.6;   // a face mirroring the studio
+  sug += studioLight(studioAt(p, reflect(-v, N), 0.02), open, lit) * F_Schlick1(0.048, NoVf) * seen * crystal * 4.0;   // a face mirroring the studio
   // grains that flash: fine ones, and a few bigger ones that still show when the mascot is small
-  vec2 g = glints(p, n, v, 0.024, 0.75, 1.0, 0.972) + 0.7 * glints(p + 3.1, n, v, 0.075, 0.55, 1.0, 0.965);
-  vec3 col = mix(jel, sug, sugar) + uKeyCol * g.x * lit * 6.0 + (uFillCol + uBackCol) * g.y * 3.0 * open;
+  vec2 g = glints(p, n, v, 0.024, 0.8, 1.0, 0.96) + 0.7 * glints(p + 3.1, n, v, 0.075, 0.6, 1.0, 0.955);
+  vec3 col = mix(jel, sug, sugar) + uKeyCol * g.x * lit * 9.0 + (uFillCol + uBackCol) * g.y * 4.5 * open;
   return vec4(col, 1.0);
 }

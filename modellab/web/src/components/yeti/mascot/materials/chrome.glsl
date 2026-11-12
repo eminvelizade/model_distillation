@@ -3,20 +3,18 @@
 // A mirror has no look of its own: it is the studio, bent round the body. So the work is in what it mirrors (the
 // lamps' panels, the bright floor under a darker room, the dark side where the camera stands) and in the mascot
 // mirrored in itself, once (an ear in the head). What makes it a real object and not a perfect one is very small:
-// the surface wavers by a hair (so straight edges in the reflections wobble), there are hairline scratches from
-// polishing that only show in close-up, and a smudge or two where the mirror is a little dull. Snow is silver, sun
-// is gold, ink is black chrome; the other colours are tinted chrome.
+// the surface wavers by a hair (so straight edges in the reflections wobble), and there is a smudge or two where
+// the mirror is a little dull. Snow is silver, sun is gold, ink is black chrome; the other colours are tinted
+// chrome.
 //#header
 //#body
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 tu, tv;
   frame(n, tu, tv);
-  // the faintest waviness, and hairline scratches in close-up
+  // the faintest waviness
   float w0 = noiseAt(p + 4.0, 4.5);
   vec3 N = n + (tu * (noiseAt(p + 4.0 + tu * 0.05, 4.5) - w0) + tv * (noiseAt(p + 4.0 + tv * 0.05, 4.5) - w0)) * 0.16;
-  vec3 sdir = normalize(vec3(0.7, 0.3, 0.65));
-  float scratch = (noiseAt(p * (vec3(1.0) + 30.0 * abs(sdir.yzx)), 55.0) - 0.5) * resolved(0.012);
-  N = normalize(N + cross(n, sdir) * scratch * 0.05);
+  N = normalize(N);
   float smudge = smoothstep(0.55, 0.8, noiseAt(p + 8.0, 1.7));              // a fingermark: the mirror is a little dull there
   float blur = 0.0006 + 0.02 * smudge;
   float open = occlusion(p, n);

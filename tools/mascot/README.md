@@ -196,7 +196,7 @@ shader also says it in a comment at its top. In short:
 | sugar | clear bricks of sugar over a jelly that light gets into; faces and grains that flash | yes |
 | ice | a ray through the body gathers a milky core, bubbles and cracks; frost; the page shows through | no |
 | glass | colour from how much glass the light crossed; light trapped at the edges; the page shows through | no |
-| chrome | the studio mirrored, and the mascot mirrored in itself; scratches, a smudge | no |
+| chrome | the studio mirrored, and the mascot mirrored in itself; a smudge | no |
 | ceramic | a glass coat over glaze that is pale on bulges and deep in hollows; crazing, a bare foot | no |
 | clay | matte and a little waxy; fingerprints, dents, a tool mark | no |
 
@@ -215,7 +215,7 @@ first. In short:
 - The library gives it: a studio to mirror (`studio`, `studioAt`: panels as bright as the lamps), lobes (GGX,
   anisotropic GGX, Fresnel, the split-sum fit), a plain surface to start from (`surf`, `shade`), questions about
   the scene (`occlusion`, `shadowKey`, `curvature`, `thickness`), rays through the body and back at it (`through`,
-  `meets`), grains that flash (`glints`), fading by pixel size (`resolved`, `noiseAt`), and compositing a clear
+  `meets`), grains that flash (`glints`), fading by pixel size and by slant (`resolved`, `resolvedOn`, `noiseAt`), and compositing a clear
   thing over the page (`seeThrough`).
 - Two rules: at the sizes the app draws, a material is its light, not its texture, so get the lobes right first;
   and detail smaller than a pixel must become its average, never noise.

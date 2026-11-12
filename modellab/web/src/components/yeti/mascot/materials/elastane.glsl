@@ -12,8 +12,8 @@ const float ELASTANE_RIB = 0.009;   // one rib of the knit
 
 vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 across = around(p, n), along = cross(n, across);            // the fibres run up the body
-  float ribSeen = resolved(ELASTANE_RIB * 0.7) * smoothstep(0.1, 0.3, length(p.xz)) * smoothstep(0.12, 0.45, dot(n, v));
-  float u = atan(p.x, p.z) * 0.9 / ELASTANE_RIB + 0.3 * sin(p.y * 9.0);
+  float ribSeen = resolvedOn(ELASTANE_RIB * 0.4, dot(n, v)) * smoothstep(0.1, 0.3, length(p.xz));
+  float u = atan(p.x, p.z) * 0.9 / ELASTANE_RIB + 0.3 * sin(p.y * 9.0) + 0.5 * (noiseAt(p + 14.0, 11.0) - 0.5);   // (never ruler-straight)
   float rib = cos(6.2832 * u);
   vec3 N = normalize(n + across * rib * 0.07 * ribSeen);
   float open = occlusion(p, n), lit = shadowKey(p, n, 5.0);

@@ -18,10 +18,15 @@ guide.
   works they name are **cited from memory and were not opened and checked for this page**. They are marked so.
 - **Every material was judged by eye** on the same set of renders (large, close up, at 68 and 28 px, on the light
   and the dark theme, in white, charcoal, red and mint, with a hat, a scarf and glasses, and from three angles).
-  Nothing was compared against photographs side by side, and no one other than the author has reviewed them yet.
+  Nothing was compared against photographs side by side.
+- **Two viewers who had not seen them were then asked what each was made of**, from a plain ball of each (large,
+  close up and small) with no names. One named seven of the ten and the other eight. Both took glass for jelly; one
+  took bouclé for a scouring pad, one took elastane for satin, and one took ice for art glass. Asked how convincing
+  each was as a photograph, they gave 4 to 7 out of 10 (ceramic 7, chrome 6, the rest 4 or 5). What gave each one
+  away, and what was changed because of it, is under [What the blind check changed](#what-the-blind-check-changed).
 - **Speed was measured on a software renderer only** (no graphics card). There, one frame of a plain ball at 68 px
-  on a 2x screen takes 58 ms in plush and 24 to 55 ms in the other materials with a look's own program; 170 ms and
-  68 to 136 ms with the shared one.
+  on a 2x screen takes about 56 ms in plush and 24 to 44 ms in the other materials with a look's own program; about
+  157 ms and 70 to 131 ms with the shared one.
 
 ## Two rules that apply to all of them
 
@@ -31,8 +36,9 @@ guide.
    they are, how the outline and the shadow line look, and whether light gets through. Each shader gets those right
    first; the fine structure is for the editor's preview and anything larger.
 2. **Detail smaller than a pixel becomes its average, never noise.** Every fine pattern fades toward its mean tone
-   and height as it shrinks (`resolved()` in the library), so small mascots are clean and nothing shimmers when
-   they move.
+   and height as it shrinks (`resolved()` in the library), and sooner where the surface turns away from the eye and
+   a pixel covers more of it (`resolvedOn()`). So small mascots are clean, nothing shimmers when they move, and a
+   regular pattern does not turn to rings toward the outline.
 
 ## Cotton
 
@@ -45,7 +51,7 @@ guide.
 - **Close up:** a jersey knit (columns of small V-shaped stitches) that is never ruler-straight, thick and thin
   places in the yarn, an uneven dye, a seam where two panels meet.
 - **How:** a rough matte lobe (Oren and Nayar's, in Fujii's form) under a weak pale haze (Estevez and Kulla's
-  "Charlie" sheen), and nothing mirrored. The knit is drawn at twice life size so it shows a little sooner, and its
+  "Charlie" sheen), and nothing mirrored. The knit is drawn at three times life size so it shows a little sooner, and its
   columns lean and wander. White cotton is 0.93 of white, as bleached cloth is never paper white.
 - **Left out:** stray fibres along the outline, lint on dark dyes, puckered hand-sewn seams (the report recommends
   all three).
@@ -87,12 +93,14 @@ guide.
 - **What tells it apart:** the rough, frosted outline; pinpoint flashes that come and go as it turns; colour that
   glows between and under the crystals; pale, frosted colour when small.
 - **How:** the crystals are real relief: one small brick in each cell of two jittered grids of different sizes,
-  turned against each other so no grid shows, each brick turned its own way, with flat faces and sharp sides. A face
-  that mirrors a lamp flashes; where crystals are too small to resolve, grains that fade instead of flickering take
+  turned against each other so no grid shows, each brick turned its own way, with flat faces and sharp sides. A
+  crystal is clear: the jelly shows through its top face, its bevelled edges are white, and each is clearer or
+  cloudier than the next. Between the big crystals lies fine sugar dust, which is what makes the colour pale and
+  frosted and not speckled. A face that mirrors a lamp flashes; where crystals are too small to resolve, grains that fade instead of flickering take
   over (after Wang and Bowles' sparkle), with a few larger ones that still show on a small mascot. The jelly lets
   light creep past the shadow line and glows where a lamp is behind a thin part (thickness is measured through the
   body, as in Barré-Brisebois and Bouchard's translucency).
-- **Left out:** light bending inside a crystal; at mid sizes the crystals can read as a fine white speckle.
+- **Left out:** light bending inside a crystal; a real crystal shows several faces, where these show one.
 
 ## Ice
 
@@ -105,8 +113,9 @@ guide.
   only a blush in the thick parts.
 - **How:** a ray is bent at the rippled surface and followed through the body. On the way it gathers the core's
   milk (denser deeper in), the bubbles, and the cracks (curved sheets); what is left of it leaves the far side and
-  sees the lamps or the page, or is trapped and mirrored back. Frost is a rough white layer in patches, with grains
-  that flash. Thin clear parts let the page show through.
+  sees the lamps, a wall or the floor with the mascot's own shadow on it (so what is behind shows through, bent),
+  or is trapped and mirrored back. Frost is a rough white layer in patches, with grains that flash. Thin clear
+  parts let the page show through.
 - **Left out:** bubbles as separate round things (they are a cloudiness that varies), elongated bubble streaks,
   light concentrated on the floor.
 
@@ -119,9 +128,11 @@ guide.
 - **What tells it apart:** sharp reflections of the studio, stronger toward the edges; the scene behind seen bent
   and upside down; dark, rich edges where light is trapped inside.
 - **How:** a ray goes in, crosses the body and leaves the far side, or meets the inner surface too flatly and is
-  mirrored back for a second crossing. The surface wavers very slightly, as hand-blown glass does. A little light is
-  scattered inside in the glass's own colour, which is what keeps the colour on a dark page. Clear parts let the
-  page show through.
+  mirrored back for a second crossing. Where it leaves, it sees a lamp, a wall, or the floor with the mascot's own
+  shadow on it, so the room shows through bent and upside down: that is what separates glass from jelly. The
+  surface wavers very slightly, as hand-blown glass does. A little light is scattered inside in the glass's own
+  colour (more of it, and deeper, on the dark theme), which is what keeps the colour on a dark page. Clear parts let
+  the page show through.
 - **Left out:** colours splitting at the edges, light concentrated on the floor, more than two crossings.
 
 ## Chrome
@@ -132,9 +143,9 @@ guide.
 - **What tells it apart:** the lamps' panels as crisp bright shapes, a bright floor under a darker room, a dark
   side where the camera stands (a mirror needs something dark to have lines), and the object mirrored in itself.
 - **How:** the studio mirrored (see below), and the mascot mirrored in itself once (an ear in the head). The
-  surface wavers by a hair, there are hairline scratches in close-up and a smudge where the mirror is a little
-  dull. White is silver, yellow is gold, charcoal is black chrome, the rest tinted chrome.
-- **Left out:** a second mirroring of itself; the true colour of each metal at grazing angles.
+  surface wavers by a hair, and there is a smudge where the mirror is a little dull. White is silver, yellow is gold, charcoal is black chrome, the rest tinted chrome.
+- **Left out:** a second mirroring of itself; the true colour of each metal at grazing angles; scratches from
+  polishing (tried twice: at these sizes they read as grain along the edges of the reflections).
 
 ## Ceramic
 
@@ -160,9 +171,28 @@ guide.
   was plainly touched: lumps, dents, fingerprints.
 - **How:** a matte surface with light wrapping past the shadow line and a little coming back from inside in a
   deeper tone. The surface is uneven at two scales (dents from fingers), with fingerprints in patches where a thumb
-  pressed (ridges 0.011 units apart that curve round), a groove from a tool, small pits and the odd speck of lint.
-  A pressed patch is a little smoother than the rest.
-- **Left out:** seams smoothed over where parts were joined.
+  pressed (ridges 0.011 units apart that curve round), a groove from a tool and small pits. A pressed patch is a
+  little smoother than the rest.
+- **Left out:** seams smoothed over where parts were joined; lint (tried: it read as flecks stuck on).
+
+## What the blind check changed
+
+Two viewers who had not seen the materials looked at each on a plain ball and said what gave it away as drawn and
+not photographed. These are the things both or either said, and what was done.
+
+| What they said | What was changed |
+|---|---|
+| Rings (moiré) on cotton, elastane and clay toward the outline | fine patterns now fade by the slant of the surface as well as by size (`resolvedOn()`); the knit is a little larger |
+| Glass looked like jelly: the same all through, with nothing seen behind it | the far side now sees the floor, the mascot's shadow and the walls, so the room shows through, bent |
+| Sugar crystals were all one size, opaque and without sparkle | crystals of many sizes, clear with white edges, tilted so that some flash; fine dust between them |
+| Bouclé strands looked melted | steeper strands with less noise on them, and deeper shade between |
+| Ice: the streaks looked painted on | fewer and finer cracks, dimmer; what is behind shows through |
+| Chrome: the edges of the reflections were grainy | the scratches that caused it were removed |
+| Clay: the flecks looked stuck on | the lint was removed; fingerprints are drawn only where they resolve |
+
+Not changed: the cracks in the ceramic glaze are all much the same size, plush tufts look flat in close-up, cotton
+and elastane have no seams or wrinkles, and the studio that chrome mirrors is plain. The scores above were given
+before these changes.
 
 ## The studio
 

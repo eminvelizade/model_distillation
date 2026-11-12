@@ -9,8 +9,8 @@
 // tone as it gets smaller than a pixel, so small views are clean.
 //#header
 //#body
-const float COTTON_WALE = 0.014;    // the width of one column of stitches (twice life size: it shows a little sooner)
-const float COTTON_ROW = 0.0115;    // the height of one stitch
+const float COTTON_WALE = 0.021;    // the width of one column of stitches (three times life size: it shows a little sooner)
+const float COTTON_ROW = 0.0172;    // the height of one stitch
 
 // the knit's height at (round the body, up it), 0 in the grooves .. 1 on the yarn. fine: how well a single stitch is
 // resolved (0: only the columns show, the stitches are their average)
@@ -35,8 +35,8 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   // where on the cloth: round the body and up it. (The join in "round" is at the back, under a seam.)
   vec2 uv = vec2(atan(p.x, p.z) * 0.9, p.y);
   // (the columns pinch together at the very top, and crowd toward the outline: none there)
-  float knitSeen = resolved(COTTON_WALE * 0.8) * smoothstep(0.1, 0.3, length(p.xz)) * smoothstep(0.12, 0.45, dot(n, v));
-  float fine = resolved(COTTON_ROW * 0.45);
+  float knitSeen = resolvedOn(COTTON_WALE * 0.36, dot(n, v)) * smoothstep(0.1, 0.3, length(p.xz));
+  float fine = resolvedOn(COTTON_ROW * 0.3, dot(n, v));
   float e = max(0.0025, gPix);
   float h = cottonKnit(uv, fine);
   vec2 dh = vec2(cottonKnit(uv + vec2(e, 0.0), fine) - h, cottonKnit(uv + vec2(0.0, e), fine) - h) / e;
@@ -60,7 +60,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   alb = mix(deep * 0.8, alb, mix(0.55, 1.0, open));                     // creases gather colour
 
   vec3 col = alb * skyIrr(N) * open;
-  vec3 fuzz = mix(dye, vec3(1.0), 0.55) * 0.3;                         // a pale haze of stray fibres
+  vec3 fuzz = mix(dye, vec3(1.0), 0.55) * 0.42;                        // a pale haze of stray fibres
   float NoV = max(dot(N, v), 1e-3);
   col += fuzz * sheenIBL(NoV, 0.7) * skyIrr(N) * open;
   for (int i = 0; i < 3; i++) {
