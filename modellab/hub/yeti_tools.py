@@ -416,6 +416,10 @@ def page_label(kind: str, ident: str, c: sa.Connection, user: dict) -> str | Non
             return search._row(c, user, ident)["name"]
         if kind == "machine":
             return model.get_machine(c, user, ident)["name"]
+        if kind == "entry":
+            from modellab.hub import notebook
+
+            return notebook._row(c, user, ident)["title"]
     except HTTPException:
         return None
     return None

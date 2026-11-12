@@ -516,8 +516,16 @@ def search_preview(body: dict, request: Request, user: dict = Depends(auth.curre
 
 @router.post("/searches")
 def create_search(body: dict, request: Request, user: dict = Depends(auth.current_user)):
+    from modellab.hub import notebook
+
+    eid = body.pop("notebook", None) if isinstance(body, dict) else None
+    eid = eid if isinstance(eid, str) and eid else None
     with _engine(request).begin() as c:
-        return search.create(c, user, body)
+        if eid:
+            notebook._row(c, user, eid)  # 404 before anything starts, if it isn't the user's entry
+        s = search.create(c, user, body)
+        s["notebook"] = notebook.for_new_search(c, user, s, eid)
+        return s
 
 
 @router.get("/searches/{sid}")

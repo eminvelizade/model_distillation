@@ -53,8 +53,9 @@ MAX_STEPS = 10  # model calls per user message
 MAX_HISTORY = 40  # messages replayed per request
 MAX_HISTORY_CHARS = 120_000
 FOCUS = {"recommendation", "speed", "rounds", "seeds", "results", "features", "pca", "attention", "failure",
-         "comparison", "champion", "checks", "datasets", "logs"}
-PAGE_KINDS = {"run", "search", "machine", "searches", "machines", "leaderboard", "compare", "queue", "new", "team", "other"}
+         "comparison", "champion", "checks", "datasets", "logs", "answer"}
+PAGE_KINDS = {"run", "search", "machine", "searches", "machines", "leaderboard", "compare", "queue", "new", "team",
+              "notebook", "entry", "other"}
 ITEM_RE = re.compile(r"^[A-Za-z0-9_.-]{1,100}:[A-Za-z0-9_.-]{1,64}$")
 PATH_RE = re.compile(r"[^A-Za-z0-9/_.:,=&?%-]")
 
@@ -292,6 +293,10 @@ def page_note(c: sa.Connection, user: dict, page) -> str | None:
         name = yeti_tools.page_label(kind, ident, c, user)
         if name:
             parts.append(f'The user is on the page of {kind} "{name}" ({kind}_id: {ident}).')
+    elif kind == "entry" and ident:
+        name = yeti_tools.page_label(kind, ident, c, user)
+        if name:
+            parts.append(f'The user is on the notebook entry "{name}" (entry_id: {ident}).')
     elif kind:
         parts.append(f"The user is on the {kind} page.")
     if path:
