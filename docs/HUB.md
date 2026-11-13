@@ -194,7 +194,7 @@ also carries out work: one action as a card, or several steps as a [plan](#chat-
 
 You start with one agent, Bloom, a fluffy white cub with real fur. Add others and change their names, roles and
 looks in [Chat](#chat-agents-and-plans). An agent looks like Bloom or like one you put together: a shape, a
-material (plush, cotton, boucle, elastane, sugar or clay) and a colour. They are
+material (plush, cotton, boucle or clay) and a colour. They are
 drawn live in 3D; how:
 [tools/mascot](../tools/mascot/README.md). (The code and this section's title still say Yeti, after the first mascot.)
 
@@ -268,9 +268,9 @@ a colour, eyes, glasses and an extra. Every agent uses the same Claude model and
 
 ![The agent editor](screenshots/hub_22_agent_editor.png)
 
-The six materials (what each is and how it is drawn: [MATERIALS.md](MATERIALS.md)):
+The four materials (what each is and how it is drawn: [MATERIALS.md](MATERIALS.md)):
 
-![The six materials](screenshots/hub_23_materials.png)
+![The four materials](screenshots/hub_23_materials.png)
 
 **Kept in mind** (under the team list) holds what your agents remember between conversations: a sentence for each
 correction you made or preference you stated ("use the tower for quick tests"). An agent adds a note when you

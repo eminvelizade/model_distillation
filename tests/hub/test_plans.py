@@ -357,20 +357,20 @@ def test_agents_have_a_name_a_look_and_one_thread_each(hub):  # noqa: F811
     from modellab.hub import agents, db
 
     assert agents.look_words(p["look"]) == "a small frog modelled in teal clay, fingerprints and all and big googly eyes, wearing headphones"
-    assert list(agents.MATERIALS) == ["plush", "cotton", "boucle", "elastane", "sugar", "clay"]
+    assert list(agents.MATERIALS) == ["plush", "cotton", "boucle", "clay"]
     assert "lime-green plush frog with a short, soft pile" in agents.look_words(a["look"])
     for m in agents.MATERIALS:   # every material reads as a sentence
         words = agents.look_words({**look, "material": m})
         assert words.startswith("a small ") and "{" not in words and "frog" in words
     # looks saved before today still open: one of the five mascots that were removed is Bloom, a make-your-own look
-    # from before materials, or in a material that was removed since (ice, glass, chrome, ceramic), is plush, and one
+    # from before materials, or in a material that was removed since (ice, glass, chrome, ceramic, elastane, sugar), is plush, and one
     # that can't be read at all is Bloom; a retired mascot or material sent now is Bloom or plush too
     with hub.state.engine.begin() as c:
         c.execute(db.agents.update().where(db.agents.c.id == team[0]["id"]).values(look='{"base": "rime"}'))
         c.execute(db.agents.update().where(db.agents.c.id == a["id"]).values(look=db.dumps(look)))
     got = {x["name"]: x["look"] for x in u.get("/api/agents").json()}
     assert got == {"Bloom": {"base": "bloom"}, "Lily": {**look, "accent": "ice", "material": "plush"}}
-    for gone in ("ice", "glass", "chrome", "ceramic"):
+    for gone in ("ice", "glass", "chrome", "ceramic", "elastane", "sugar"):
         with hub.state.engine.begin() as c:
             c.execute(db.agents.update().where(db.agents.c.id == a["id"]).values(look=db.dumps({**look, "material": gone})))
         assert u.get("/api/agents").json()[1]["look"] == {**look, "accent": "ice", "material": "plush"}

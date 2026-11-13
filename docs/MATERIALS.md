@@ -1,13 +1,13 @@
 # The materials: what each one is, and how it is drawn
 
-A make-your-own mascot can be made of six materials, all cloth-like or soft. Three are **pile**: plush, cotton and
-bouclé are a coat of real strands, drawn as a volume of fibres, and differ only in how the strands are sized and how
-they lie. Three are **surfaces**: elastane, sugar and clay, each with a shader of its own in
-`modellab/web/src/components/yeti/mascot/materials/`. This page says what each real thing is, what makes a picture
-of it unmistakable, and how it is drawn here. How the renderer is put together is in the
-[mascot guide](../tools/mascot/README.md).
+A make-your-own mascot can be made of four materials, all soft. Three are **pile**: plush, cotton and bouclé are a
+coat of real strands, drawn as a volume of fibres, and differ only in how the strands are sized and how they lie.
+One is a **surface**: clay, with a shader of its own in `modellab/web/src/components/yeti/mascot/materials/`.
+(Elastane and a sugar-coated sweet were removed, as ice, glass, chrome and ceramic were before them: an agent saved
+in any of those becomes plush.) This page says what each real thing is, what makes a picture of it unmistakable,
+and how it is drawn here. How the renderer is put together is in the [mascot guide](../tools/mascot/README.md).
 
-![The six materials](screenshots/hub_23_materials.png)
+![The four materials](screenshots/hub_23_materials.png)
 
 ## What this rests on
 
@@ -22,11 +22,11 @@ of it unmistakable, and how it is drawn here. How the renderer is put together i
 - **Cotton was researched in depth earlier** ([research/cotton.md](research/cotton.md), 22 sources): cloth
   reflectance and knit structure. Cotton is now a brushed nap, so that report's knit is no longer drawn; what it says
   about cloth's light (no highlight, an even tone, a pale haze) still holds.
-- **Bouclé, elastane, sugar and clay were not researched in depth.** Research agents were started for them twice
-  and cut off by a usage limit both times before they wrote anything. What they have is a handful of single web
-  searches whose excerpts were read (listed under Sources): how bouclé yarn is made, what elastane is, sugar's grain
-  sizes, what Plasticine is made of, how far apart a fingerprint's ridges are, what makers of clay shaders
-  recommend, and one sherpa fleece's pile height (7 mm). Everything else about them is general knowledge.
+- **Bouclé and clay were not researched in depth.** Research agents were started for them twice and cut off by a
+  usage limit both times before they wrote anything. What they have is a handful of single web searches whose
+  excerpts were read (listed under Sources): how bouclé yarn is made, what Plasticine is made of, how far apart a
+  fingerprint's ridges are, what makers of clay shaders recommend, and one sherpa fleece's pile height (7 mm).
+  Everything else about them is general knowledge.
 - **Two of the three reports were finished from interrupted work.** The researchers of the reference texture and of
   the light were cut off (a machine restart, then the usage limit); their reports were completed from their saved
   logs, scripts and measurements by a second agent. Each report says which of its numbers were re-computed.
@@ -35,7 +35,7 @@ of it unmistakable, and how it is drawn here. How the renderer is put together i
   bouclé and clay, and the new light, have not been looked at blind, and nothing was compared with a photograph of
   a real toy.
 - **Speed was measured on a software renderer only** (no graphics card). There, one frame of a plain ball at 68 px
-  on a 2x screen takes about 70 ms in plush, 74 in cotton, 80 in bouclé, 22 in elastane, 42 in sugar and 28 in clay
+  on a 2x screen takes about 70 ms in plush, 74 in cotton, 80 in bouclé and 28 in clay
   with a look's own program (plush was 57 ms before the rework). Readings vary by about a tenth from run to run.
 
 ## Two rules that apply to all of them
@@ -161,50 +161,6 @@ regular to be real, no fuzz and a razor-clean outline.)
 Hats, scarves and poms are pile too and use the same strand code: knitted things are a small curly wool (like
 bouclé at a little over half the scale), a pom is fluffy like plush.
 
-## Elastane
-
-*The stretch fabric of swimwear and athletic wear.*
-
-*Looked up:* what the fibre is (a segmented polyurethane that stretches to four to eight times its length). How
-the cloth looks is from memory.
-
-- **The real thing:** a very fine knit of smooth synthetic filaments, pulled taut. No fuzz and no visible weave.
-- **What tells it apart:** deep saturated colour with a satin lustre. Smooth fibres lying side by side mirror a lamp
-  into a streak that runs across them, so highlights are long soft bands that wrap round the body.
-- **How:** an anisotropic GGX lobe laid along the fibres (which run up the body), smooth along a fibre and rough
-  across them, partly tinted by the dye; a dark, rich matte base; a tight sheen toward grazing angles; a very fine
-  knit in close-up (columns of small loops); lustre that varies a little where the cloth is stretched more. The
-  cloth is four panels sewn up the body with flat seams, none down the middle of the face: thread wrapped slantwise
-  between two rows of needle holes, with the cloth puckering a little beside it. The seams show on a large mascot
-  and fade out on a small one. At the very top, where "up the
-  body" has no meaning, the streak fades out.
-- **Left out:** the paler tone of cloth stretched thin over a bulge; folds. Not changed in this round beyond the light.
-
-## Sugar
-
-*A soft jelly sweet in the body's colour, rolled in coarse sugar.*
-
-*Looked up:* grain sizes (granulated sugar about 0.6 mm, coarse sugar 1 to 3 mm, sanding sugar between), and the
-sparkle method's source. Sucrose's index was found in one secondary source only (1.54, which reflects 4.5 %
-head-on; the shader uses 4.8 %). The rest is from memory.
-
-- **The real thing:** clear crystals of sucrose about a millimetre across, lying every which way on a translucent
-  jelly. Sucrose reflects a little under 5 % of light head-on.
-- **What tells it apart:** the rough, frosted outline; pinpoint flashes that come and go as it turns; colour that
-  glows between and under the crystals; pale, frosted colour when small.
-- **How:** the crystals are real relief: one small brick in each cell of two jittered grids of different sizes,
-  turned against each other so no grid shows, each brick turned its own way, with flat faces and sharp sides. A
-  crystal is clear: the jelly shows through its top face, its bevelled edges are white, and each is clearer or
-  cloudier than the next. Between the big crystals lies fine sugar dust, which is what makes the colour pale and
-  frosted and not speckled. A face that mirrors a lamp flashes; where crystals are too small to resolve, grains that fade instead of flickering take
-  over (after Wang and Bowles' sparkle), with a few larger ones that still show on a small mascot. The jelly lets
-  light creep past the shadow line and glows where a lamp is behind a thin part (thickness is measured through the
-  body, as in Barré-Brisebois and Bouchard's translucency).
-- **Since the blind checks:** the crystals come in more sizes (a few large among many small), and the jelly between
-  them lies in their shade.
-- **Left out:** light bending inside a crystal; a real crystal shows several faces, where these show one; crystals
-  piled on crystals.
-
 ## Clay
 
 *Modelling clay (plasticine), shaped by hand.*
@@ -231,9 +187,8 @@ three and a half times life size). How it looks is from memory.
 
 Before this rework there were ten materials, and AI viewers (fresh instances of the model, shown a plain ball of
 each with no names; they are not people) were twice asked what each was made of. Both times one viewer named seven
-of the ten and the other eight, and they rated the pictures 4 to 7 out of 10 as photographs. Of the six materials
-kept: plush, cotton, sugar and clay were named by both viewers both times; elastane was taken for satin or rubber;
-bouclé was taken for a scouring pad. What they faulted, and what has changed since:
+of the ten and the other eight, and they rated the pictures 4 to 7 out of 10 as photographs. Of the four materials
+kept: plush, cotton and clay were named by both viewers both times; bouclé was taken for a scouring pad. What they faulted, and what has changed since:
 
 | What they said | Now |
 |---|---|
@@ -241,14 +196,12 @@ bouclé was taken for a scouring pad. What they faulted, and what has changed si
 | Cotton: stitches too regular, no fuzz, razor-clean outline | now a brushed nap of fibres |
 | Bouclé: strands melt into each other; a scouring pad | now curled strands of pile |
 | Clay: a plain matte ball from a distance; no waxy sheen | real lumps and dents in the outline; a satin highlight |
-| Sugar: crystals of one size, flat, no shade between them | more sizes, shade between them; still one face per crystal |
-| Elastane: could be satin or rubber | seams and a knit were added before this round; not changed since |
 
 **None of the new versions has been looked at blind.**
 
 ## What mirrors see
 
-Sugar's crystals, elastane's lustre, clay's sheen and the glossy eyes need something to mirror. `studio()` in the
+Clay's sheen and the glossy eyes need something to mirror. `studio()` in the
 library is the same light as panels: the large key, the fill, the rim, walls, and the floor, which is the page with
 the mascot's own shadow on it. Each panel is as bright as the light its lamp gives a matte surface, so a mirror and
 a matte surface agree about the lighting.
@@ -281,16 +234,13 @@ from memory, and are in the report, not here):
 18. "Hairiness in yarn". https://textile-technology.blogspot.com/2008/04/hairiness-in-yarn.html
 19. Wikipedia, "Mercerised cotton" and "Poplin". https://en.wikipedia.org/wiki/Mercerised_cotton, https://en.wikipedia.org/wiki/Poplin
 
-**Looked up** for bouclé, elastane, sugar and clay, and to check the papers named on this page (one web search
+**Looked up** for bouclé and clay, and to check the papers named on this page (one web search
 each; the excerpts it returned were read, the pages were not opened in full):
 
 - Bouclé: a study of bouclé yarn's structure. https://link.springer.com/article/10.1007/s40034-021-00225-1 and https://nopr.niscpr.res.in/bitstream/123456789/39053/1/IJFTR%2041%284%29%20367-372.pdf
-- Elastane: CAMEO, "Spandex fiber". https://cameo.mfa.org/wiki/Spandex_fiber and https://www.fibersource.com/f-tutor/spandex/
-- Sugar: grain sizes. https://bobsredmill.com/articles/what-is-sanding-sugar Sucrose's index (a secondary source). https://wiki.kidzsearch.com/wiki/Sucrose
 - Clay: Wikipedia, "Plasticine". https://en.wikipedia.org/wiki/Plasticine Ridge-to-ridge distance in fingerprints (a 1989 study, from its abstract). https://ojp.gov/ncjrs/virtual-library/abstracts/analysis-ridge-ridge-distance-fingerprints
 - Clay shaders: a Blender forum thread and a clay-shader product's manual (roughness, subtle displacement and prints, low scatter). https://blenderartists.org/t/clay-material-tips/1524904 and https://superhivemarket.com/products/kin-klei/docs
 - Sherpa fleece: one retailer's listing with a 7 mm pile. https://fabricwholesaledirect.com/products/sherpa-faux-fur-fleece-fabric
-- Sucrose: monoclinic, habit varies (NIST entry). https://webbook.nist.gov/chemistry/silmarils-solids-hrf-drf/docs/META.MIR.PUR.Sucrose.SLD.FLUKA.PNNL409565.pdf
 - Wang and Bowles, "A Robust and Flexible Real-Time Sparkle Effect", 2016. https://diglib.eg.org/bitstream/handle/10.2312/sre20161209/049-054.pdf
 - Karis, "Physically Based Shading on Mobile", 2014 (the fit to the split sum that `envBRDF` uses; its constants match). https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 - Barré-Brisebois and Bouchard, "Approximating Translucency for a Fast, Cheap and Convincing Subsurface Scattering Look", 2011. https://ea.com/frostbite/news/approximating-translucency-for-a-fast-cheap-and-convincing-subsurface-scattering-look
