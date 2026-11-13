@@ -4,7 +4,7 @@ Each of ModelLab's agents has a mascot. It is either Bloom or one the user put t
 
 - **Bloom** (everyone's first agent): a fluffy white cub with real fur, modelled on a photo of a plush.
 - **Make your own:** a shape (pom, bean, drop, gumdrop, cub, frog, tofu, kitten) in a material (plush, cotton,
-  bouclé, elastane, sugar, ice, glass, chrome, ceramic, clay) and one of twelve colours, with eyes (bean, round,
+  bouclé, elastane, sugar, clay) and one of twelve colours, with eyes (bean, round,
   bead, googly, sparkle, smile), glasses (round, shades) and an extra (headphones, beanie, sprout, antenna, scarf,
   cap, tuft). See [Make your own](#make-your-own) and [Materials](#materials) below.
 
@@ -117,7 +117,7 @@ a real object, a photo of a plush. His body is pile, drawn by `MAIN_PILE`.
 A make-your-own mascot is short, soft and bright: a body in a material and a pure dye, glossy black eyes, no mouth,
 and at most a pair of glasses and one extra. Plush, the first material, is the one OpenAI's dots made familiar
 (their press image was the reference for it, and only for it: the characters here are our own, and none of OpenAI's
-images are in this repository). The other nine materials are [below](#materials).
+images are in this repository). The other five materials are [below](#materials).
 
 - **Plush.** A short plush pile lies in small patches, each combed its own way, a few strands side by
   side. It is drawn with Bloom's fur renderer (`FUR`), with a pile of 0.05 units instead of Bloom's long one:
@@ -182,9 +182,10 @@ images are in this repository). The other nine materials are [below](#materials)
 
 ## Materials
 
-![The ten materials](../../docs/screenshots/hub_23_materials.png)
+![The six materials](../../docs/screenshots/hub_23_materials.png)
 
-Cotton, bouclé, elastane, sugar, ice, glass, chrome, ceramic and clay. What each real material is, what makes a
+Cotton, bouclé, elastane, sugar and clay (ice, glass, chrome and glazed ceramic were tried and removed: the mascots
+are soft things, and the materials are now all cloth-like or soft). What each real material is, what makes a
 picture of it unmistakable and how its shader gets that is in [docs/MATERIALS.md](../../docs/MATERIALS.md); each
 shader also says it in a comment at its top. In short:
 
@@ -194,10 +195,6 @@ shader also says it in a comment at its top. In short:
 | bouclé | curls of yarn (curves where warped wavy surfaces cut the body), thick and thin, frayed, with more yarn under them | yes |
 | elastane | a lustre laid along the fibres, so highlights are long bands round the body; deep colour; sewn seams | no |
 | sugar | clear bricks of sugar and fine dust over a jelly that light gets into; faces and grains that flash | yes |
-| ice | a ray through the body gathers a milky core, bubbles and cracks; frost; the page shows through | no |
-| glass | colour from how much glass the light crossed; light trapped at the edges; the room and the page show through | no |
-| chrome | the studio mirrored, and the mascot mirrored in itself; a smudge | no |
-| ceramic | a glass coat over glaze that is pale on bulges and deep in hollows; crazing, a bare foot | no |
 | clay | matte and a little waxy; dents, fingerprints one over another | no |
 
 On the software renderer each costs less per frame than plush (see docs/MATERIALS.md).

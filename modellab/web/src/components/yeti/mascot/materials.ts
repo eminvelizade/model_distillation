@@ -5,17 +5,13 @@
 import type { Material } from "../mascots";
 import lib from "./materials/_lib.glsl?raw";
 import boucle from "./materials/boucle.glsl?raw";
-import ceramic from "./materials/ceramic.glsl?raw";
-import chrome from "./materials/chrome.glsl?raw";
 import clay from "./materials/clay.glsl?raw";
 import cotton from "./materials/cotton.glsl?raw";
 import elastane from "./materials/elastane.glsl?raw";
-import glass from "./materials/glass.glsl?raw";
-import ice from "./materials/ice.glsl?raw";
 import sugar from "./materials/sugar.glsl?raw";
 
 export const MATLIB = lib;
-const SOURCES: Record<Exclude<Material, "plush">, string> = { cotton, boucle, elastane, sugar, ice, glass, chrome, ceramic, clay };
+const SOURCES: Record<Exclude<Material, "plush">, string> = { cotton, boucle, elastane, sugar, clay };
 
 /** A material's two pieces: its header (defines that go before everything else) and its body. */
 export function material(m: Exclude<Material, "plush">): { header: string; body: string } {

@@ -415,8 +415,8 @@ Claude reads them.
 - **Kept in mind.** Notes the agents keep between conversations: a correction you made, or a standing preference,
   a sentence each (`remember`). They are listed in Chat, where you can add, change or remove any of them, and they
   go into every answer of every agent. This is how a correction carries over.
-- **Looks.** Bloom, or one you put together: eight shapes, ten materials (plush, cotton, boucle, elastane, sugar,
-  ice, glass, chrome, glazed ceramic, clay), twelve colours, six kinds of eyes, glasses and seven extras. Any
+- **Looks.** Bloom, or one you put together: eight shapes, six materials (plush, cotton, boucle, elastane, sugar,
+  clay), twelve colours, six kinds of eyes, glasses and seven extras. Any
   combination fits, because each part is placed by solving against the body's surface.
 
 ### Find: datasets, models and papers online

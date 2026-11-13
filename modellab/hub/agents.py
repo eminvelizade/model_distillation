@@ -52,13 +52,10 @@ MATERIALS = {"plush": "a small {colour} plush {shape} with a short, soft pile",
              "boucle": "a small {colour} {shape} in curly, nubby boucle cloth",
              "elastane": "a small {colour} {shape} in sleek stretch fabric with a satin sheen",
              "sugar": "a small {colour} jelly {shape} coated in sparkling sugar",
-             "ice": "a small {shape} carved from clear ice with a {colour} tint",
-             "glass": "a small {shape} of clear {colour} glass",
-             "chrome": "a small {shape} of mirror-polished {colour} chrome",
-             "ceramic": "a small {shape} of glossy {colour} glazed ceramic",
              "clay": "a small {shape} modelled in {colour} clay, fingerprints and all"}
 DEFAULT_LOOK = {"base": "bloom"}
 RETIRED = ("mochi", "bop", "twinkle", "pip", "rime")   # built-in mascots that were removed: a look that names one is Bloom
+RETIRED_MATERIALS = ("ice", "glass", "chrome", "ceramic")   # materials that were removed: a look made of one is plush
 
 
 def clean_look(look) -> dict:
@@ -75,6 +72,8 @@ def clean_look(look) -> dict:
                                   ("accent", COLOURS, "ice"), ("eyes", EYES, "bean"), ("glasses", GLASSES, "none"),
                                   ("extra", EXTRAS, "none")):
         v = look.get(key, default)
+        if key == "material" and v in RETIRED_MATERIALS:   # (saved before it was removed, or sent by a tab left open)
+            v = "plush"
         if v not in options:
             raise HTTPException(422, f"look.{key} must be one of {', '.join(options)}")
         out[key] = v
@@ -83,7 +82,7 @@ def clean_look(look) -> dict:
 
 def stored_look(raw) -> dict:
     """An agent's look as it was saved, made drawable today: a retired mascot (or anything unreadable) is Bloom, and a
-    make-your-own look from before materials existed is plush."""
+    make-your-own look from before materials existed, or in a material that was removed, is plush."""
     look = db.loads(raw, None)
     try:
         return clean_look(look)

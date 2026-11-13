@@ -10,7 +10,7 @@
 //   v   the direction toward the eye (unit)
 //   t   how far away the eye is (gPix, the size of a pixel at p, is already set)
 //   returns  rgb: the light going to the eye (linear, before exposure and the tone curve)
-//            a:   how much of the page behind it hides (1: opaque; see seeThrough for clear things)
+//            a:   how much of the page behind it hides (1: opaque)
 //
 // A file may start with a header: lines between "//#header" and "//#body" are placed before everything else, for
 // defines that change the framework:
@@ -73,8 +73,6 @@ float occlusionRelief(vec3 p, vec3 n) { return calcAO(p, n); }
 // the key lamp's soft shadow at p: 1 lit, 0 in shadow. k: 3 very soft .. 8 crisp
 float shadowKey(vec3 p, vec3 n, float k) { float keep = gDetail; gDetail = 0.0; float s = softShadow(p + n * 0.012, uKey, k); gDetail = keep; return s; }
 float shadowKeyRelief(vec3 p, vec3 n, float k) { return softShadow(p + n * 0.012, uKey, k); }
-// can p see far along dir, or is the mascot itself in the way? (1 clear, 0 blocked; soft.) For reflections.
-float clearAlong(vec3 p, vec3 n, vec3 dir) { float keep = gDetail; gDetail = 0.0; float s = softShadow(p + n * 0.012, dir, 6.0); gDetail = keep; return s; }
 // how the smooth body curves at p: positive on a bulge, negative in a crease (about 2 / radius on a ball). h: the
 // scale to measure at (0.02 fine .. 0.1 broad). Six readings of the distance.
 float curvature(vec3 p, float h) {
@@ -95,42 +93,6 @@ float thickness(vec3 p, vec3 dir, float far) {
   }
   gDetail = keep;
   return min(t, far);
-}
-// Follow a ray inside the body from p (on its surface) along dir until it comes out, or meets a solid part on the
-// way (the back of an eye). Returns how far it went. q: where it ended; nq: the smooth body's outward normal there;
-// hit.a: 1 if it ended on a solid part (then hit.rgb is that part's colour).
-float through(vec3 p, vec3 dir, out vec3 q, out vec3 nq, out vec4 hit) {
-  float keep = gDetail; gDetail = 0.0;
-  float t = 0.03;
-  hit = vec4(0.0);
-  for (int i = 0; i < 28; i++) {
-    q = p + dir * t;
-    float d = skinD(q);
-    if (d > -0.002) break;
-    vec3 c; float r;
-    float s = solidNear(q, c, r);
-    if (s < 0.004) { hit = vec4(c, 1.0); break; }
-    t += max(min(-d, s) * 0.95, 0.01);
-    if (t > 4.0) break;
-  }
-  q = p + dir * t;
-  nq = bodyNormal(q);
-  gDetail = keep;
-  return t;
-}
-// Follow a ray outside the body from p along dir: how far until it meets the mascot again (its body, what it wears,
-// a solid part), or -1 if it gets away. For a mirror's reflection of the mascot in itself.
-float meets(vec3 p, vec3 dir, float far) {
-  float keep = gDetail; gDetail = 0.0;
-  float t = 0.02, at = -1.0;
-  for (int i = 0; i < 40; i++) {
-    float d = mapD(p + dir * t);
-    if (d < 0.002) { at = t; break; }
-    t += d * 0.95;
-    if (t > far) break;
-  }
-  gDetail = keep;
-  return at;
 }
 
 // ---------------------------------------------------------------- the studio
@@ -202,14 +164,6 @@ float V_GGXaniso(float NoV, float NoL, float ToV, float BoV, float ToL, float Bo
 }
 vec3 F_Schlick(vec3 f0, float VoH) { return f0 + (1.0 - f0) * pow5(1.0 - VoH); }
 float F_Schlick1(float f0, float VoH) { return f0 + (1.0 - f0) * pow5(1.0 - VoH); }
-// a real mirror between two clear things: how much is reflected (n1 -> n2), exactly. cosI: cosine at the surface.
-float fresnel(float cosI, float n1, float n2) {
-  float s2 = sq(n1 / n2) * (1.0 - cosI * cosI);
-  if (s2 >= 1.0) return 1.0;                       // total internal reflection
-  float cosT = sqrt(1.0 - s2);
-  float rs = (n1 * cosI - n2 * cosT) / (n1 * cosI + n2 * cosT), rp = (n1 * cosT - n2 * cosI) / (n1 * cosT + n2 * cosI);
-  return 0.5 * (rs * rs + rp * rp);
-}
 // how much of the studio a surface of this roughness mirrors, facing you at NoV (Karis's fit to the split sum)
 vec3 envBRDF(vec3 f0, float rough, float NoV) {
   vec4 r = rough * vec4(-1.0, -0.0275, -0.572, 0.022) + vec4(1.0, 0.0425, 1.04, -0.04);
@@ -290,15 +244,4 @@ vec2 glints(vec3 p, vec3 n, vec3 v, float cell, float share, float spread, float
                      max(smoothstep(sharp, mix(sharp, 1.0, 0.6), dot(f, hf)), smoothstep(sharp, mix(sharp, 1.0, 0.6), dot(f, hb))));
   }
   return g * vis * min(1.0, sq(0.16 * cell / r));
-}
-
-// ---------------------------------------------------------------- clear things over the page
-// A pixel of something clear. shown: the light it sends itself (reflections, glow, whatever is inside it); trans:
-// how much of each colour of the page behind gets through (1 clear, 0 opaque). The mascot is drawn over the page, so
-// this returns the colour and alpha that give  shown + trans * page  once it is laid over it (exactly, where the
-// page is the colour uBackdrop says; closely, where it isn't).
-vec4 seeThrough(vec3 shown, vec3 trans) {
-  float tmin = min(trans.r, min(trans.g, trans.b));
-  float a = 1.0 - tmin;
-  return vec4((shown + (trans - tmin) * uBackdrop) / max(a, 1e-3), a);
 }

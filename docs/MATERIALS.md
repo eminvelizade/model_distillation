@@ -1,19 +1,19 @@
 # The materials: what each one is, and how it is drawn
 
-A make-your-own mascot can be made of ten materials. Plush is the pile the mascots started with (see
-[tools/mascot/README.md](../tools/mascot/README.md)); the other nine are surfaces, each with a shader of its own in
+A make-your-own mascot can be made of six materials, all cloth-like or soft. Plush is the pile the mascots started
+with (see [tools/mascot/README.md](../tools/mascot/README.md)); the other five are surfaces, each with a shader of its own in
 `modellab/web/src/components/yeti/mascot/materials/`. This page says, for each, what the real thing is, what makes a
 picture of it unmistakable, and how the shader gets that. How a material is written and tested is in the mascot
 guide.
 
-![The ten materials](screenshots/hub_23_materials.png)
+![The six materials](screenshots/hub_23_materials.png)
 
 ## What this rests on
 
 - **Cotton was researched in depth.** A research agent read 22 sources and wrote a long report; its findings are
   the cotton section below, and its sources are listed at the end with what was read and what was only seen in
   search results.
-- **The other eight were not researched in depth.** The same research was planned for each and was cut off by a
+- **The others were not researched in depth.** The same research was planned for each and was cut off by a
   usage limit before it produced reports. Afterwards the facts and figures in their sections, and the papers they
   name, were looked up one at a time: a web search each, reading the excerpts it returned, not the papers
   themselves. Each section says what that confirmed. How each material looks, and the choices in the shaders, rest
@@ -24,8 +24,8 @@ guide.
 - **AI viewers were then asked what each was made of, twice.** Each viewer was a fresh instance of the model with
   no knowledge of the work, shown a plain ball of each material (the whole ball and a close-up) with no names.
   They are not people, and a person may judge differently. Two looked before the fixes listed under
-  [What the blind checks changed](#what-the-blind-checks-changed) and two others after. Both times one named seven
-  of the ten and the other eight, and both times they rated the pictures 4 to 7 out of 10 as photographs. So the
+  [What the blind checks changed](#what-the-blind-checks-changed) and two others after. There were ten materials then (ice, glass,
+  chrome and glazed ceramic have since been removed). Both times one named seven of the ten and the other eight, and both times they rated the pictures 4 to 7 out of 10 as photographs. So the
   materials are told apart, most are recognised, and none passes for a photograph. The changes made after the
   second look (to bouclé, elastane and clay) have not been looked at blind.
 - **Speed was measured on a software renderer only** (no graphics card). There, one frame of a plain ball at 68 px
@@ -121,76 +121,6 @@ head-on; the shader uses 4.8 %). The rest is from memory.
   body, as in Barré-Brisebois and Bouchard's translucency).
 - **Left out:** light bending inside a crystal; a real crystal shows several faces, where these show one.
 
-## Ice
-
-*A figure carved from real ice.*
-
-*Looked up:* the index (1.310 at 546 nm) and why the middle is cloudy. The rest is from memory.
-
-- **The real thing:** nearly colourless, and it bends light less than glass (index 1.31), so it mirrors little
-  head-on and a lot at the edges. Water holds more dissolved air than ice can, and it freezes from the outside in,
-  so the air is pushed ahead of the ice and trapped in the middle, which is milky and holds bubbles; stress leaves curved cracks; the surface is rippled by melting, wet, and frosted where it is dry.
-- **What tells it apart from glass:** the milky core, the cracks, the frost. Ice has no dye: the body's colour is
-  only a blush in the thick parts.
-- **How:** a ray is bent at the rippled surface and followed through the body. On the way it gathers the core's
-  milk (denser deeper in), the bubbles, and the cracks (curved sheets); what is left of it leaves the far side and
-  sees the lamps, a wall or the floor with the mascot's own shadow on it (so what is behind shows through, bent),
-  or is trapped and mirrored back. Frost is a rough white layer in patches, with grains that flash. Thin clear
-  parts let the page show through.
-- **Left out:** bubbles as separate round things (they are a cloudiness that varies), elongated bubble streaks,
-  light concentrated on the floor.
-
-## Glass
-
-*Clear coloured glass, blown by hand.*
-
-*Looked up:* the index (soda-lime glass, 1.51 to 1.52). The rest is from memory.
-
-- **The real thing:** no colour on its surface: all of it comes from how much glass the light crossed (Beer and
-  Lambert's law), so thick parts are deep and thin parts pale. Index about 1.5.
-- **What tells it apart:** sharp reflections of the studio, stronger toward the edges; the scene behind seen bent
-  and upside down; dark, rich edges where light is trapped inside.
-- **How:** a ray goes in, crosses the body and leaves the far side, or meets the inner surface too flatly and is
-  mirrored back for a second crossing. Where it leaves, it sees a lamp, a wall, or the floor with the mascot's own
-  shadow on it, so the room shows through bent and upside down: that is what separates glass from jelly. The
-  surface wavers very slightly, as hand-blown glass does. A little light is scattered inside in the glass's own
-  colour (more of it, and deeper, on the dark theme), which is what keeps the colour on a dark page. Clear parts let
-  the page show through.
-- **Left out:** colours splitting at the edges, light concentrated on the floor, more than two crossings.
-
-## Chrome
-
-*Mirror-polished metal, tinted by the body's colour.*
-
-*From memory:* nothing here was looked up.
-
-- **The real thing:** a mirror has no look of its own. It is its surroundings, bent round the shape.
-- **What tells it apart:** the lamps' panels as crisp bright shapes, a bright floor under a darker room, a dark
-  side where the camera stands (a mirror needs something dark to have lines), and the object mirrored in itself.
-- **How:** the studio mirrored (see below), and the mascot mirrored in itself once (an ear in the head). The
-  surface wavers by a hair, and there is a smudge where the mirror is a little dull. White is silver, yellow is gold, charcoal is black chrome, the rest tinted chrome.
-- **Left out:** a second mirroring of itself; the true colour of each metal at grazing angles; scratches from
-  polishing (tried twice: at these sizes they read as grain along the edges of the reflections).
-
-## Ceramic
-
-*Glazed stoneware.*
-
-*Looked up:* crazing (a glaze that contracts more than the clay as it cools is stretched over it and cracks) and
-breaking (a glaze thins over raised contours and shows a different colour there). That glaze lying thick in hollows
-is darker was confirmed; "pooling" as the word for it was not found defined. The rest is from memory.
-
-- **The real thing:** a layer of coloured glass melted onto a matte clay body. Molten glaze runs off bulges and
-  edges, where it ends up thin and pale ("breaking"), and gathers in hollows, where it is thick and dark
-  ("pooling"). It shrinks more than the clay as it cools, which cracks it finely ("crazing").
-- **What tells it apart from plastic:** colour that follows the shape, sharp reflections with a soft falloff over a
-  matte colour underneath, and a bare foot where the piece stood in the kiln.
-- **How:** the glaze's thickness is worked out from how the body curves (measured from the distance field) and how
-  enclosed the spot is; colour goes from pale clay-tinted to deep with thickness. A clear coat mirrors the studio
-  over a matte base, on a surface that wavers slightly. Close up there is crazing (the borders of irregular cells)
-  and the odd iron speck. The lowest few millimetres are bare, matte clay.
-- **Left out:** pinholes; depth inside the glaze.
-
 ## Clay
 
 *Modelling clay (plasticine), shaped by hand.*
@@ -213,38 +143,31 @@ three and a half times life size). How it looks is from memory.
 
 Each viewer also said what gave each material away as drawn and not photographed.
 
-**First look.** One viewer named seven of the ten and the other eight. Both took glass for jelly; one took bouclé
-for a scouring pad, one took elastane for satin, and one took ice for art glass. Scores out of 10 as a photograph:
-ceramic 7, chrome 6, the rest 4 or 5.
+**First look** (at ten materials: the four since removed are left out below). One viewer named seven of the ten and
+the other eight. Of the six kept, one viewer took bouclé for a scouring pad and one took elastane for satin. Scores
+out of 10 as a photograph for these six: 4 or 5.
 
 | What they said | What was changed |
 |---|---|
 | Rings (moiré) on cotton, elastane and clay toward the outline | fine patterns now fade by the slant of the surface as well as by size (`resolvedOn()`); the knit is a little larger |
-| Glass looked like jelly: the same all through, with nothing seen behind it | the far side now sees the floor, the mascot's shadow and the walls, so the room shows through, bent |
 | Sugar crystals were all one size, opaque and without sparkle | more crystals, clear with white edges, tilted so that some flash; fine dust between them (they are still much of a size) |
 | Bouclé strands looked melted | steeper strands with less noise on them, and deeper shade between (this made it worse: see below) |
-| Ice: the streaks looked painted on | fewer and finer cracks, dimmer; what is behind shows through |
-| Chrome: the edges of the reflections were grainy | the scratches that caused it were removed |
 | Clay: the flecks looked stuck on, and the one fingerprint was a set of perfect rings | the lint, pits and tool mark were removed; the prints are finer, arc across their patch, waver, and lie over one another |
 
 **Second look**, by two other viewers, after those changes. Again one named seven and the other eight.
 
 | Material | Named, first look | Named, second look | Score, first | Score, second |
 |---|---|---|---|---|
-| Glass | neither (jelly, jelly) | both | 5, 5 | 5, 7 |
 | Cotton | both | both | 4, 4 | 5, 5 |
 | Sugar | both | both | 5, 5 | 5, 6 |
-| Chrome | both | both | 6, 6 | 6, 6 |
 | Clay | both | both | 4, 5 | 4, 4 |
-| Ice | one (the other: art glass) | one (the other: a glass marble) | 4, 4 | 4, 4 |
 | Elastane | one (the other: satin) | neither (rubber, satin) | 4, 4 | 4, 4 |
 | Bouclé | one (the other: a scouring pad) | neither (a scouring pad, twice) | 5, 4 | 4, 4 |
 | Plush (not changed) | both | both | 5, 5 | 5, 6 |
-| Ceramic (not changed) | both | both | 7, 7 | 7, 7 |
 
-Plush and ceramic were not changed between the two looks and their scores moved by a point at most, so a point is
-noise. By that measure the changes fixed glass, may have helped cotton and sugar a little, and did nothing for
-ice, clay, elastane or bouclé. Bouclé and elastane got worse at being named.
+Plush was not changed between the two looks and its scores moved by a point at most, so a point is noise. By that
+measure the changes may have helped cotton and sugar a little and did nothing for clay, elastane or bouclé. Bouclé
+and elastane got worse at being named.
 
 **After the second look**, the two that neither viewer named were reworked, and clay's prints once more:
 
@@ -257,9 +180,8 @@ ice, clay, elastane or bouclé. Bouclé and elastane got worse at being named.
 
 **These last changes have not been looked at blind.** They were judged by the author's eye only.
 
-Not changed at all: the cracks in the ceramic glaze are all much the same size, plush tufts look flat in close-up,
-cotton has no seam in view and its stitches are too regular, the white in the ice reads as a picture on its surface
-and not as depth, and the studio that chrome mirrors is plain.
+Not changed at all: plush tufts look flat in close-up, and cotton has no seam in view and its stitches are too
+regular.
 
 ## The studio
 
@@ -297,12 +219,9 @@ from memory, and are in the report, not here):
 **Looked up for the other eight** (one web search each; the excerpts it returned were read, the pages were not
 opened in full):
 
-- Ice: Warren, "Optical properties of ice and snow", 2019 (index). https://pmc.ncbi.nlm.nih.gov/articles/PMC6501920 Purdue Materials Engineering, why ice cubes are cloudy. https://engineering.purdue.edu/MSE/AboutUs/GotMaterials/Other/yoder.html
 - Bouclé: a study of bouclé yarn's structure. https://link.springer.com/article/10.1007/s40034-021-00225-1 and https://nopr.niscpr.res.in/bitstream/123456789/39053/1/IJFTR%2041%284%29%20367-372.pdf
 - Elastane: CAMEO, "Spandex fiber". https://cameo.mfa.org/wiki/Spandex_fiber and https://www.fibersource.com/f-tutor/spandex/
-- Glass: soda-lime glass data. https://www.pgo-online.com/intl/soda-lime-glass.html
 - Sugar: grain sizes. https://bobsredmill.com/articles/what-is-sanding-sugar Sucrose's index (a secondary source). https://wiki.kidzsearch.com/wiki/Sucrose
-- Ceramic: Digitalfire's glossary and trouble-shooting pages. https://digitalfire.com/glossary/breaking+glaze, https://digitalfire.com/trouble/glaze+crazing, https://digitalfire.com/glossary/glaze+fit
 - Clay: Wikipedia, "Plasticine". https://en.wikipedia.org/wiki/Plasticine Ridge-to-ridge distance in fingerprints (a 1989 study, from its abstract). https://ojp.gov/ncjrs/virtual-library/abstracts/analysis-ridge-ridge-distance-fingerprints
 - Wang and Bowles, "A Robust and Flexible Real-Time Sparkle Effect", 2016. https://diglib.eg.org/bitstream/handle/10.2312/sre20161209/049-054.pdf
 - Karis, "Physically Based Shading on Mobile", 2014 (the fit to the split sum that `envBRDF` uses; its constants match). https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
