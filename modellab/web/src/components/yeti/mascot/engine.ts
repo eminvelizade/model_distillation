@@ -32,7 +32,7 @@ const SPECS: Record<MascotKind, Spec> = {
     glsl: BLOOM, box: [-1.15, -0.1, -1.08, 1.15, 2.22, 1.08], cam: [2.48, 9.9, 1.08, 17], top: 1.73, shadow: [2.6, 1.6],
     eye: { x: 0.321, y: 0.785, rx: 0.062, ry: 0.088 }, nose: [0, 0.711, 0.055, 0.014],
     blush: [0.481, 0.62, 0, 0.1], ears: { base: [0.605, 1.34, 0.339], off: [0, 0.14], yaw: 0, lean: 0.8 }, rest: 0,
-    prop: "#68c7ea", exposure: 1.1,
+    prop: "#68c7ea", exposure: 1.04,
     colors: { main: "#eff2fa", accent: "#99d7f0", blush: "#b0f1fc", extra: "#84d1f0" },   // white fur; (accent: unused); the blush's dye; the tuft's and ears' blue
   },
 };
@@ -207,7 +207,7 @@ export class View {
       const P = PILES[o.look?.material ?? "plush"] ?? PILES.plush;
       ["uPileA", "uPileB", "uPileC", "uPileD"].forEach((u, i) => (this.pileU[u] = { value: new THREE.Vector4(P[i][0], P[i][1], P[i][2], P[i][3]) }));
     }
-    if (this.built) {   // natural light (see the light in shaders.ts): the key low and to the side, so it models the body from side to side
+    {   // natural light (see the light in shaders.ts): the key low and to the side, so it models the body from side to side
       this.KEY.set(-0.587, 0.643, 0.492).normalize();   // 40 degrees up, 50 to the left
       this.FILL.set(0.597, 0.1, 0.796).normalize();     // the room on the other side
       this.BACK.set(0.45, 0.5, -0.74).normalize();      // the rim, from behind and above
@@ -278,23 +278,19 @@ export class View {
     sc.width = sc.height = 128;
     const sx = sc.getContext("2d")!;
     const grad = sx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    if (this.built) {   // under one soft lamp to the side: deeper close to the body, trailing off away from the lamp
-      grad.addColorStop(0, "rgba(30,40,60,0.5)");
-      grad.addColorStop(0.35, "rgba(30,40,60,0.3)");
-      grad.addColorStop(0.7, "rgba(30,40,60,0.1)");
-    } else {
-      grad.addColorStop(0, "rgba(30,40,60,0.4)");
-      grad.addColorStop(0.5, "rgba(30,40,60,0.14)");
-    }
+    // under one soft lamp to the side: deeper close to the body, trailing off away from the lamp
+    grad.addColorStop(0, "rgba(30,40,60,0.5)");
+    grad.addColorStop(0.35, "rgba(30,40,60,0.3)");
+    grad.addColorStop(0.7, "rgba(30,40,60,0.1)");
     grad.addColorStop(1, "rgba(30,40,60,0)");
     sx.fillStyle = grad;
     sx.fillRect(0, 0, 128, 128);
     const shadowTex = new THREE.CanvasTexture(sc);
-    const wide = this.built ? 1.12 : 1;
+    const wide = 1.12;
     const plane = new THREE.PlaneGeometry(K.shadow[0] * wide, K.shadow[1] * wide);
     this.shadow = new THREE.Mesh(plane, new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     this.shadow.rotation.x = -Math.PI / 2;
-    this.shadow.position.set(this.built ? 0.12 : 0, 0.002, 0.04);   // (the make-your-own mascots' lamp is on the left)
+    this.shadow.position.set(0.12, 0.002, 0.04);   // (the lamp is on the left)
     this.shadow.renderOrder = -1;
     this.scene.add(this.shadow);
     this.disposables.push(shadowTex, plane, this.shadow.material);
@@ -380,7 +376,6 @@ export class View {
 
   applyTheme() {
     const dark = isDark();
-    if (!this.built) (this.uniforms.uBackCol.value as THREE.Color).set("#ffffff").multiplyScalar(dark ? 0.85 : 0.58);   // the rim glow reads better on dark
     this.shadow.material.color.set(dark ? "#000000" : "#ffffff");
     // the page behind (what a clear or mirrored body shows): the theme's canvas colour
     const rgb = getComputedStyle(document.documentElement).getPropertyValue("--canvas").trim().split(/\s+/).map(Number);
@@ -388,7 +383,7 @@ export class View {
     if (rgb.length === 3 && rgb.every((x) => Number.isFinite(x))) page.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
     else page.set(dark ? "#070a10" : "#f5f8fc");
     this.uniforms.uDark.value = dark ? 1 : 0;
-    if (this.built) {   // natural light, in linear light: a warm key (6150 K), a cooler sky (7000 K), and what the page sends back
+    {   // natural light, in linear light: a warm key (6150 K), a cooler sky (7000 K), and what the page sends back
       const U = this.uniforms, set = (u: { value: unknown }, r: number, g: number, b: number, k: number) => (u.value as THREE.Color).setRGB(r * k, g * k, b * k);
       set(U.uKeyCol, 1.0, 0.965, 0.915, 0.7);
       set(U.uSky, 0.9, 0.94, 1.0, 0.4);

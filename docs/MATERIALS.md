@@ -54,9 +54,9 @@ of it unmistakable, and how it is drawn here. How the renderer is put together i
 
 ## The light
 
-The make-your-own mascots stand in natural light: the look of a soft toy by a large window, on a pale table. (Bloom
-keeps the studio he was matched to a photograph under, and is pixel for pixel as he was: checked against a render
-from before this work.)
+Every mascot stands in natural light: the look of a soft toy by a large window, on a pale table. Bloom too: he has
+the same lamps, sky and floor, the pale rim (at under half strength, since long fur stands edge-on to the eye over
+much of him), creases that keep their colour and the deeper shadow on the page. His fur's structure is unchanged.
 
 | | light theme | dark theme |
 |---|---|---|

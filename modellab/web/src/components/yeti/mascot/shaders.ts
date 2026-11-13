@@ -183,7 +183,7 @@ float furM(vec3 p, out Fur f) {
   // the body: a long white pile that lies down, combed away from the crown
   float len = PILE, lean = 2.0, stray = 0.3, curl = 0.04, grain = 17.0, body = 1.0, tufty = 0.0;
   vec3 pull = normalize(vec3(p.x, 0.0, p.z) * 0.3 - vec3(0.0, 1.0, 0.0)), alb = uMain, tip = uMain;
-  f.fine = 80.0; f.gloss = 0.5; f.taper = 0.2; f.ridge = 0.0; f.rim = 1.0;
+  f.fine = 80.0; f.gloss = 0.5; f.taper = 0.2; f.ridge = 0.0; f.rim = 0.45;   // (long fur stands edge-on to the eye over much of him: less rim than a short pile)
   // the ears: blue all over, in the same fur as the tuft, cut shorter
   for (int i = 0; i < 2; i++) {
     vec3 q = uEarM[i] * (p - uEarC[i]);
@@ -605,14 +605,12 @@ float sheenIBL(float NoV, float r) {   // the fuzz lit by the whole sky (three.j
 }
 float max3(vec3 v) { return max(v.r, max(v.g, v.b)); }
 float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
-// ---- the light. The make-your-own mascots stand in natural light: one large soft lamp to one side (the key), an
-// overcast sky, the light the page under them sends back up, a rim from behind, and very little else. (Bloom keeps the
-// studio he was matched to a photograph under: the engine gives him other lamps.)
+// ---- the light. Every mascot stands in natural light: one large soft lamp to one side (the key), an
+// overcast sky, the light the page under them sends back up, a rim from behind, and very little else.
 // A lamp is large: a disc of angular radius asin(w), seen from the mascot. This is what a matte surface turned nl
 // (a cosine) to its middle gets from it, against what it gets facing it: the shadow line is a band, not an edge.
 // (Within about 0.01 of the exact integral for w up to 0.71.)
 float lampWrap(float nl, float w) { return nl >= w ? nl : nl > -w ? (nl + w) * (nl + w) / (4.0 * w) : 0.0; }
-#ifdef FUZZY
 const float KEY_W = 0.707, FILL_W = 1.0, BACK_W = 0.35;   // each lamp's size (the fill is the whole room on that side)
 // The sky is overcast: three times brighter overhead than at the horizon. The page sends light back up, to whatever
 // faces it, except right where the mascot stands on it.
@@ -620,10 +618,6 @@ vec3 skyIrr(vec3 N) {
   float c = dot(N, uUp);
   return uSky * pow(0.5 + 0.5 * c, 1.35) + uGround * (0.5 - 0.5 * c) * (1.0 - 0.95 * exp(-6.0 * (1.0 + c)));
 }
-#else
-const float KEY_W = 0.0, FILL_W = 0.0, BACK_W = 0.0;
-vec3 skyIrr(vec3 N) { return mix(uGround, uSky, dot(N, uUp) * 0.5 + 0.5); }
-#endif
 // Occlusion that knows the surface's colour (Jimenez et al. 2016): light bounces about in a crease, so a bright
 // dye's crease is the dye, deeper, not grey. ao: how open the place is (1 open); alb: its colour.
 vec3 occludeBy(float ao, vec3 alb) {
@@ -637,17 +631,9 @@ vec3 shadePlastic(vec3 n, vec3 V, vec3 base, float rough, float ao, float shK) {
   vec3 col = base * (skyIrr(n) * ao + uKeyCol * lampWrap(dot(n, uKey), KEY_W + 1e-3) * shK + uFillCol * lampWrap(dot(n, uFill), FILL_W + 1e-3));
   vec3 R = reflect(-V, n);
   float fres = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
-#ifdef FUZZY
   float w = mix(0.7, 0.56, rough);                  // the key reflects as a large, soft bright window
-#else
-  float w = mix(0.95, 0.82, rough);                 // the softbox reflects as a soft bright window
-#endif
   vec3 refl = mix(uGround, uSky, dot(R, uUp) * 0.5 + 0.5) * 0.6 * ao
-#ifdef FUZZY
             + uKeyCol * 2.2 * smoothstep(w, w + 0.1 + 0.25 * rough, dot(R, uKey)) * shK
-#else
-            + uKeyCol * 3.0 * smoothstep(w, w + 0.04, dot(R, uKey)) * shK
-#endif
             + uBackCol * 1.2 * smoothstep(w, w + 0.05, dot(R, uBack))
             + uFillCol * 1.6 * smoothstep(w + 0.01, w + 0.05, dot(R, uFill));
   return col + refl * fres * mix(1.0, 0.6, rough);
@@ -712,11 +698,7 @@ float fibres(Fur f, float h, float lod) {
 // behind (light passes through pale fibres).
 vec3 furLight(vec3 L, vec3 Lc, Fur f, vec3 V, float cover, vec3 again, float sh, float lw) {
   float NoL = dot(f.n, L);
-#ifdef FUZZY
   float wrap = lampWrap(NoL, min(lw + 0.22 * lum(f.alb), 0.98));   // (a lamp of size lw; and the paler the pile, the further round the light gets)
-#else
-  float w = 0.45 + 0.4 * lum(f.alb), wrap = clamp((NoL + w) / (1.0 + w), 0.0, 1.0);   // (the paler the pile, the further round the light gets)
-#endif
 #ifdef FUZZY
   float reach = exp(-1.05 * cover / max(0.7 * NoL + 0.3, 0.1));   // (a short pile is open: more light gets down into it)
 #else
@@ -750,36 +732,22 @@ vec3 shadeFur(vec3 p, Fur f, float cover, vec3 V, out vec3 key) {
 #else
   vec3 again = 0.85 * pow(f.alb, vec3(0.75)) * FUR_SHADE;
 #endif
-#ifdef FUZZY
   float occ = mix(0.8, 1.0, smoothstep(-0.05, 0.4, p.y + 0.25 * f.n.y));    // the floor hides the underside (the sky's share of it: the page's own light is in skyIrr)
-  vec3 env = skyIrr(f.n);
-#else
-  float occ = mix(0.55, 1.0, smoothstep(-0.05, 0.45, p.y + 0.25 * f.n.y));   // the floor hides the underside
-  vec3 env = mix(uGround * FUR_FLOOR, uSky, dot(f.n, uUp) * 0.5 + 0.5);
-#endif
+  vec3 env = skyIrr(f.n) * mix(FUR_FLOOR, vec3(1.0), smoothstep(-0.3, 0.3, dot(f.n, uUp)));   // (FUR_FLOOR: what Bloom's blue blanket adds from below)
   key = furLight(uKey, uKeyCol, f, V, cover, again, mix(0.75, 1.0, occ), KEY_W);
-#ifdef FUZZY
   // (the fill is the room on the far side: weak and from everywhere, so it goes in with the sky)
   vec3 col = f.alb * (env * occ + uFillCol * lampWrap(dot(f.n, uFill), FILL_W) * mix(0.5, 1.0, occ)) * mix(again, vec3(1.0), exp(-1.6 * cover))
        + furLight(uBack, uBackCol, f, V, cover, again, occ, BACK_W);
-#else
-  vec3 col = f.alb * env * occ * mix(again, vec3(1.0), exp(-1.6 * cover))
-       + furLight(uFill, uFillCol, f, V, cover, again, mix(0.5, 1.0, occ), FILL_W) + furLight(uBack, uBackCol, f, V, cover, again, occ, BACK_W);
-#endif
-#ifdef FUZZY
   // A pile hides part of itself from the light, so by this reckoning it sends back less than its dye would as a
   // plain matte surface. Light scattered between the fibres makes most of that up; this stands in for it, so that
   // a pile in the light is its dye's own colour (and the colour chosen is the colour seen).
   key *= 1.5; col *= 1.5;
-#endif
-#ifdef FUZZY
   // The pale rim. Seen edge-on, a pile shows the light that met one fibre and left again: hardly dyed, so every
   // outline carries a halo that is the dye washed toward white, whichever way it faces (measured on the reference:
   // twice the body's brightness just inside the outline, gone by the time the surface faces the eye).
   float NoV = clamp(dot(f.n, V), 0.0, 1.0);
   vec3 halo = (0.2 + 0.6 * mix(sqrt(f.alb), vec3(1.0), 0.4)) * pow(1.0 - NoV, 2.4) * exp(-0.8 * cover) * f.rim;
   col += halo * (uSky * (1.6 + 1.0 * dot(f.n, uUp)) + uBackCol * (0.8 + 0.8 * dot(f.n, uBack)) + uKeyCol * 0.5 * lampWrap(dot(f.n, uKey), 0.98)) * mix(0.6, 1.0, occ);
-#endif
   return col;
 }
 // embroidery: satin thread, glossy along its length (f.dir)
@@ -877,15 +845,9 @@ void main() {
     if (t > tf) break;
   }
   if (seen) {    // the studio's shadow on the key light, and the creases: once per pixel, where the fur's surface is
-#ifdef FUZZY
     float sh = mix(1.0, mix(0.4, 1.0, softShadow(sp + sn * (lift + 0.012), uKey, 2.0)), smoothstep(-0.75, -0.2, dot(sn, uKey)));   // (fur lets light through; the lamp is large)
     vec3 ao = occludeBy(calcAO(sp - sn * depth, sn), 0.85 * Cp / max(max3(Cp), 1e-4));   // (a crease keeps its colour)
     Cp = Cp * mix(vec3(0.45), vec3(1.0), ao) + Ck * sh * mix(vec3(0.65), vec3(1.0), ao);
-#else
-    float sh = mix(1.0, mix(0.4, 1.0, softShadow(sp + sn * (lift + 0.012), uKey, 3.0)), smoothstep(-0.1, 0.25, dot(sn, uKey)));   // (fur lets light through)
-    float ao = calcAO(sp - sn * depth, sn);
-    Cp = Cp * mix(0.6, 1.0, ao) + Ck * sh * mix(0.75, 1.0, ao);
-#endif
     if (A > 0.985) { Cp /= A; A = 1.0; }
   }
 #ifdef FUZZY

@@ -214,10 +214,9 @@ To change how a pile looks, change its row in `PILES`; to add a pile material, a
 On the software renderer plush costs about 70 ms a frame at 68 px on a 2x screen, cotton 74, bouclé 80, elastane 22,
 sugar 42 and clay 28 (docs/MATERIALS.md).
 
-**The light.** The make-your-own mascots stand in natural light: one large soft lamp to the side, an overcast sky,
+**The light.** Every mascot, Bloom included, stands in natural light: one large soft lamp to the side, an overcast sky,
 the light the page sends back up, and a rim (the constants are set in `applyTheme` in `engine.ts`; the functions
-are `lampWrap`, `skyIrr` and `occludeBy` in `shaders.ts`, and `lampOn` in the library for materials). Bloom keeps
-his own studio lamps.
+are `lampWrap`, `skyIrr` and `occludeBy` in `shaders.ts`, and `lampOn` in the library for materials).
 
 ### How a material is written
 
