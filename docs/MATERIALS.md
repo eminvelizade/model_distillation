@@ -46,12 +46,17 @@ of it unmistakable, and how it is drawn here. How the renderer is put together i
    what every size gets, and the strands are sized to show from about 130 px up.
 2. **Detail smaller than a pixel becomes its average, never noise.** Every fine pattern fades toward its mean tone
    and height as it shrinks (`resolved()` in the library, the `lod` of `fibres()` in the pile), and sooner where the
-   surface turns away from the eye (`resolvedOn()`), so small mascots are clean and nothing shimmers.
+   surface turns away from the eye (`resolvedOn()`). What is left is real texture a pixel or two across, as in the
+   reference, and it moves with the body: between two frames half a degree of turn apart, a 68 px mascot on a 2x
+   screen changes by 3 % of its local brightness in plush and 10 % in bouclé, which is about the grain's own
+   strength. Fading the strands sooner removed that and the reference's grain with it (7 % fell to under 3 %), so it
+   was not done. How it looks in motion on a real screen was not checked: every picture here is a still.
 
 ## The light
 
 The make-your-own mascots stand in natural light: the look of a soft toy by a large window, on a pale table. (Bloom
-keeps the studio he was matched to a photograph under, and is pixel for pixel as he was.)
+keeps the studio he was matched to a photograph under, and is pixel for pixel as he was: checked against a render
+from before this work.)
 
 | | light theme | dark theme |
 |---|---|---|

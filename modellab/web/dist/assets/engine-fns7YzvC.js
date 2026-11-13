@@ -1,4 +1,4 @@
-import{g as tn}from"./index-CiPK-cLp.js";/**
+import{g as tn}from"./index-CRDXdTMS.js";/**
  * @license
  * Copyright 2010-2024 Three.js Authors
  * SPDX-License-Identifier: MIT
@@ -4779,7 +4779,7 @@ float furM(vec3 p, out Fur f) {
     f.root = TWIST * (s - lay * reach * hc * (0.4 + 0.6 * hc));
     f.dir = normalize(n * len + lay * reach * (0.4 + 1.2 * hc));
     f.top = 0.3 + 0.3 * lock + 0.34 * snoise(s * 11.0 + 5.0, 0.0);
-    f.fine = 105.0; f.gloss = 0.8;
+    f.fine = 105.0; f.gloss = 0.8; f.rim = 0.3;   // (long fibres stand edge-on to the eye everywhere: a full rim would wash the tuft white)
     f.alb = mix(fur.rgb * 0.9, mix(fur.rgb, vec3(1.0), 0.35), smoothstep(0.55, 1.0, hc / max(f.top, 0.05)));
     return d;
   }
@@ -4958,6 +4958,11 @@ vec3 shadePlastic(vec3 n, vec3 V, vec3 base, float rough, float ao, float shK) {
 // nothing shimmers.
 const float FUR_OPACITY = 1.5;                  // how much of the light a fibre's width of fibre stops
 const float PILE_OPACITY = 2.8;                 // ...and a strand of a short pile, which is a clump of fibres
+#ifdef FUZZY
+float stops(Fur f) { return f.kind < 2.5 ? PILE_OPACITY : FUR_OPACITY; }
+#else
+float stops(Fur f) { return FUR_OPACITY; }   // (Bloom's long fur)
+#endif
 #ifdef FUZZY
 const vec3 FUR_SHADE = vec3(1.0);               // (a dyed pile takes its own colour in the shade, deeper)
 const vec3 FUR_FLOOR = vec3(1.0);
@@ -5150,7 +5155,7 @@ void main() {
         col = shadeFur(p, f, f.top + f.under, V, key);
         if (f.ink > 0.0) { vec3 k2; col = mix(col, shadeThread(p, f, V, k2), f.ink); key = mix(key, k2, f.ink); }
       } else {
-        a = 1.0 - exp(-c * ds * f.fine * (f.kind < 2.5 ? PILE_OPACITY : FUR_OPACITY));
+        a = 1.0 - exp(-c * ds * f.fine * stops(f));
         if (!seen || (1.0 - A) * a > 0.02) col = shadeFur(p, f, max(f.top - f.h, 0.0) + f.under, V, key);   // (a faint fibre takes the light of the one before)
       }
       float A1 = A + (1.0 - A) * a;
@@ -5272,7 +5277,7 @@ void main() {
       float a = 1.0;
       if (fabric) col = shadeFur(p, f, f.top + f.under, V, key);
       else {
-        a = 1.0 - exp(-c * ds * f.fine * (f.kind < 2.5 ? PILE_OPACITY : FUR_OPACITY));
+        a = 1.0 - exp(-c * ds * f.fine * stops(f));
         if (!seen || (1.0 - A) * a > 0.02) col = shadeFur(p, f, max(f.top - f.h, 0.0) + f.under, V, key);   // (a faint fibre takes the light of the one before)
       }
       float A1 = A + (1.0 - A) * a;
