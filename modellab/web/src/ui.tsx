@@ -255,7 +255,7 @@ export function Segmented<T extends string>({ options, value, onChange, small, c
       {thumb && <span aria-hidden className="absolute bottom-0.5 top-0.5 rounded-lg bg-surface shadow-soft ring-1 ring-line/70 transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)]"
         style={{ left: thumb.left, width: thumb.width }} />}
       {options.map((o) => (
-        <button key={o.value} data-seg={o.value} onClick={() => onChange(o.value)}
+        <button key={o.value} type="button" data-seg={o.value} onClick={() => onChange(o.value)}
           className={cx("relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg font-medium transition-colors duration-200 [&_svg]:h-3.5 [&_svg]:w-3.5",
             small ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-[13px]",
             value === o.value ? "text-fg" : "text-muted hover:text-fg", !thumb && value === o.value && "bg-surface shadow-soft")}>

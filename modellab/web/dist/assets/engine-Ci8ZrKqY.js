@@ -1,4 +1,4 @@
-import{g as tn}from"./index-8I41KN_E.js";/**
+import{g as tn}from"./index-D5EBKiHn.js";/**
  * @license
  * Copyright 2010-2024 Three.js Authors
  * SPDX-License-Identifier: MIT
