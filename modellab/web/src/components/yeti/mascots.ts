@@ -40,9 +40,8 @@ export function useMascot(): { kind: MascotKind; name: string; look: AgentLook }
 
 // ---------------------------------------------------------------- make your own
 /** What a make-your-own mascot is made of. Plush, cotton and boucle are pile, drawn as a volume of fibres (thick combed
- *  strands, a short brushed nap, curls); elastane, sugar and clay are surfaces, each with its own shader in
- *  mascot/materials/. */
-export type Material = "plush" | "cotton" | "boucle" | "elastane" | "sugar" | "clay";
+ *  strands, a short brushed nap, curls); clay is a surface, with its own shader in mascot/materials/. */
+export type Material = "plush" | "cotton" | "boucle" | "clay";
 
 /** A mascot the user put together: a body in a material and a colour, with eyes, and glasses or an extra if they
  *  like. Drawn by the same renderer (mascot/looks.ts turns it into parts). */
@@ -62,7 +61,7 @@ export const COLOURS: Record<string, string> = {
 };
 export const LOOK_OPTIONS = {
   shape: [["pom", "Pom"], ["bean", "Bean"], ["drop", "Drop"], ["gumdrop", "Gumdrop"], ["cub", "Cub"], ["frog", "Frog"], ["tofu", "Tofu"], ["kitten", "Kitten"]],
-  material: [["plush", "Plush"], ["cotton", "Cotton"], ["boucle", "Bouclé"], ["elastane", "Elastane"], ["sugar", "Sugar"], ["clay", "Clay"]],
+  material: [["plush", "Plush"], ["cotton", "Cotton"], ["boucle", "Bouclé"], ["clay", "Clay"]],
   colour: [["ice", "Ice"], ["sky", "Sky"], ["teal", "Teal"], ["mint", "Mint"], ["lime", "Lime"], ["sun", "Sun"], ["tangerine", "Tangerine"],
     ["coral", "Coral"], ["cherry", "Cherry"], ["cobalt", "Cobalt"], ["snow", "Snow"], ["ink", "Ink"]],
   eyes: [["bean", "Bean"], ["round", "Round"], ["bead", "Bead"], ["googly", "Googly"], ["sparkle", "Sparkle"], ["smile", "Smile"]],

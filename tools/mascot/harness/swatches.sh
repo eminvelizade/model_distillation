@@ -5,7 +5,7 @@
 set -u
 H="$(cd "$(dirname "$0")" && pwd)"; OUT="$H/../../../modellab/web/src/components/yeti/stills/materials"; TMP="$(mktemp -d)"
 mkdir -p "$OUT"
-for m in plush cotton boucle elastane sugar clay; do
+for m in plush cotton boucle clay; do
   look="[{\"shape\":\"pom\",\"material\":\"$m\",\"colour\":\"sky\",\"eyes\":\"bean\",\"glasses\":\"none\",\"extra\":\"none\"}]"
   q=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$look")
   (cd "$H" && timeout 200 node shot.cjs "$TMP/$m.png" "looks=$q&size=128&noeyes=1&general=1&zoom=1.04" --scale 2) > "$TMP/log" 2>&1

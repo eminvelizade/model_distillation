@@ -166,7 +166,7 @@ export type Built = {
    *  the same order share it, and so share a program. null: a part it can't write out, so the look stays on the
    *  program that reads any parts. */
   glsl: { cloth: string; solid: string } | null;
-  /** whether the body is a bare surface (elastane, sugar, clay: plush, cotton and boucle are pile), and whether it wears anything with a pile */
+  /** whether the body is a bare surface (clay: plush, cotton and boucle are pile), and whether it wears anything with a pile */
   bare: boolean; pile: boolean;
   /** the solid parts for this moment: eyes (open, blinking, smiling or asleep, glancing gx, gy), then the fixed ones */
   solids: (mode: number, open: number, gx: number, gy: number) => Part[];
@@ -203,7 +203,7 @@ export function build(look: Look): Built {
   const eyes = [eyeAt(-1), eyeAt(1)];
   // how far behind the pile's surface an eye's centre sits (less in a material whose surface stands up in relief, so
   // its loops or crystals don't close over the eyes)
-  const sink = (kind === "googly" ? 0.045 : 0.03) - (look.material === "sugar" ? 0.03 : 0);
+  const sink = kind === "googly" ? 0.045 : 0.03;
 
   // ---- glasses: two rings in front of the eyes, a bridge, and arms that run round the sides of the head
   if (look.glasses !== "none" && !B.onBumps) {

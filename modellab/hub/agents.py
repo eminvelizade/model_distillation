@@ -50,12 +50,10 @@ EXTRAS = {"none": None, "headphones": "headphones", "beanie": "a knitted beanie 
 MATERIALS = {"plush": "a small {colour} plush {shape} with a short, soft pile",
              "cotton": "a small {colour} {shape} in soft brushed cotton",
              "boucle": "a small {colour} {shape} in curly, nubby boucle wool",
-             "elastane": "a small {colour} {shape} in sleek stretch fabric with a satin sheen",
-             "sugar": "a small {colour} jelly {shape} coated in sparkling sugar",
              "clay": "a small {shape} modelled in {colour} clay, fingerprints and all"}
 DEFAULT_LOOK = {"base": "bloom"}
 RETIRED = ("mochi", "bop", "twinkle", "pip", "rime")   # built-in mascots that were removed: a look that names one is Bloom
-RETIRED_MATERIALS = ("ice", "glass", "chrome", "ceramic")   # materials that were removed: a look made of one is plush
+RETIRED_MATERIALS = ("ice", "glass", "chrome", "ceramic", "elastane", "sugar")   # materials that were removed: a look made of one is plush
 
 
 def clean_look(look) -> dict:

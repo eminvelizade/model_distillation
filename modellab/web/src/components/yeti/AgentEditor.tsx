@@ -6,13 +6,11 @@ import { AgentLook, COLOURS, DEFAULT_LOOK, isBuiltIn, Look, LOOK_OPTIONS, MASCOT
 import boucle from "./stills/materials/boucle.webp";
 import clay from "./stills/materials/clay.webp";
 import cotton from "./stills/materials/cotton.webp";
-import elastane from "./stills/materials/elastane.webp";
 import plush from "./stills/materials/plush.webp";
-import sugar from "./stills/materials/sugar.webp";
 import Yeti from "./Yeti";
 
 // a small sample of each material (a plain ball, rendered by tools/mascot/harness/swatches.sh)
-const SAMPLE: Record<Material, string> = { plush, cotton, boucle, elastane, sugar, clay };
+const SAMPLE: Record<Material, string> = { plush, cotton, boucle, clay };
 
 // An agent's name, role and look. The look is Bloom (the built-in mascot) or one put together here: a shape in a
 // material and a colour, with eyes, and glasses or an extra if you like. The preview is the real thing, drawn live.
@@ -126,7 +124,7 @@ export default function AgentEditor({ agent, canDelete, onClose }: { agent: Agen
               </div>
               <div>
                 <div className="mb-1.5 text-xs font-medium text-muted">Material</div>
-                <div className="grid grid-cols-6 gap-1.5" role="radiogroup" aria-label="Material">
+                <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Material">
                   {LOOK_OPTIONS.material.map(([k, label]) => (
                     <button key={k} type="button" role="radio" aria-checked={(own.material ?? "plush") === k} onClick={() => { change({ material: k }); hop(); }}
                       className={cx("flex flex-col items-center gap-0.5 rounded-xl px-1 pb-1.5 pt-1.5 text-2xs font-medium transition",

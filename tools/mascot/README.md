@@ -4,7 +4,7 @@ Each of ModelLab's agents has a mascot. It is either Bloom or one the user put t
 
 - **Bloom** (everyone's first agent): a fluffy white cub with real fur, modelled on a photo of a plush.
 - **Make your own:** a shape (pom, bean, drop, gumdrop, cub, frog, tofu, kitten) in a material (plush, cotton,
-  bouclé, elastane, sugar, clay) and one of twelve colours, with eyes (bean, round,
+  bouclé, clay) and one of twelve colours, with eyes (bean, round,
   bead, googly, sparkle, smile), glasses (round, shades) and an extra (headphones, beanie, sprout, antenna, scarf,
   cap, tuft). See [Make your own](#make-your-own) and [Materials](#materials) below.
 
@@ -118,7 +118,7 @@ A make-your-own mascot is short, soft and bright: a body in a material and a pur
 and at most a pair of glasses and one extra. Plush, the first material, is the one OpenAI's Dots made familiar:
 their press picture is the reference for its texture, which was measured and matched (see
 [docs/MATERIALS.md](../../docs/MATERIALS.md)). The characters here are our own, and none of OpenAI's images are in
-this repository. All six materials are [below](#materials).
+this repository. All four materials are [below](#materials).
 
 - **Plush.** A short plush pile lies in small patches, each combed its own way, a few strands side by
   side. It is drawn with Bloom's fur renderer (`FUR`), with a pile of 0.05 units instead of Bloom's long one:
@@ -183,9 +183,9 @@ this repository. All six materials are [below](#materials).
 
 ## Materials
 
-![The six materials](../../docs/screenshots/hub_23_materials.png)
+![The four materials](../../docs/screenshots/hub_23_materials.png)
 
-Six, in two families (ice, glass, chrome and glazed ceramic were tried and removed: the mascots are soft things).
+Four, in two families (ice, glass, chrome, glazed ceramic, elastane and sugar were tried and removed).
 What each real material is, what makes a picture of it unmistakable and how it is drawn is in
 [docs/MATERIALS.md](../../docs/MATERIALS.md), with the measurements against the reference and the light.
 
@@ -203,16 +203,14 @@ differ only in the numbers in `PILES` in `engine.ts`, which reach the shader as 
 To change how a pile looks, change its row in `PILES`; to add a pile material, add a row, a depth in `NAP` in
 `looks.ts`, and the key (see below).
 
-**Surfaces: elastane, sugar, clay.** Each is a shader of its own:
+**A surface: clay.** A surface material is a shader of its own:
 
 | material | what makes it | real relief |
 |---|---|---|
-| elastane | a lustre laid along the fibres, so highlights are long bands round the body; deep colour; sewn seams | no |
-| sugar | clear bricks of sugar and fine dust over a jelly that light gets into; faces and grains that flash | yes |
 | clay | smooth and waxy with a satin highlight; lumps and thumb dents in its outline; fingerprints one over another | yes |
 
-On the software renderer plush costs about 70 ms a frame at 68 px on a 2x screen, cotton 74, bouclé 80, elastane 22,
-sugar 42 and clay 28 (docs/MATERIALS.md).
+On the software renderer plush costs about 70 ms a frame at 68 px on a 2x screen, cotton 74, bouclé 80 and
+clay 28 (docs/MATERIALS.md).
 
 **The light.** Every mascot, Bloom included, stands in natural light: one large soft lamp to the side, an overcast sky,
 the light the page sends back up, and a rim (the constants are set in `applyTheme` in `engine.ts`; the functions
