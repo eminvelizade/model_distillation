@@ -502,7 +502,9 @@ def _step(c: sa.Connection, row: dict, owner: dict, spec: dict, state: dict) -> 
         state["configs"] = configs_for(spec, fitting)
         last = len(rung_schedule(spec)) - 1
         msg = _start_round(c, owner, spec, sid, state, state["configs"], 0 if len(state["configs"]) > 1 else last)
-        return {"phase": "rungs", "message": f"{len(fitting)} of {len(state['archs'])} fit the budget; {msg}"}
+        untimed = sum(a.get("latency_ms") is None for a in state["archs"])
+        skipped = f" ({untimed} could not be timed)" if untimed else ""
+        return {"phase": "rungs", "message": f"{len(fitting)} of {len(state['archs'])} fit the budget{skipped}; {msg}"}
 
     if phase == "rungs":
         rnd = state["rounds"][-1]
