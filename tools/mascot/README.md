@@ -115,9 +115,10 @@ a real object, a photo of a plush. His body is pile, drawn by `MAIN_PILE`.
 ## Make your own
 
 A make-your-own mascot is short, soft and bright: a body in a material and a pure dye, glossy black eyes, no mouth,
-and at most a pair of glasses and one extra. Plush, the first material, is the one OpenAI's dots made familiar
-(their press image was the reference for it, and only for it: the characters here are our own, and none of OpenAI's
-images are in this repository). The other five materials are [below](#materials).
+and at most a pair of glasses and one extra. Plush, the first material, is the one OpenAI's Dots made familiar:
+their press picture is the reference for its texture, which was measured and matched (see
+[docs/MATERIALS.md](../../docs/MATERIALS.md)). The characters here are our own, and none of OpenAI's images are in
+this repository. All six materials are [below](#materials).
 
 - **Plush.** A short plush pile lies in small patches, each combed its own way, a few strands side by
   side. It is drawn with Bloom's fur renderer (`FUR`), with a pile of 0.05 units instead of Bloom's long one:
@@ -184,40 +185,59 @@ images are in this repository). The other five materials are [below](#materials)
 
 ![The six materials](../../docs/screenshots/hub_23_materials.png)
 
-Cotton, bouclé, elastane, sugar and clay (ice, glass, chrome and glazed ceramic were tried and removed: the mascots
-are soft things, and the materials are now all cloth-like or soft). What each real material is, what makes a
-picture of it unmistakable and how its shader gets that is in [docs/MATERIALS.md](../../docs/MATERIALS.md); each
-shader also says it in a comment at its top. In short:
+Six, in two families (ice, glass, chrome and glazed ceramic were tried and removed: the mascots are soft things).
+What each real material is, what makes a picture of it unmistakable and how it is drawn is in
+[docs/MATERIALS.md](../../docs/MATERIALS.md), with the measurements against the reference and the light.
+
+**Pile: plush, cotton, bouclé.** A coat of strands drawn as a volume (`furM`, `fibres`, `shadeFur` and `MAIN_PILE`
+in `shaders.ts`). One piece of code builds the strands of all three, and of what a mascot wears; the materials
+differ only in the numbers in `PILES` in `engine.ts`, which reach the shader as `uPileA` to `uPileD`:
+
+| material | its strands |
+|---|---|
+| plush | thick (0.010 units), combed one way with clumps leaning up to 37 degrees off it, tips leaning together |
+| cotton | fine (0.005), short, lying every way, in a coat under half as deep: a brushed nap |
+| bouclé | thickest (0.015), bent into C and S curls, lying every way, in nubs of different heights |
+| knits (hat, scarf) and poms | a small curly wool; fluffy like plush |
+
+To change how a pile looks, change its row in `PILES`; to add a pile material, add a row, a depth in `NAP` in
+`looks.ts`, and the key (see below).
+
+**Surfaces: elastane, sugar, clay.** Each is a shader of its own:
 
 | material | what makes it | real relief |
 |---|---|---|
-| cotton | a matte lobe that stays bright to the edge, a pale haze, no highlight; a knit, a seam | no |
-| bouclé | curls of yarn (curves where warped wavy surfaces cut the body), thick and thin, frayed, with more yarn under them | yes |
 | elastane | a lustre laid along the fibres, so highlights are long bands round the body; deep colour; sewn seams | no |
 | sugar | clear bricks of sugar and fine dust over a jelly that light gets into; faces and grains that flash | yes |
-| clay | matte and a little waxy; dents, fingerprints one over another | no |
+| clay | smooth and waxy with a satin highlight; lumps and thumb dents in its outline; fingerprints one over another | yes |
 
-On the software renderer each costs less per frame than plush (see docs/MATERIALS.md).
+On the software renderer plush costs about 70 ms a frame at 68 px on a 2x screen, cotton 74, bouclé 80, elastane 22,
+sugar 42 and clay 28 (docs/MATERIALS.md).
+
+**The light.** The make-your-own mascots stand in natural light: one large soft lamp to the side, an overcast sky,
+the light the page sends back up, and a rim (the constants are set in `applyTheme` in `engine.ts`; the functions
+are `lampWrap`, `skyIrr` and `occludeBy` in `shaders.ts`, and `lampOn` in the library for materials). Bloom keeps
+his own studio lamps.
 
 ### How a material is written
 
-A material is one file in `mascot/materials/`. `_lib.glsl` in that folder is the contract and the toolbox; read it
-first. In short:
+A surface material is one file in `mascot/materials/`. `_lib.glsl` in that folder is the contract and the toolbox;
+read it first. In short:
 
 - It defines `vec4 matShade(vec3 p, vec3 n, vec3 v, float t)`: the light going to the eye from the point `p` of the
   body (smooth normal `n`, eye direction `v`), and how much of the page behind it hides.
 - A header (between `//#header` and `//#body`) may define `MAT_DISPLACE`, with a function `matDisplace(p)`: then
   the body's surface really stands that far above its smooth shape, in outline and shadow. It runs at every step
   near the body, so it has to be cheap.
-- The library gives it: a studio to mirror (`studio`, `studioAt`: panels as bright as the lamps), lobes (GGX,
-  anisotropic GGX, Fresnel, the split-sum fit), a plain surface to start from (`surf`, `shade`), questions about
-  the scene (`occlusion`, `shadowKey`, `curvature`, `thickness`), rays through the body and back at it (`through`,
-  `meets`), grains that flash (`glints`), fading by pixel size and by slant (`resolved`, `resolvedOn`, `noiseAt`), and compositing a clear
-  thing over the page (`seeThrough`).
+- The library gives it: the lamps as large lamps (`lampOn`, `lampWrap`), the sky and the floor (`skyIrr`),
+  occlusion that keeps the dye's colour (`occludeBy`), a studio to mirror (`studio`, `studioAt`: panels as bright
+  as the lamps), lobes (GGX, anisotropic GGX, the split-sum fit), a plain surface to start from (`surf`, `shade`),
+  questions about the scene (`occlusion`, `shadowKey`, `curvature`, `thickness`), grains that flash (`glints`),
+  and fading by pixel size and by slant (`resolved`, `resolvedOn`, `noiseAt`).
 - Two rules: at the sizes the app draws, a material is its light, not its texture, so get the lobes right first;
   and detail smaller than a pixel must become its average, never noise.
 
-To add one: write the file, import it in `materials.ts`, add its key to `Material` and `LOOK_OPTIONS.material` in
+To add a surface: write the file, import it in `materials.ts`, add its key to `Material` and `LOOK_OPTIONS.material` in
 `mascots.ts` and to `MATERIALS` in `modellab/hub/agents.py` (with the words Claude is told), and run
 `swatches.sh` for its sample. A test checks the web app's and the hub's lists agree.
 

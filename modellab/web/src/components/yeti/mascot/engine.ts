@@ -394,9 +394,10 @@ export class View {
       set(U.uSky, 0.9, 0.94, 1.0, 0.4);
       set(U.uFillCol, 1.0, 0.97, 0.93, dark ? 0.12 : 0.06);
       set(U.uBackCol, 0.95, 0.97, 1.0, dark ? 0.75 : 0.3);    // on a dark page the rim is a lamp; on a light one the page itself does most of it
-      // the page returns 0.6 of what falls on it (the key at its angle, and the sky); a dark page is taken as a dark grey floor
+      // a light page returns 0.6 of what falls on it (the key at its angle, and the sky); a dark page is taken as a table that returns about 0.3
       const fr = dark ? 0.28 : page.r, fg = dark ? 0.3 : page.g, fb = dark ? 0.33 : page.b;   // (a dark page: a table that is dark to the eye, not to the light)
-      (U.uGround.value as THREE.Color).setRGB(0.6 * fr * (0.45 + 0.36), 0.6 * fg * (0.434 + 0.376), 0.6 * fb * (0.412 + 0.4));
+      const back = dark ? 1 : 0.6;
+      (U.uGround.value as THREE.Color).setRGB(back * fr * (0.45 + 0.36), back * fg * (0.434 + 0.376), back * fb * (0.412 + 0.4));
     }
     this.dirty = true;
     kick();

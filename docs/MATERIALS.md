@@ -1,84 +1,160 @@
 # The materials: what each one is, and how it is drawn
 
-A make-your-own mascot can be made of six materials, all cloth-like or soft. Plush is the pile the mascots started
-with (see [tools/mascot/README.md](../tools/mascot/README.md)); the other five are surfaces, each with a shader of its own in
-`modellab/web/src/components/yeti/mascot/materials/`. This page says, for each, what the real thing is, what makes a
-picture of it unmistakable, and how the shader gets that. How a material is written and tested is in the mascot
-guide.
+A make-your-own mascot can be made of six materials, all cloth-like or soft. Three are **pile**: plush, cotton and
+bouclé are a coat of real strands, drawn as a volume of fibres, and differ only in how the strands are sized and how
+they lie. Three are **surfaces**: elastane, sugar and clay, each with a shader of its own in
+`modellab/web/src/components/yeti/mascot/materials/`. This page says what each real thing is, what makes a picture
+of it unmistakable, and how it is drawn here. How the renderer is put together is in the
+[mascot guide](../tools/mascot/README.md).
 
 ![The six materials](screenshots/hub_23_materials.png)
 
 ## What this rests on
 
-- **Cotton was researched in depth.** A research agent read 22 sources and wrote a long report; its findings are
-  the cotton section below, and its sources are listed at the end with what was read and what was only seen in
-  search results.
-- **The others were not researched in depth.** The same research was planned for each and was cut off by a
-  usage limit before it produced reports. Afterwards the facts and figures in their sections, and the papers they
-  name, were looked up one at a time: a web search each, reading the excerpts it returned, not the papers
-  themselves. Each section says what that confirmed. How each material looks, and the choices in the shaders, rest
-  on general knowledge and were not checked against anything.
-- **Every material was judged by eye** on the same set of renders (large, close up, at 68 and 28 px, on the light
-  and the dark theme, in white, charcoal, red and mint, with a hat, a scarf and glasses, and from three angles).
-  Nothing was compared against photographs side by side.
-- **AI viewers were then asked what each was made of, twice.** Each viewer was a fresh instance of the model with
-  no knowledge of the work, shown a plain ball of each material (the whole ball and a close-up) with no names.
-  They are not people, and a person may judge differently. Two looked before the fixes listed under
-  [What the blind checks changed](#what-the-blind-checks-changed) and two others after. There were ten materials then (ice, glass,
-  chrome and glazed ceramic have since been removed). Both times one named seven of the ten and the other eight, and both times they rated the pictures 4 to 7 out of 10 as photographs. So the
-  materials are told apart, most are recognised, and none passes for a photograph. The changes made after the
-  second look (to bouclé, elastane and clay) have not been looked at blind.
+- **The texture was measured from the reference**, not judged by eye. The owner's reference for "the perfect woolly,
+  grainy, cottony texture" is OpenAI's Dots characters. Their pictures were studied as a forensic exercise (strand
+  sizes, how the strands lie, the grain's size, contrast and colour, the pale rim, the outline, tones, shadows, the
+  light), and our plush was rendered at the same resolution, measured with the same code, and changed until the
+  numbers agreed. The study is [research/reference-texture.md](research/reference-texture.md). None of OpenAI's
+  pictures are in this repository. Who made the characters, and with what, was not found.
+- **The light was researched** ([research/natural-light.md](research/natural-light.md)): about 27 sources read, and
+  a rig fitted numerically to the reference's tones. The rig in the code is that report's "rig E".
+- **Cotton was researched in depth earlier** ([research/cotton.md](research/cotton.md), 22 sources): cloth
+  reflectance and knit structure. Cotton is now a brushed nap, so that report's knit is no longer drawn; what it says
+  about cloth's light (no highlight, an even tone, a pale haze) still holds.
+- **Bouclé, elastane, sugar and clay were not researched in depth.** Research agents were started for them twice
+  and cut off by a usage limit both times before they wrote anything. What they have is a handful of single web
+  searches whose excerpts were read (listed under Sources): how bouclé yarn is made, what elastane is, sugar's grain
+  sizes, what Plasticine is made of, how far apart a fingerprint's ridges are, what makers of clay shaders
+  recommend, and one sherpa fleece's pile height (7 mm). Everything else about them is general knowledge.
+- **Two of the three reports were finished from interrupted work.** The researchers of the reference texture and of
+  the light were cut off (a machine restart, then the usage limit); their reports were completed from their saved
+  logs, scripts and measurements by a second agent. Each report says which of its numbers were re-computed.
+- **Checked blind only in their old form.** AI viewers twice named seven or eight of ten materials and rated them 4
+  to 7 out of 10 as photographs (see the end of this page). That was before this rework. The new plush, cotton,
+  bouclé and clay, and the new light, have not been looked at blind, and nothing was compared with a photograph of
+  a real toy.
 - **Speed was measured on a software renderer only** (no graphics card). There, one frame of a plain ball at 68 px
-  on a 2x screen takes about 56 ms in plush and 25 to 44 ms in the other materials with a look's own program; about
-  157 ms and 70 to 131 ms with the shared one.
+  on a 2x screen takes about 70 ms in plush, 74 in cotton, 80 in bouclé, 22 in elastane, 42 in sugar and 28 in clay
+  with a look's own program (plush was 57 ms before the rework). Readings vary by about a tenth from run to run.
 
 ## Two rules that apply to all of them
 
-1. **At the sizes the app draws, a material is its light, not its texture.** A mascot is a 20 cm toy drawn 28 to
-   400 px tall, so one pixel covers 0.3 mm at best and several millimetres usually. A weave, a crystal or a
-   fingerprint is smaller than a pixel almost everywhere. What survives is where the highlights sit and how wide
-   they are, how the outline and the shadow line look, and whether light gets through. Each shader gets those right
-   first; the fine structure is for the editor's preview and anything larger.
+1. **A material is its light first, its texture second, but the texture has to survive.** A mascot is a 20 cm toy
+   drawn 28 to 400 px tall. The reference shows what that should look like: at 175 px per body its strands are 1 to
+   2 px wide and still read as fibres, and its pale rim survives down to a 24 px body. So the rim and the tones are
+   what every size gets, and the strands are sized to show from about 130 px up.
 2. **Detail smaller than a pixel becomes its average, never noise.** Every fine pattern fades toward its mean tone
-   and height as it shrinks (`resolved()` in the library), and sooner where the surface turns away from the eye and
-   a pixel covers more of it (`resolvedOn()`). So small mascots are clean, nothing shimmers when they move, and a
-   regular pattern does not turn to rings toward the outline.
+   and height as it shrinks (`resolved()` in the library, the `lod` of `fibres()` in the pile), and sooner where the
+   surface turns away from the eye (`resolvedOn()`), so small mascots are clean and nothing shimmers.
 
-## Cotton
+## The light
 
-*Smooth knitted cotton, as on a well-made soft toy.*
+The make-your-own mascots stand in natural light: the look of a soft toy by a large window, on a pale table. (Bloom
+keeps the studio he was matched to a photograph under, and is pixel for pixel as he was.)
 
-- **What tells it apart** (from the research, in order): no highlight at all, so the brightest part of the body is
-  still the dye's colour; an even, flat tone across the lit side (a matte cloth ball keeps about three quarters of
-  its brightness out to the edge, where a smooth matte ball keeps a fifth); a crisp outline with no halo, which is
-  the main difference from plush; shade that gets deeper in colour, not greyer; seams.
-- **Close up:** a jersey knit (columns of small V-shaped stitches) that is never ruler-straight, thick and thin
-  places in the yarn, an uneven dye, a seam where two panels meet.
-- **How:** a rough matte lobe (Oren and Nayar's, in Fujii's form) under a weak pale haze (Estevez and Kulla's
-  "Charlie" sheen), and nothing mirrored. The knit is drawn at three times life size so it shows a little sooner, and its
-  columns lean and wander. White cotton is 0.93 of white, as bleached cloth is never paper white.
-- **Left out:** stray fibres along the outline, lint on dark dyes, puckered hand-sewn seams (the report recommends
-  all three).
+| | light theme | dark theme |
+|---|---|---|
+| key | one large lamp (45 degrees in angular radius), 50 degrees to the left and 40 up; warm white (about 6,150 K), 0.70 | the same |
+| sky | overcast: three times brighter overhead than at the horizon; cooler (about 7,000 K), 0.40 | the same |
+| floor | the page returns 0.6 of the light that falls on it to whatever faces it, except right under the mascot | a table that is dark to the eye and returns about 0.3 |
+| fill | the room on the far side: 0.06 | 0.12 |
+| rim | from behind and above: 0.30 | 0.75 (on a dark page the rim is a lamp) |
+| exposure, tone curve | 1.0 (1.12 for white); Khronos PBR Neutral, which keeps a dye's hue | the same |
 
-## Bouclé
+What that changes in the picture, in the order it matters:
 
-*Curly, messy looped cloth: teddy fabric.*
+- **The body is modelled from side to side.** Before, a 0.32 fill and a 0.58 back lamp cancelled the key: left and
+  right differed by a few percent and all the contrast was a fall toward a dark base. Now the lit side, the middle
+  and the shaded side of a plush frog sit at 0.66, 0.55 and 0.39 (linear), against the reference's 0.68 to 0.76,
+  0.57 and 0.39 to 0.42.
+- **Lamps have a size.** `lampWrap(nl, w)` is what a matte surface gets from a disc-shaped lamp (within 0.01 of the
+  exact integral): the shadow line is a band, not an edge. Materials use it through `lampOn()`.
+- **A sky and a floor.** `skyIrr()` is an overcast dome plus the light the page sends back up, so undersides are
+  not dark on a light page.
+- **Occlusion keeps the dye's colour** (`occludeBy()`, after Jimenez et al. 2016): a crease in a bright dye is the
+  dye, deeper, not grey.
+- **Softer shadows** (the key's shadow is that of a large lamp), and **the shadow on the page** is deeper close to
+  the body and trails off away from the lamp.
+- **No camera effects.** No depth of field, vignette, grain or bloom: a mascot is a cut-out on a flat page.
 
-*Looked up:* how the yarn is made. The rest is from memory.
+The pile sends back less light than a matte surface of the same dye, because its fibres shade one another. Its
+shading is multiplied by 1.5 to make that up, so a pile in the light is its dye's own colour.
 
-- **The real thing:** an effect yarn is fed faster than the core it is wound round, so the extra length buckles
-  into loops, and a third, binder thread holds them. The loops and curls (a few millimetres across: from memory)
-  stand off the cloth every which way.
-- **What tells it apart:** a nubby outline at any size, speckled shading even when small, deep saturated shade
-  between the curls, and softness: no strand has a hard edge.
-- **How:** the curls are real relief, so they are in the outline and shade one another. Where a wavy surface in
-  space (a warped gyroid) cuts the body, the cut is a curve that wanders and closes on itself like a loop of yarn.
-  Three sets of such curves at different scales, one over another, make the tangle (the largest loops are 0.065
-  units across, about twice life size); each strand is a rounded ridge along its curve, thick in places and thin in
-  others, with a frayed edge and the slanting lines of its plies. The lowest set fills the gaps, so there are no
-  dark holes: under yarn there is more yarn. Yarn is full of air, so a strand is shaded by a gentler slope than its true one, and its haze of
-  loose fibres glows by the body's slope rather than as a rim on every strand.
-- **Left out:** single fibres standing off the strands; the ply and twist of the yarn.
+## The pile: plush, cotton and bouclé
+
+A pile is drawn as a volume: rays are marched through a coat of strands and each strand met covers part of the
+pixel, which gives the soft outline and the depth for free (`furM`, `fibres`, `shadeFur` and `MAIN_PILE` in
+`shaders.ts`). The strands are built the same way in all three materials:
+
+- The coat is divided into **clumps** (cells of a wobbly grid with ragged borders, so strands of neighbouring clumps
+  interlock). A clump has a direction it lies in, and its strands lean in toward its middle at their tips.
+- A **strand** is a cell of noise stretched along that direction: thick at the root, tapering to a point, slightly
+  curved, lying over like thatch so that half to two thirds of it shows before the next covers it.
+- Strands differ in **length**, and a few stand clear of the rest: the outline is soft and uneven.
+- A strand is shaded **round**: its middle is paler, its flanks deeper, and finer fibres streak it along its length.
+  So the grain is a change of colour (pale flank over saturated depth), not a brightness wobble.
+- **The pale rim.** Seen edge-on, a pile shows light that met one fibre and left again, hardly dyed. Every outline
+  carries a halo that is the dye washed toward white, on the side away from the lamp as well.
+
+The numbers for each material are `PILES` in `engine.ts`:
+
+| | plush | cotton | bouclé |
+|---|---|---|---|
+| depth of the coat (units; 1 unit is about 13 cm) | 0.056 | 0.026 | 0.060 |
+| clumps across one unit | 15 | 34 | 13 |
+| strand width (units) | 0.010 | 0.005 | 0.015 |
+| a strand's length against its width | 2.8 | 1.8 | 3.0 |
+| how the clumps lie | combed one way, up to about 37 degrees off it | any way at all | any way at all |
+| how much a strand bends | a little | hardly | strongly: C and S curls |
+| whole clumps of different heights (nubs) | no | no | yes |
+| pale rim | full | a little over half | nine tenths |
+
+### Plush
+
+*Thick strands combed one way: the reference's own fabric.*
+
+Measured on a lime frog drawn at the reference's resolution (a body 175 px wide), with the same code as the
+reference:
+
+| | reference | plush before | plush now |
+|---|---|---|---|
+| grain: speckle against the local mean (RMS) | 7 % lit, 10 % in shade | 2 % | 6 to 7 % |
+| bright specks against dark ones, in red, green, blue | 1.31, 1.24, 1.98 | 1.15, 1.14, 1.47 | 1.33, 1.25, 2.4 to 2.8 |
+| grain size: correlation at 1 and 2 px | 0.56, 0.11 | 0.76, 0.38 | 0.31 to 0.38, 0.02 to 0.09 |
+| strands | 0.035 to 0.06 units showing, one drifting lay | a grid of patches, each combed its own way | 0.03 to 0.05 units, one drifting lay |
+| pale rim: brightness 2 px inside the outline against the interior | 1.2 on green (2.0 on pink and blue) | 0.87: darker at the edge | 1.24 on the lit side, 1.67 on the far side |
+| top, middle, and each side (linear light) | lit 0.68 to 0.76, middle 0.57, shaded side 0.39 to 0.42 | 0.75, 0.67, and 0.61 on both sides: flat | lit side 0.66, middle 0.55, shaded side 0.39 |
+
+Where it still differs: our grain is a little finer than the reference's (whose picture is slightly blurred), our
+lit side is 4 to 13 % darker, and the outline's softness was not matched by measurement (the reference rises over
+3.4 px; ours is soft to the eye, with stray strands the reference does not show).
+
+### Cotton
+
+*A short brushed nap, as on flannel or the inside of a sweatshirt: what "cottony" looks like.*
+
+Fine fibres half a strand's width of plush, lying every way, in a coat under half as deep. At mascot sizes single
+fibres are smaller than a pixel, so cotton reads as a smooth, even, matte body with a soft edge and a narrow pale
+rim, and shows its fibres only in the editor's preview and larger. It is told from plush by its tight outline and
+its fine, even grain. (Cotton was a smooth knitted surface before: the blind viewers faulted it for stitches too
+regular to be real, no fuzz and a razor-clean outline.)
+
+### Bouclé
+
+*Curly, nubby looped wool: teddy fabric. The beret in the reference is this kind of cloth.*
+
+- **The real thing:** an effect yarn is fed faster than the core it is wound round, so the extra length buckles into
+  loops, and a binder thread holds them. One sherpa fleece on sale lists a 7 mm pile, which is 0.053 units here.
+- **How:** the thickest strands of the three, bent strongly so they curl into C and S shapes, in clumps that lie any
+  way at all and stand at different heights, which makes the nubs. (Bouclé was relief on a surface before: both
+  blind viewers took it for a scouring pad, because its strands merged like poured goo.)
+- **Left out:** closed loops; the ply and twist of the yarn.
+
+### What the mascot wears
+
+Hats, scarves and poms are pile too and use the same strand code: knitted things are a small curly wool (like
+bouclé at a little over half the scale), a pom is fluffy like plush.
 
 ## Elastane
 
@@ -97,7 +173,7 @@ the cloth looks is from memory.
   between two rows of needle holes, with the cloth puckering a little beside it. The seams show on a large mascot
   and fade out on a small one. At the very top, where "up the
   body" has no meaning, the streak fades out.
-- **Left out:** the paler tone of cloth stretched thin over a bulge; folds.
+- **Left out:** the paler tone of cloth stretched thin over a bulge; folds. Not changed in this round beyond the light.
 
 ## Sugar
 
@@ -119,7 +195,10 @@ head-on; the shader uses 4.8 %). The rest is from memory.
   over (after Wang and Bowles' sparkle), with a few larger ones that still show on a small mascot. The jelly lets
   light creep past the shadow line and glows where a lamp is behind a thin part (thickness is measured through the
   body, as in Barré-Brisebois and Bouchard's translucency).
-- **Left out:** light bending inside a crystal; a real crystal shows several faces, where these show one.
+- **Since the blind checks:** the crystals come in more sizes (a few large among many small), and the jelly between
+  them lies in their shade.
+- **Left out:** light bending inside a crystal; a real crystal shows several faces, where these show one; crystals
+  piled on crystals.
 
 ## Clay
 
@@ -129,69 +208,50 @@ head-on; the shader uses 4.8 %). The rest is from memory.
 dries) and how far apart the ridges of a fingerprint are (0.41 to 0.46 mm on average, so the shader's are about
 three and a half times life size). How it looks is from memory.
 
-- **The real thing:** matte with a faint waxy sheen. Light gets a little way into it.
-- **What tells it apart:** a soft shadow line that glows slightly, only a broad dull highlight, and a surface that
-  was plainly touched: lumps, dents, fingerprints.
-- **How:** a matte surface with light wrapping past the shadow line and a little coming back from inside in a
-  deeper tone. The surface is uneven at two scales (dents from fingers), with fingerprints in patches where a thumb
-  pressed: ridges 0.012 units apart (about three and a half times life size) that arc across the patch and waver, in two sets
-  of patches so that one print lies over another. A pressed patch is a little smoother than the rest.
-- **Left out:** seams smoothed over where parts were joined; lint, pits and tool marks (tried: they read as flecks
-  and stains stuck on).
+- **The real thing:** smooth and a little waxy, with a broad satin highlight. Light gets a short way into it. Makers
+  of clay shaders agree on the recipe: a fairly smooth surface (a roughness of about 0.3 for plasticine in one
+  shader's notes, against 0.6 for terracotta), little scattering (more washes the fingerprints out), relief that is
+  subtle, and fingerprints that are subtler still.
+- **What tells it apart:** nothing a hand shapes is even. The outline stands in and out by a couple of millimetres,
+  the side light catches thumb dents, and there is only the one broad highlight.
+- **How:** real relief (broad lumps and thumb dents, 0.028 units at most), so the unevenness is in the outline and
+  in the shadows; a satin surface with light wrapping a little past the shadow line and a little coming back from
+  inside in a deeper tone; and fingerprints in patches where a thumb pressed: ridges 0.012 units apart (about three
+  and a half times life size) that arc across the patch and waver, in two sets of patches so that one print lies
+  over another. A pressed patch is a little smoother than the rest.
+- **Left out:** seams where parts were joined; tool marks and lint (tried: they read as stains); the way the surface
+  "boils" from frame to frame in stop motion.
 
-## What the blind checks changed
+## The blind checks, and what they were of
 
-Each viewer also said what gave each material away as drawn and not photographed.
+Before this rework there were ten materials, and AI viewers (fresh instances of the model, shown a plain ball of
+each with no names; they are not people) were twice asked what each was made of. Both times one viewer named seven
+of the ten and the other eight, and they rated the pictures 4 to 7 out of 10 as photographs. Of the six materials
+kept: plush, cotton, sugar and clay were named by both viewers both times; elastane was taken for satin or rubber;
+bouclé was taken for a scouring pad. What they faulted, and what has changed since:
 
-**First look** (at ten materials: the four since removed are left out below). One viewer named seven of the ten and
-the other eight. Of the six kept, one viewer took bouclé for a scouring pad and one took elastane for satin. Scores
-out of 10 as a photograph for these six: 4 or 5.
-
-| What they said | What was changed |
+| What they said | Now |
 |---|---|
-| Rings (moiré) on cotton, elastane and clay toward the outline | fine patterns now fade by the slant of the surface as well as by size (`resolvedOn()`); the knit is a little larger |
-| Sugar crystals were all one size, opaque and without sparkle | more crystals, clear with white edges, tilted so that some flash; fine dust between them (they are still much of a size) |
-| Bouclé strands looked melted | steeper strands with less noise on them, and deeper shade between (this made it worse: see below) |
-| Clay: the flecks looked stuck on, and the one fingerprint was a set of perfect rings | the lint, pits and tool mark were removed; the prints are finer, arc across their patch, waver, and lie over one another |
+| Plush: tufts look like flat brush strokes in close-up, no depth between them, colour very even | rebuilt as strands shaded round, with deeper colour between them (see Plush) |
+| Cotton: stitches too regular, no fuzz, razor-clean outline | now a brushed nap of fibres |
+| Bouclé: strands melt into each other; a scouring pad | now curled strands of pile |
+| Clay: a plain matte ball from a distance; no waxy sheen | real lumps and dents in the outline; a satin highlight |
+| Sugar: crystals of one size, flat, no shade between them | more sizes, shade between them; still one face per crystal |
+| Elastane: could be satin or rubber | seams and a knit were added before this round; not changed since |
 
-**Second look**, by two other viewers, after those changes. Again one named seven and the other eight.
+**None of the new versions has been looked at blind.**
 
-| Material | Named, first look | Named, second look | Score, first | Score, second |
-|---|---|---|---|---|
-| Cotton | both | both | 4, 4 | 5, 5 |
-| Sugar | both | both | 5, 5 | 5, 6 |
-| Clay | both | both | 4, 5 | 4, 4 |
-| Elastane | one (the other: satin) | neither (rubber, satin) | 4, 4 | 4, 4 |
-| Bouclé | one (the other: a scouring pad) | neither (a scouring pad, twice) | 5, 4 | 4, 4 |
-| Plush (not changed) | both | both | 5, 5 | 5, 6 |
+## What mirrors see
 
-Plush was not changed between the two looks and its scores moved by a point at most, so a point is noise. By that
-measure the changes may have helped cotton and sugar a little and did nothing for clay, elastane or bouclé. Bouclé
-and elastane got worse at being named.
-
-**After the second look**, the two that neither viewer named were reworked, and clay's prints once more:
-
-- Bouclé (said: thick strands that melt into each other, dark gaps, a sculpted look): loops two thirds the size and
-  denser, yarn that is thick and thin with a frayed edge and visible plies, shallower relief, softer shading, and no
-  dark holes.
-- Elastane (said: it could be rubber or satin, the lines are ruled, nothing says cloth): sewn seams, and a knit of
-  small loops in place of ruled lines.
-- Clay (said: the prints are too large and too regular): finer ridges that arc and waver.
-
-**These last changes have not been looked at blind.** They were judged by the author's eye only.
-
-Not changed at all: plush tufts look flat in close-up, and cotton has no seam in view and its stitches are too
-regular.
-
-## The studio
-
-Shiny materials need something to mirror. `studio()` in the library is a photographer's set laid out round the
-mascot: a large soft key panel in front and above, a tall fill panel to the side, a strip behind for the rim, walls
-that are brightest low down and darker on the camera's side, and the floor, which is the page (so it is bright on
-the light theme and dark on the dark one). Each panel is as bright as the light its lamp gives a matte surface, so a
-mirror and a matte surface agree about the lighting. Rough surfaces see the same set, blurred.
+Sugar's crystals, elastane's lustre, clay's sheen and the glossy eyes need something to mirror. `studio()` in the
+library is the same light as panels: the large key, the fill, the rim, walls, and the floor, which is the page with
+the mascot's own shadow on it. Each panel is as bright as the light its lamp gives a matte surface, so a mirror and
+a matte surface agree about the lighting.
 
 ## Sources
+
+The reference texture and the light have their own source lists, in [research/reference-texture.md](research/reference-texture.md)
+and [research/natural-light.md](research/natural-light.md).
 
 **Read for the cotton research** (22 of the 57 the report lists; the rest were seen only in search results or are
 from memory, and are in the report, not here):
@@ -216,13 +276,16 @@ from memory, and are in the report, not here):
 18. "Hairiness in yarn". https://textile-technology.blogspot.com/2008/04/hairiness-in-yarn.html
 19. Wikipedia, "Mercerised cotton" and "Poplin". https://en.wikipedia.org/wiki/Mercerised_cotton, https://en.wikipedia.org/wiki/Poplin
 
-**Looked up for the other eight** (one web search each; the excerpts it returned were read, the pages were not
-opened in full):
+**Looked up** for bouclé, elastane, sugar and clay, and to check the papers named on this page (one web search
+each; the excerpts it returned were read, the pages were not opened in full):
 
 - Bouclé: a study of bouclé yarn's structure. https://link.springer.com/article/10.1007/s40034-021-00225-1 and https://nopr.niscpr.res.in/bitstream/123456789/39053/1/IJFTR%2041%284%29%20367-372.pdf
 - Elastane: CAMEO, "Spandex fiber". https://cameo.mfa.org/wiki/Spandex_fiber and https://www.fibersource.com/f-tutor/spandex/
 - Sugar: grain sizes. https://bobsredmill.com/articles/what-is-sanding-sugar Sucrose's index (a secondary source). https://wiki.kidzsearch.com/wiki/Sucrose
 - Clay: Wikipedia, "Plasticine". https://en.wikipedia.org/wiki/Plasticine Ridge-to-ridge distance in fingerprints (a 1989 study, from its abstract). https://ojp.gov/ncjrs/virtual-library/abstracts/analysis-ridge-ridge-distance-fingerprints
+- Clay shaders: a Blender forum thread and a clay-shader product's manual (roughness, subtle displacement and prints, low scatter). https://blenderartists.org/t/clay-material-tips/1524904 and https://superhivemarket.com/products/kin-klei/docs
+- Sherpa fleece: one retailer's listing with a 7 mm pile. https://fabricwholesaledirect.com/products/sherpa-faux-fur-fleece-fabric
+- Sucrose: monoclinic, habit varies (NIST entry). https://webbook.nist.gov/chemistry/silmarils-solids-hrf-drf/docs/META.MIR.PUR.Sucrose.SLD.FLUKA.PNNL409565.pdf
 - Wang and Bowles, "A Robust and Flexible Real-Time Sparkle Effect", 2016. https://diglib.eg.org/bitstream/handle/10.2312/sre20161209/049-054.pdf
 - Karis, "Physically Based Shading on Mobile", 2014 (the fit to the split sum that `envBRDF` uses; its constants match). https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 - Barré-Brisebois and Bouchard, "Approximating Translucency for a Fast, Cheap and Convincing Subsurface Scattering Look", 2011. https://ea.com/frostbite/news/approximating-translucency-for-a-fast-cheap-and-convincing-subsurface-scattering-look
