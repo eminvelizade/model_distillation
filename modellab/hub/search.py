@@ -450,7 +450,8 @@ def _untimed_reason(state: dict, run: dict) -> str:
     status = run["status"]
     if status == "done":
         return "the timing run finished but reported no latency (is the machine's agent up to date?)"
-    return f"the timing run {status}" + (f": {line}" if line else " (no error reported: see the run's log)")
+    said = {"failed": "failed", "interrupted": "was interrupted"}.get(status, f"ended as {status}")
+    return f"the timing run {said}" + (f": {line}" if line else " (no error reported: see the timing run's log)")
 
 
 def _over_budget(spec: dict, state: dict, extra_s: float = 0.0) -> bool:
