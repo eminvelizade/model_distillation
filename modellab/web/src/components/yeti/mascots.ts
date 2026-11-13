@@ -39,8 +39,9 @@ export function useMascot(): { kind: MascotKind; name: string; look: AgentLook }
 }
 
 // ---------------------------------------------------------------- make your own
-/** What a make-your-own mascot is made of. Plush is the short curly pile (drawn as a volume of fibres); the others are
- *  surfaces, each with its own shader in mascot/materials/. */
+/** What a make-your-own mascot is made of. Plush, cotton and boucle are pile, drawn as a volume of fibres (thick combed
+ *  strands, a short brushed nap, curls); elastane, sugar and clay are surfaces, each with its own shader in
+ *  mascot/materials/. */
 export type Material = "plush" | "cotton" | "boucle" | "elastane" | "sugar" | "clay";
 
 /** A mascot the user put together: a body in a material and a colour, with eyes, and glasses or an extra if they

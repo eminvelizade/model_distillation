@@ -115,7 +115,7 @@ float panel(vec3 dir, vec3 c, vec3 ax, vec3 ay, vec2 hs, float blur) {
   vec2 dim = hs / sqrt(hs * hs + soft * soft);
   return (1.0 - smoothstep(-soft, soft, d)) * dim.x * dim.y;
 }
-const vec2 KEY_HALF = vec2(0.46, 0.34), FILL_HALF = vec2(0.13, 0.48), BACK_HALF = vec2(0.5, 0.11);
+const vec2 KEY_HALF = vec2(0.72, 0.62), FILL_HALF = vec2(0.13, 0.48), BACK_HALF = vec2(0.5, 0.2);
 Studio studio(vec3 dir, float blur) {
   Studio s;
   float up = dot(dir, uUp), day = 1.0 - uDark;
@@ -133,8 +133,8 @@ Studio studio(vec3 dir, float blur) {
 }
 // the mascot's own soft shadow on the floor at x (the floor's x, z): 0 none .. about 0.4 right under it
 float floorShadow(vec2 x) {
-  float r = length((x - vec2(0.0, 0.04)) / max(uShadow, vec2(1e-3)));
-  return r < 0.5 ? mix(0.4, 0.14, r * 2.0) : 0.14 * (1.0 - clamp(r * 2.0 - 1.0, 0.0, 1.0));
+  float r = length((x - vec2(0.12, 0.04)) / max(uShadow * 1.12, vec2(1e-3)));
+  return r < 0.5 ? mix(0.5, 0.2, r * 2.0) : 0.2 * (1.0 - clamp(r * 2.0 - 1.0, 0.0, 1.0));
 }
 // the studio as seen from p: the floor near the mascot carries its shadow
 Studio studioAt(vec3 p, vec3 dir, float blur) {
@@ -149,6 +149,10 @@ vec3 studioLight(Studio s, float open, float lit) { return s.room * open + s.key
 // the three lamps as plain directions, for lobes too broad to show a lamp's shape: 0 key, 1 fill, 2 back
 vec3 lampDir(int i) { return i == 0 ? uKey : i == 1 ? uFill : uBack; }
 vec3 lampCol(int i) { return i == 0 ? uKeyCol : i == 1 ? uFillCol : uBackCol; }
+float lampW(int i) { return i == 0 ? KEY_W : i == 1 ? FILL_W : BACK_W; }                 // how large each is (see lampWrap)
+// what a matte surface facing n gets from lamp i, against what it gets facing the lamp (the lamps are large: the
+// shadow line is a band). Use this where you would write max(dot(n, l), 0).
+float lampOn(int i, vec3 n) { return lampWrap(dot(n, lampDir(i)), lampW(i)); }
 float D_GGX(float NoH, float a) { float a2 = a * a; float d = NoH * NoH * (a2 - 1.0) + 1.0; return a2 / (PI * d * d); }
 float V_GGX(float NoV, float NoL, float a) {   // Smith, height-correlated (already holds the 1 / (4 NoV NoL))
   float a2 = a * a;
@@ -192,9 +196,9 @@ vec3 shade(vec3 p, vec3 n, vec3 v, Surf s, float open, float lit) {
   float NoV = max(dot(n, v), 1e-3);
   vec3 f0 = mix(vec3(s.f0), s.base, s.metal);
   // matte part: the dome and the floor, and the three lamps (the key's shadow falls on the key only)
-  vec3 E = skyIrr(n) * open;
+  vec3 E = skyIrr(n) * occludeBy(open, s.base);
   for (int i = 0; i < 3; i++) {
-    float w = clamp((dot(n, lampDir(i)) + s.wrap) / (1.0 + s.wrap), 0.0, 1.0);
+    float w = lampWrap(dot(n, lampDir(i)), min(lampW(i) + s.wrap, 1.0));
     E += lampCol(i) * w * (i == 0 ? lit : mix(0.6, 1.0, open));
   }
   vec3 col = s.base * (1.0 - s.metal) * E;

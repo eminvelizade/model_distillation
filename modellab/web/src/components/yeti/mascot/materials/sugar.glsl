@@ -22,7 +22,7 @@ float sugarGrid(vec3 g, out float id) {
     vec3 o = g - (c + 0.15 + 0.7 * hs);                    // from the crystal's middle
     vec3 ax = normalize(hash33(c + 17.0) - 0.5);
     vec3 q = o - 2.0 * ax * dot(ax, o);                    // its own frame (a mirror image of a brick is a brick, turned)
-    vec3 b = abs(q) - (0.19 + 0.27 * hs.yzx);              // a little brick, each its own size
+    vec3 b = abs(q) - (0.13 + 0.36 * hs.yzx * hs.yzx);     // a little brick, each its own size: a few big ones among many small
     float k = clamp(-max(b.x, max(b.y, b.z)) / 0.1, 0.0, 1.0);   // flat faces, sharp sides
     if (k > best) { best = k; id = hs.x; }
   }
@@ -55,17 +55,18 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   float crystal = smoothstep(0.03, 0.3, h);                  // on one of the big crystals
   float sugar = mix(0.55, max(crystal, 0.4), seen);          // how much of this pixel is sugar: between the big crystals lies fine dust
   N = normalize(N + (fract(id * vec3(17.3, 29.7, 43.1)) - 0.5) * 1.3 * crystal * seen);   // each crystal lies its own way: its top face too
-  float open = occlusion(p, n), lit = shadowKey(p, n, 5.0);
+  float open = occlusion(p, n), lit = shadowKey(p, n, 2.5);
+  float nook = mix(1.0, occlusionRelief(p, n), seen);        // how open this spot is among the crystals round it: jelly between crystals is in their shade
   float NoV = max(dot(n, v), 1e-3);
 
   // the jelly: light gets into it
   vec3 dye = uMain;
   vec3 jelly = pow(dye, vec3(1.35)) * 0.92;
   vec3 E = skyIrr(n) * open;
-  for (int i = 0; i < 3; i++) E += lampCol(i) * clamp((dot(n, lampDir(i)) + 0.45) / 1.45, 0.0, 1.0) * (i == 0 ? mix(0.35, 1.0, lit) : mix(0.6, 1.0, open));
+  for (int i = 0; i < 3; i++) E += lampCol(i) * lampWrap(dot(n, lampDir(i)), min(lampW(i) + 0.25, 1.0)) * (i == 0 ? mix(0.35, 1.0, lit) : mix(0.6, 1.0, open));
   float through = thickness(p - n * 0.03, uBack, 1.4);        // how much jelly lies between here and the lamp behind
   vec3 glow = uBackCol * exp(-through * vec3(3.0) / max(sqrt(dye), vec3(0.15))) * 1.5;   // (the dye's own colour gets through best)
-  vec3 jel = jelly * E + sqrt(jelly) * glow;
+  vec3 jel = jelly * E * mix(0.55, 1.0, nook) + sqrt(jelly) * glow;
   jel += studioLight(studioAt(p, reflect(-v, n), 0.1), specOcclusion(NoV, open, 0.3), lit) * envBRDF(vec3(0.04), 0.32, NoV) * 0.7;   // moist
 
   // the sugar: a crystal is clear, so the jelly shows through its faces. Its edges and its flaws scatter light
@@ -73,7 +74,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   float edge = crystal * (1.0 - smoothstep(0.45, 0.95, h));   // the bevel round a crystal's top face
   float cloudy = mix(0.5, mix(0.62, clamp(0.1 + 0.42 * id * id + 0.6 * edge, 0.0, 1.0), crystal), seen);   // (dust is cloudier: more faces)
   vec3 Es = skyIrr(N) * open;
-  for (int i = 0; i < 3; i++) Es += lampCol(i) * max(dot(N, lampDir(i)), 0.0) * (i == 0 ? lit : mix(0.6, 1.0, open));
+  for (int i = 0; i < 3; i++) Es += lampCol(i) * lampOn(i, N) * (i == 0 ? lit : mix(0.6, 1.0, open));
   vec3 sug = mix(jel * 1.1, vec3(0.95) * Es, cloudy);
   float NoVf = max(dot(N, v), 1e-3);
   sug += studioLight(studioAt(p, reflect(-v, N), 0.02), open, lit) * F_Schlick1(0.048, NoVf) * seen * crystal * 4.0;   // a face mirroring the studio

@@ -18,6 +18,10 @@ export const PILE = [0.05, 0.034, 0.09, 0.28];   // how far each fur stands off 
 /** A body in a surface material has no pile. It is grown by this much instead, so its surface lies where the pile's
  *  tips would be: every look keeps its size, and its eyes and what it wears sit as they do on plush. */
 export const SKIN = 0.045;
+/** How deep the body's pile is in the materials that are pile (the others are bare surfaces). A body in a short pile
+ *  is grown to make up the difference, so every material is the same size on screen. */
+export const NAP: Record<string, number> = { plush: 0.056, cotton: 0.026, boucle: 0.06 };
+const NAP_FULL = 0.05;
 export const MAX_FUR = 8, MAX_SOLID = 22;
 export const PARKED = -99;   // the height a solid part that isn't showing is put at (an eye's unused places)
 
@@ -162,7 +166,7 @@ export type Built = {
    *  the same order share it, and so share a program. null: a part it can't write out, so the look stays on the
    *  program that reads any parts. */
   glsl: { cloth: string; solid: string } | null;
-  /** whether the body is a bare surface (a material other than plush), and whether it wears anything with a pile */
+  /** whether the body is a bare surface (elastane, sugar, clay: plush, cotton and boucle are pile), and whether it wears anything with a pile */
   bare: boolean; pile: boolean;
   /** the solid parts for this moment: eyes (open, blinking, smiling or asleep, glancing gx, gy), then the fixed ones */
   solids: (mode: number, open: number, gx: number, gy: number) => Part[];
@@ -199,7 +203,7 @@ export function build(look: Look): Built {
   const eyes = [eyeAt(-1), eyeAt(1)];
   // how far behind the pile's surface an eye's centre sits (less in a material whose surface stands up in relief, so
   // its loops or crystals don't close over the eyes)
-  const sink = (kind === "googly" ? 0.045 : 0.03) - (look.material === "boucle" || look.material === "sugar" ? 0.03 : 0);
+  const sink = (kind === "googly" ? 0.045 : 0.03) - (look.material === "sugar" ? 0.03 : 0);
 
   // ---- glasses: two rings in front of the eyes, a bridge, and arms that run round the sides of the head
   if (look.glasses !== "none" && !B.onBumps) {
@@ -322,12 +326,13 @@ export function build(look: Look): Built {
   const dist = Math.hypot(camY - mid, camZ), fov = (2 * Math.atan((Math.max(H * 0.5 + 0.08, w * 0.98) * 1.14) / dist) * 180) / Math.PI;
   // A body in a surface material: no pile, grown by SKIN instead; and the knit layers over it (a hat, a scarf) start
   // from its new surface, so they are no thicker than on plush.
-  const bare = (look.material ?? "plush") !== "plush", room = bare ? 0.07 : 0;
-  if (bare) fur.forEach((q, i) => {
-    if ((q.fur ?? 0) === 0) fur[i] = q.ty === 0 ? { ...q, r: [q.r[0] + SKIN, q.r[1] + SKIN, q.r[2] + SKIN] }
-      : q.ty === 1 ? { ...q, r: [q.r[0] + SKIN, q.r[1] + SKIN, q.r[2]] }
-      : { ...q, b: [q.b![0] + SKIN, q.b![1] + SKIN, q.b![2] + SKIN], r: [q.r[0] + SKIN, q.r[1], q.r[2]] };
-    else if (q.ty === 6) fur[i] = { ...q, r: [Math.max(q.r[0] - SKIN, 0.006), q.r[1], q.r[2]] };
+  const nap = NAP[look.material ?? "plush"], bare = nap === undefined, room = bare ? 0.07 : 0.03;
+  const more = bare ? SKIN : Math.max(NAP_FULL - nap, 0);   // (a short pile: the body is grown by what the pile lacks)
+  if (more > 0) fur.forEach((q, i) => {
+    if ((q.fur ?? 0) === 0) fur[i] = q.ty === 0 ? { ...q, r: [q.r[0] + more, q.r[1] + more, q.r[2] + more] }
+      : q.ty === 1 ? { ...q, r: [q.r[0] + more, q.r[1] + more, q.r[2]] }
+      : { ...q, b: [q.b![0] + more, q.b![1] + more, q.b![2] + more], r: [q.r[0] + more, q.r[1], q.r[2]] };
+    else if (q.ty === 6) fur[i] = { ...q, r: [Math.max(q.r[0] - more, 0.006), q.r[1], q.r[2]] };
   });
   return {
     glsl: glslFor(fur, solids(0, 1, 0, 0)), bare, pile: fur.some((q) => (q.fur ?? 0) !== 0),

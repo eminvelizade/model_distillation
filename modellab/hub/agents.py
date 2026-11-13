@@ -48,8 +48,8 @@ EXTRAS = {"none": None, "headphones": "headphones", "beanie": "a knitted beanie 
           "antenna": "a small antenna", "scarf": "a scarf", "cap": "a graduation cap", "tuft": "a tuft of long fur on top"}
 # what a make-your-own agent is made of, in words ({colour} and {shape} are filled in)
 MATERIALS = {"plush": "a small {colour} plush {shape} with a short, soft pile",
-             "cotton": "a small {colour} {shape} sewn from smooth cotton",
-             "boucle": "a small {colour} {shape} in curly, nubby boucle cloth",
+             "cotton": "a small {colour} {shape} in soft brushed cotton",
+             "boucle": "a small {colour} {shape} in curly, nubby boucle wool",
              "elastane": "a small {colour} {shape} in sleek stretch fabric with a satin sheen",
              "sugar": "a small {colour} jelly {shape} coated in sparkling sugar",
              "clay": "a small {shape} modelled in {colour} clay, fingerprints and all"}

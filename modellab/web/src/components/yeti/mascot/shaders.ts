@@ -65,6 +65,9 @@ struct Fur {
   float gloss;  // how silky
   float ink;    // embroidery thread on the fabric below (then dir is the way the thread runs)
   float kind;   // which fabric this is: 0 the body, 1 knit, 2 a pom, 3 a tuft (in between where two meet)
+  float taper;  // how fast a strand narrows toward its tip
+  float ridge;  // how round a strand is shaded (0: flat)
+  float rim;    // the strength of the pale rim (see shadeFur)
 };
 
 const float PI = 3.14159265;
@@ -180,7 +183,7 @@ float furM(vec3 p, out Fur f) {
   // the body: a long white pile that lies down, combed away from the crown
   float len = PILE, lean = 2.0, stray = 0.3, curl = 0.04, grain = 17.0, body = 1.0, tufty = 0.0;
   vec3 pull = normalize(vec3(p.x, 0.0, p.z) * 0.3 - vec3(0.0, 1.0, 0.0)), alb = uMain, tip = uMain;
-  f.fine = 80.0; f.gloss = 0.5;
+  f.fine = 80.0; f.gloss = 0.5; f.taper = 0.2; f.ridge = 0.0; f.rim = 1.0;
   // the ears: blue all over, in the same fur as the tuft, cut shorter
   for (int i = 0; i < 2; i++) {
     vec3 q = uEarM[i] * (p - uEarC[i]);
@@ -294,10 +297,15 @@ export const FUZZY = /* glsl */ `
 // (./looks.ts builds them from the chosen shape, eyes, glasses and extra, and places each on the body by marching
 // this same distance field). The body is the same pile in plush; with MAT defined it is a bare surface that the
 // chosen material shades (./materials), standing up to MAT_DISPLACE above its smooth shape if the material has relief.
+// the body's pile (plush, cotton, boucle: the engine fills these in from the look's material)
+uniform vec4 uPileA;   // x: how deep it is; y: clumps across one unit; z: strands across one unit; w: how long a strand is against its width
+uniform vec4 uPileB;   // x: how far off the lay a clump may lean (radians; 3.14: any way at all); y: how hard a clump's strands lean together; z, w: how far and how often a strand bends
+uniform vec4 uPileC;   // x: how far a strand lies over (in depths); y: the shortest strand (a share of the depth); z: how much longer the rest are; w: the few that stand clear
+uniform vec4 uPileD;   // x: how much whole clumps differ in height; y: how round a strand is shaded; z: the pale rim's strength; w: how fast a strand tapers
 #ifdef MAT
-const float BODY_PILE = 0.0;
+const float BODY_PILE = 0.0;   // (a bare body: its material shades it)
 #else
-const float BODY_PILE = 0.05;
+#define BODY_PILE uPileA.x
 #endif
 #ifdef MAT_DISPLACE
 float matDisplace(vec3 p);   // how far the material's surface stands above the smooth body at p (0 .. MAT_DISPLACE)
@@ -452,6 +460,7 @@ float furM(vec3 p, out Fur f) {
   float len; vec4 fur; vec3 n;
   float d = clothN(p, len, fur, n);
   f.len = len; f.h = d / max(len, 1e-4); f.gap = d - len; f.ink = 0.0; f.top = 0.0; f.under = 0.0;
+  f.taper = 0.2; f.ridge = 0.0; f.rim = 1.0;
   f.n = n; f.root = p; f.dir = n; f.alb = fur.rgb; f.fine = 62.0; f.gloss = 0.3; f.kind = fur.a;
   if (f.gap > 0.0 && d > max(0.01, 0.3 * gPix)) return d;   // (not in the pile: the march only needs the distances)
 #ifdef MAT
@@ -474,27 +483,45 @@ float furM(vec3 p, out Fur f) {
     f.alb = mix(fur.rgb * 0.9, mix(fur.rgb, vec3(1.0), 0.35), smoothstep(0.55, 1.0, hc / max(f.top, 0.05)));
     return d;
   }
-  // which way the pile lies: it turns from whorl to whorl, and each lock a little more
-  // A short plush pile lies in small patches, each combed its own way, a few strands side by side. A patch is a cell of
-  // a wobbly grid; inside it the strands are the noise stretched along the way the patch lies.
-  float knit = step(0.5, kind) * step(kind, 1.5), pom = step(1.5, kind);
-  float grain = mix(25.0, 31.0, knit);
-  vec3 q = TWIST * s * grain;
-  q += 1.5 * (vec3(snoise(q * 0.47 + 3.0, 0.0), snoise(q * 0.47 + 17.0, 0.0), snoise(q * 0.47 + 41.0, 0.0)) - 0.5);   // (the grid wobbles, so patches aren't square)
+  // The short piles: the body's (plush, cotton or boucle, which differ only in the numbers in uPileA..D), and what it
+  // wears (knitted things are a small curly wool, a pom is fluffy). Thick, tapered strands that lie down like thatch
+  // (measured from the reference for plush: each about 0.011 units across with 0.035 to 0.06 of its length showing).
+  // In plush they are all combed roughly one way (the way drifts slowly over the body), each clump leans up to about
+  // thirty degrees off it, and the strands of a clump lean together at their tips, which draws small V shapes. In
+  // cotton (a short brushed nap), boucle and knits (curls) a clump lies any way at all. Strands differ in length, so
+  // the outline is soft.
+  vec4 A = uPileA, B = uPileB, C = uPileC, D = uPileD;
+  if (kind > 1.5) { A = vec4(len, 14.0, 95.0, 2.8); B = vec4(3.14, 3.0, 0.006, 55.0); C = vec4(0.8, 0.5, 0.3, 0.2); D = vec4(0.0, 0.38, 1.0, 0.24); }         // a pom
+  else if (kind > 0.5) { A = vec4(len, 22.0, 120.0, 2.6); B = vec4(3.14, 2.0, 0.011, 110.0); C = vec4(0.5, 0.55, 0.3, 0.08); D = vec4(0.3, 0.5, 0.8, 0.2); }   // knit
+  vec3 lay0 = t1;
+  if (B.x < 3.0) {   // (combed: the way it is combed, which drifts over the body)
+    vec3 comb = vec3(0.55, -0.8, 0.25) + 0.75 * vec3(sin(2.1 * s.y + 1.3 * s.z), sin(1.7 * s.z + 2.3 * s.x + 1.0), sin(1.9 * s.x + 1.1 * s.y + 2.0));
+    lay0 = comb - n * dot(comb, n);
+    lay0 = dot(lay0, lay0) > 1e-4 ? normalize(lay0) : t1;
+  }
+  float CLUMP = A.y;                                         // clumps across one unit
+  vec3 q = TWIST * s * CLUMP;
+  q += 0.55 * vec3(sin(q.y * 1.7 + q.z * 0.9), sin(q.z * 1.3 + q.x * 2.1 + 2.0), sin(q.x * 1.9 + q.y * 1.1 + 4.0));   // (a wobbly grid: clumps aren't square)
+  q += 0.11 * (sin(dot(s, vec3(7.1, 3.3, 5.9)) * CLUMP * 9.0) + sin(dot(s, vec3(-4.3, 8.2, 2.7)) * CLUMP * 11.0));   // (and their borders are ragged: strands of two clumps interlock where they meet)
   vec3 cell = floor(q), hsh = hash33(cell + 0.5);
-  vec3 c0 = (cell + 0.5) * TWIST / grain;                    // the patch's middle (TWIST is a rotation: this undoes it)
-  float ang = 6.2832 * hsh.x, lock = hsh.y;
-  vec3 lay = t1 * cos(ang) + t2 * sin(ang), side = cross(n, lay);
+  vec3 c0 = (cell + 0.5) * TWIST / CLUMP;                    // the clump's middle
+  vec3 side0 = cross(n, lay0);
+  float across = dot(s - c0, side0);
+  float ang = B.x * 2.0 * (hsh.x - 0.5) - B.y * across;      // the clump's own lean, and its strands leaning in toward its middle
+  vec3 lay = lay0 * cos(ang) + side0 * sin(ang), side = cross(n, lay);
   float along = dot(s - c0, lay);
-  float reach = mix(1.25, 0.8, pom) * len * (0.75 + 0.5 * lock);
-  vec3 root = s - lay * reach * hc * (0.4 + 0.6 * hc) - side * 0.0045 * sin(along * 85.0 + hsh.z * 6.2832);   // (strands bend a little)
-  root -= lay * dot(root - c0, lay) * (1.0 - 1.0 / mix(6.5, 3.0, pom));   // stretched along the lay: strands, not grains
+  float reach = C.x * len * (0.8 + 0.4 * hsh.y);             // how far a strand lies over
+  vec3 root = s - lay * reach * hc * (0.4 + 0.6 * hc) - side * B.z * sin(along * B.w + hsh.z * 6.2832);   // (strands curve)
+  root -= lay * dot(root - c0, lay) * (1.0 - 1.0 / A.w);     // stretched along the lay: strands, not grains
   f.root = TWIST * root;
   f.dir = normalize(n * len + lay * reach * (0.4 + 1.2 * hc));
-  f.top = 0.82 + 0.18 * lock;                  // (a sheared pile: its fibres are all about as long)
-  f.fine = mix(175.0, 190.0, knit);
-  f.gloss = 0.08;
-  f.alb = mix(fur.rgb, vec3(1.0), 0.02 * smoothstep(0.35, 1.0, hc / max(f.top, 0.05)));   // (the tips scatter a trace of white light; the dye stays pure)
+  f.fine = A.z;
+  // strands of every length, and a few that stand well clear of the rest: the outline is soft and uneven. (In
+  // boucle and knits whole clumps stand taller or lower: nubs.)
+  float tall = snoise(f.root * 0.45 * A.z + 5.0, 0.0);
+  f.top = (C.y + C.z * tall + C.w * smoothstep(0.66, 0.92, tall)) * (1.0 - D.x * hsh.z);
+  f.gloss = 0.08; f.ridge = D.y; f.rim = D.z; f.taper = D.w;
+  f.alb = mix(fur.rgb, vec3(1.0), 0.035 * smoothstep(0.3, 1.0, hc / max(f.top, 0.05)));  // (a strand's tip scatters a little white light; the dye stays pure)
   return d;
 }
 /*SOLID<*/
@@ -578,17 +605,49 @@ float sheenIBL(float NoV, float r) {   // the fuzz lit by the whole sky (three.j
 }
 float max3(vec3 v) { return max(v.r, max(v.g, v.b)); }
 float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+// ---- the light. The make-your-own mascots stand in natural light: one large soft lamp to one side (the key), an
+// overcast sky, the light the page under them sends back up, a rim from behind, and very little else. (Bloom keeps the
+// studio he was matched to a photograph under: the engine gives him other lamps.)
+// A lamp is large: a disc of angular radius asin(w), seen from the mascot. This is what a matte surface turned nl
+// (a cosine) to its middle gets from it, against what it gets facing it: the shadow line is a band, not an edge.
+// (Within about 0.01 of the exact integral for w up to 0.71.)
+float lampWrap(float nl, float w) { return nl >= w ? nl : nl > -w ? (nl + w) * (nl + w) / (4.0 * w) : 0.0; }
+#ifdef FUZZY
+const float KEY_W = 0.707, FILL_W = 1.0, BACK_W = 0.35;   // each lamp's size (the fill is the whole room on that side)
+// The sky is overcast: three times brighter overhead than at the horizon. The page sends light back up, to whatever
+// faces it, except right where the mascot stands on it.
+vec3 skyIrr(vec3 N) {
+  float c = dot(N, uUp);
+  return uSky * pow(0.5 + 0.5 * c, 1.35) + uGround * (0.5 - 0.5 * c) * (1.0 - 0.95 * exp(-6.0 * (1.0 + c)));
+}
+#else
+const float KEY_W = 0.0, FILL_W = 0.0, BACK_W = 0.0;
 vec3 skyIrr(vec3 N) { return mix(uGround, uSky, dot(N, uUp) * 0.5 + 0.5); }
+#endif
+// Occlusion that knows the surface's colour (Jimenez et al. 2016): light bounces about in a crease, so a bright
+// dye's crease is the dye, deeper, not grey. ao: how open the place is (1 open); alb: its colour.
+vec3 occludeBy(float ao, vec3 alb) {
+  vec3 a = 2.0404 * alb - 0.3324, b = -4.7951 * alb + 0.6417, c = 2.7552 * alb + 0.6903;
+  return max(vec3(ao), ((ao * a + b) * ao + c) * ao);
+}
 
 // ---- the glossy parts (eyes, glasses, headphones): plastic lit by the studio
 vec3 shadePlastic(vec3 n, vec3 V, vec3 base, float rough, float ao, float shK) {
   float nv = max(dot(n, V), 1e-3);
-  vec3 col = base * (skyIrr(n) * ao + uKeyCol * max(dot(n, uKey), 0.0) * shK + uFillCol * max(dot(n, uFill), 0.0));
+  vec3 col = base * (skyIrr(n) * ao + uKeyCol * lampWrap(dot(n, uKey), KEY_W + 1e-3) * shK + uFillCol * lampWrap(dot(n, uFill), FILL_W + 1e-3));
   vec3 R = reflect(-V, n);
   float fres = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
+#ifdef FUZZY
+  float w = mix(0.7, 0.56, rough);                  // the key reflects as a large, soft bright window
+#else
   float w = mix(0.95, 0.82, rough);                 // the softbox reflects as a soft bright window
+#endif
   vec3 refl = mix(uGround, uSky, dot(R, uUp) * 0.5 + 0.5) * 0.6 * ao
+#ifdef FUZZY
+            + uKeyCol * 2.2 * smoothstep(w, w + 0.1 + 0.25 * rough, dot(R, uKey)) * shK
+#else
             + uKeyCol * 3.0 * smoothstep(w, w + 0.04, dot(R, uKey)) * shK
+#endif
             + uBackCol * 1.2 * smoothstep(w, w + 0.05, dot(R, uBack))
             + uFillCol * 1.6 * smoothstep(w + 0.01, w + 0.05, dot(R, uFill));
   return col + refl * fres * mix(1.0, 0.6, rough);
@@ -600,6 +659,7 @@ vec3 shadePlastic(vec3 n, vec3 V, vec3 base, float rough, float ao, float shK) {
 // soft outline, the depth and the locks for free. Where fibres are smaller than a pixel their average is used, so
 // nothing shimmers.
 const float FUR_OPACITY = 1.5;                  // how much of the light a fibre's width of fibre stops
+const float PILE_OPACITY = 2.8;                 // ...and a strand of a short pile, which is a clump of fibres
 #ifdef FUZZY
 const vec3 FUR_SHADE = vec3(1.0);               // (a dyed pile takes its own colour in the shade, deeper)
 const vec3 FUR_FLOOR = vec3(1.0);
@@ -612,30 +672,46 @@ float above(float level) {
   float z = abs(level - 0.5) / 0.18, q = exp(-0.5 * z * z) / (1.64 * z + sqrt(0.76 * z * z + 4.0));
   return level > 0.5 ? q : 1.0 - q;
 }
+#ifdef FUZZY
+float gRidge = 0.5;    // where in its strand the last point asked about lies: 0 on its flank .. 1 along its middle
+float gStreak = 0.5;   // ...and the fine fibres the strand is made of there (0 .. 1)
+#endif
 float fibres(Fur f, float h, float lod) {
   if (h >= 1.0) return 0.0;
   float hs = h / max(f.top, 1e-3);
   // locks of fibres, which end at the lock's own height; and a few single fibres that stand a little clear of them
   float level = hs < 1.0 ? 0.3 + 0.62 * hs * hs : 9.0, wisp = f.top > 0.3 ? 0.9 + 0.25 * max(h - f.top, 0.0) : 9.0;
 #ifdef FUZZY
-  if (f.fine > 120.0) {   // a short curly pile: strands of even thickness that end together, and no stray single fibres (a tuft has both)
-    level = hs < 1.0 ? 0.47 + 0.2 * hs * hs : 9.0;
+  if (f.kind < 2.5) {     // a short pile: dense at the root, tapering to the tip, and no stray single fibres (a tuft has those)
+    level = hs < 1.0 ? 0.4 + f.taper * hs * hs : 9.0;
     wisp = 9.0;
   }
 #endif
   float mean = 1.0 - (1.0 - above(level)) * (1.0 - above(wisp));
   if (lod >= 1.5) return mean;
+#ifdef FUZZY
+  float fine = lod > 0.6 ? 0.5 : snoise(f.root * f.fine * 2.9 + 11.0, max(lod + 1.5, 0.0));   // (the fibres inside a strand: nothing to see once a strand is a pixel wide)
+#else
   float fine = snoise(f.root * f.fine * 2.9 + 11.0, max(lod + 1.5, 0.0));
+#endif
   float n = 0.5 + (0.66 * snoise(f.root * f.fine, max(lod, 0.0)) + 0.34 * fine - 0.5) * 1.3;
+#ifdef FUZZY
+  gRidge = mix(0.5, clamp((n - level) / 0.2, 0.0, 1.0), 1.0 - smoothstep(0.0, 1.5, lod));
+  gStreak = mix(0.5, fine, 1.0 - smoothstep(-1.5, 0.0, lod));
+#endif
   return mix(max(smoothstep(level - 0.09, level + 0.09, n), smoothstep(wisp - 0.03, wisp + 0.03, fine)), mean, smoothstep(0.0, 1.5, lod));
 }
 // one light on a fibre under 'cover' of pile (0: a tip in the open, 1: a root). Direct light thins out with depth,
 // faster when it comes in low; what the pile stops comes back scattered, deeper in colour ('again'). The fibre itself
 // is lit as a thin cylinder: brightest side-on, with a silky highlight (Kajiya & Kay), and it glows when lit from
 // behind (light passes through pale fibres).
-vec3 furLight(vec3 L, vec3 Lc, Fur f, vec3 V, float cover, vec3 again, float sh) {
+vec3 furLight(vec3 L, vec3 Lc, Fur f, vec3 V, float cover, vec3 again, float sh, float lw) {
   float NoL = dot(f.n, L);
+#ifdef FUZZY
+  float wrap = lampWrap(NoL, min(lw + 0.22 * lum(f.alb), 0.98));   // (a lamp of size lw; and the paler the pile, the further round the light gets)
+#else
   float w = 0.45 + 0.4 * lum(f.alb), wrap = clamp((NoL + w) / (1.0 + w), 0.0, 1.0);   // (the paler the pile, the further round the light gets)
+#endif
 #ifdef FUZZY
   float reach = exp(-1.05 * cover / max(0.7 * NoL + 0.3, 0.1));   // (a short pile is open: more light gets down into it)
 #else
@@ -644,23 +720,62 @@ vec3 furLight(vec3 L, vec3 Lc, Fur f, vec3 V, float cover, vec3 again, float sh)
   float TL = dot(f.dir, L), TV = dot(f.dir, V);
   float sL = sqrt(max(1.0 - TL * TL, 0.0)), sV = sqrt(max(1.0 - TV * TV, 0.0));
   vec3 diff = f.alb * mix(again, vec3(1.0), reach) * wrap * mix(1.0, sL, 0.3);
+#ifdef FUZZY
+  float spec = f.kind < 2.5 ? 0.0 : 0.22 * f.gloss * pow(max(sL * sV - TL * TV, 0.0), 40.0) * reach * wrap;   // (a short pile has no silky highlight)
+#else
   float spec = 0.22 * f.gloss * pow(max(sL * sV - TL * TV, 0.0), 40.0) * reach * wrap;
+#endif
   float thru = 0.35 * pow(max(dot(-V, L), 0.0), 3.0) * (1.0 - cover) * (1.0 - cover);
+#ifdef FUZZY
+  // a fibre's own surface sends back a trace of the light undyed, where the light reaches it (the reference's dyes
+  // stay pure across the body: the paleness is in the rim)
+  return Lc * (diff + spec + f.alb * thru + vec3(0.012) * wrap * reach) * sh;
+#else
   return Lc * (diff + spec + f.alb * thru) * sh;
+#endif
 }
 // a fibre's colour: the key light's share comes back in 'key' (the studio's shadow falls on it afterwards, once per
 // pixel), the rest is returned
 vec3 shadeFur(vec3 p, Fur f, float cover, vec3 V, out vec3 key) {
 #ifdef FUZZY
-  vec3 again = 0.92 * pow(f.alb, vec3(0.5));   // (an open pile: the light that comes back out of it is less deep in colour)
+  // A strand is round and made of finer fibres: its middle catches the light and is paler, its flanks turn away and
+  // are deeper, and the fibres streak it along its length.
+  if (f.kind < 2.5) f.alb = mix(f.alb * (1.0 - 0.62 * f.ridge + f.ridge * gRidge) * (0.92 + 0.16 * gStreak), vec3(1.0), 0.015 * gRidge);
+  vec3 again = 0.9 * pow(f.alb, vec3(0.7));    // the light that comes back out of the pile has met the dye again: deeper in colour
 #else
   vec3 again = 0.85 * pow(f.alb, vec3(0.75)) * FUR_SHADE;
 #endif
+#ifdef FUZZY
+  float occ = mix(0.8, 1.0, smoothstep(-0.05, 0.4, p.y + 0.25 * f.n.y));    // the floor hides the underside (the sky's share of it: the page's own light is in skyIrr)
+  vec3 env = skyIrr(f.n);
+#else
   float occ = mix(0.55, 1.0, smoothstep(-0.05, 0.45, p.y + 0.25 * f.n.y));   // the floor hides the underside
   vec3 env = mix(uGround * FUR_FLOOR, uSky, dot(f.n, uUp) * 0.5 + 0.5);
-  key = furLight(uKey, uKeyCol, f, V, cover, again, mix(0.75, 1.0, occ));
-  return f.alb * env * occ * mix(again, vec3(1.0), exp(-1.6 * cover))
-       + furLight(uFill, uFillCol, f, V, cover, again, mix(0.5, 1.0, occ)) + furLight(uBack, uBackCol, f, V, cover, again, occ);
+#endif
+  key = furLight(uKey, uKeyCol, f, V, cover, again, mix(0.75, 1.0, occ), KEY_W);
+#ifdef FUZZY
+  // (the fill is the room on the far side: weak and from everywhere, so it goes in with the sky)
+  vec3 col = f.alb * (env * occ + uFillCol * lampWrap(dot(f.n, uFill), FILL_W) * mix(0.5, 1.0, occ)) * mix(again, vec3(1.0), exp(-1.6 * cover))
+       + furLight(uBack, uBackCol, f, V, cover, again, occ, BACK_W);
+#else
+  vec3 col = f.alb * env * occ * mix(again, vec3(1.0), exp(-1.6 * cover))
+       + furLight(uFill, uFillCol, f, V, cover, again, mix(0.5, 1.0, occ), FILL_W) + furLight(uBack, uBackCol, f, V, cover, again, occ, BACK_W);
+#endif
+#ifdef FUZZY
+  // A pile hides part of itself from the light, so by this reckoning it sends back less than its dye would as a
+  // plain matte surface. Light scattered between the fibres makes most of that up; this stands in for it, so that
+  // a pile in the light is its dye's own colour (and the colour chosen is the colour seen).
+  key *= 1.5; col *= 1.5;
+#endif
+#ifdef FUZZY
+  // The pale rim. Seen edge-on, a pile shows the light that met one fibre and left again: hardly dyed, so every
+  // outline carries a halo that is the dye washed toward white, whichever way it faces (measured on the reference:
+  // twice the body's brightness just inside the outline, gone by the time the surface faces the eye).
+  float NoV = clamp(dot(f.n, V), 0.0, 1.0);
+  vec3 halo = (0.2 + 0.6 * mix(sqrt(f.alb), vec3(1.0), 0.4)) * pow(1.0 - NoV, 2.4) * exp(-0.8 * cover) * f.rim;
+  col += halo * (uSky * (1.6 + 1.0 * dot(f.n, uUp)) + uBackCol * (0.8 + 0.8 * dot(f.n, uBack)) + uKeyCol * 0.5 * lampWrap(dot(f.n, uKey), 0.98)) * mix(0.6, 1.0, occ);
+#endif
+  return col;
 }
 // embroidery: satin thread, glossy along its length (f.dir)
 vec3 shadeThread(vec3 p, Fur f, vec3 V, out vec3 key) {
@@ -740,7 +855,7 @@ void main() {
         col = shadeFur(p, f, f.top + f.under, V, key);
         if (f.ink > 0.0) { vec3 k2; col = mix(col, shadeThread(p, f, V, k2), f.ink); key = mix(key, k2, f.ink); }
       } else {
-        a = 1.0 - exp(-c * ds * f.fine * FUR_OPACITY);
+        a = 1.0 - exp(-c * ds * f.fine * (f.kind < 2.5 ? PILE_OPACITY : FUR_OPACITY));
         if (!seen || (1.0 - A) * a > 0.02) col = shadeFur(p, f, max(f.top - f.h, 0.0) + f.under, V, key);   // (a faint fibre takes the light of the one before)
       }
       float A1 = A + (1.0 - A) * a;
@@ -757,15 +872,21 @@ void main() {
     if (t > tf) break;
   }
   if (seen) {    // the studio's shadow on the key light, and the creases: once per pixel, where the fur's surface is
+#ifdef FUZZY
+    float sh = mix(1.0, mix(0.4, 1.0, softShadow(sp + sn * (lift + 0.012), uKey, 2.0)), smoothstep(-0.75, -0.2, dot(sn, uKey)));   // (fur lets light through; the lamp is large)
+    vec3 ao = occludeBy(calcAO(sp - sn * depth, sn), 0.85 * Cp / max(max3(Cp), 1e-4));   // (a crease keeps its colour)
+    Cp = Cp * mix(vec3(0.45), vec3(1.0), ao) + Ck * sh * mix(vec3(0.65), vec3(1.0), ao);
+#else
     float sh = mix(1.0, mix(0.4, 1.0, softShadow(sp + sn * (lift + 0.012), uKey, 3.0)), smoothstep(-0.1, 0.25, dot(sn, uKey)));   // (fur lets light through)
     float ao = calcAO(sp - sn * depth, sn);
     Cp = Cp * mix(0.6, 1.0, ao) + Ck * sh * mix(0.75, 1.0, ao);
+#endif
     if (A > 0.985) { Cp /= A; A = 1.0; }
   }
 #ifdef FUZZY
   if (As > 0.0) {
     vec3 n = solidNormal(sAt);
-    Cp += As * shadePlastic(n, V, sCol, sRough, calcAO(sAt + n * 0.002, n), softShadow(sAt + n * 0.01, uKey, 5.0));
+    Cp += As * shadePlastic(n, V, sCol, sRough, calcAO(sAt + n * 0.002, n), softShadow(sAt + n * 0.01, uKey, 2.5));
     A = min(1.0, A + As);
   }
 #endif
@@ -861,7 +982,7 @@ void main() {
       float a = 1.0;
       if (fabric) col = shadeFur(p, f, f.top + f.under, V, key);
       else {
-        a = 1.0 - exp(-c * ds * f.fine * FUR_OPACITY);
+        a = 1.0 - exp(-c * ds * f.fine * (f.kind < 2.5 ? PILE_OPACITY : FUR_OPACITY));
         if (!seen || (1.0 - A) * a > 0.02) col = shadeFur(p, f, max(f.top - f.h, 0.0) + f.under, V, key);   // (a faint fibre takes the light of the one before)
       }
       float A1 = A + (1.0 - A) * a;
@@ -877,16 +998,16 @@ void main() {
 #ifdef PILE
   if (seen) {      // the studio's shadow on the key light, and the creases: once per pixel, where the pile's surface is
     gGrain = 1.0;
-    float sh = mix(1.0, mix(0.4, 1.0, softShadow(sp + sn * (lift + 0.012), uKey, 3.0)), smoothstep(-0.1, 0.25, dot(sn, uKey)));
+    float sh = mix(1.0, mix(0.4, 1.0, softShadow(sp + sn * (lift + 0.012), uKey, 2.0)), smoothstep(-0.75, -0.2, dot(sn, uKey)));
     gGrain = 0.0;
-    float ao = calcAO(sp - sn * depth, sn);
-    Cp = Cp * mix(0.6, 1.0, ao) + Ck * sh * mix(0.75, 1.0, ao);
+    vec3 ao = occludeBy(calcAO(sp - sn * depth, sn), 0.85 * Cp / max(max3(Cp), 1e-4));
+    Cp = Cp * mix(vec3(0.45), vec3(1.0), ao) + Ck * sh * mix(vec3(0.65), vec3(1.0), ao);
     if (A > 0.985) { Cp /= A; A = 1.0; }
   }
 #endif
   if (As > 0.0) {                           // a glossy part: it mirrors the same studio the body's material does
     vec3 n = solidNormal(sAt);
-    Cp += As * shade(sAt, n, V, surf(sCol, max(sRough, 0.04)), calcAO(sAt + n * 0.002, n), softShadow(sAt + n * 0.01, uKey, 5.0));
+    Cp += As * shade(sAt, n, V, surf(sCol, max(sRough, 0.04)), calcAO(sAt + n * 0.002, n), softShadow(sAt + n * 0.01, uKey, 2.5));
     A = min(1.0, A + As);
   }
   gDetail = 1.0;

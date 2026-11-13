@@ -31,7 +31,7 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   vec3 N = normalize(n + across * rib * 0.07 * ribSeen * (1.0 - band)
                        + st * sign(sd) * holes * 0.5                // the seam stands a little proud of the cloth
                        + along * (thread * 0.3 * band + pucker * 0.1));
-  float open = occlusion(p, n), lit = shadowKey(p, n, 5.0);
+  float open = occlusion(p, n), lit = shadowKey(p, n, 2.5);
   float NoV = max(dot(N, v), 1e-3);
 
   // stretched more in places: there the cloth is thinner, a touch paler and glossier
@@ -45,12 +45,12 @@ vec4 matShade(vec3 p, vec3 n, vec3 v, float t) {
   float pole = smoothstep(0.05, 0.32, length(p.xz));               // (at the very top the fibres' direction has no meaning: no streak there)
   aAlong = mix(0.36, aAlong, pole); aAcross = mix(0.36, aAcross, pole);
 
-  vec3 col = alb * skyIrr(N) * open;
+  vec3 col = alb * skyIrr(N) * occludeBy(open, alb);
   // the sky and the walls, mirrored softly; more toward the edges
   col += tint * envBRDF(vec3(0.05), 0.45, NoV) * studioAt(p, normalize(mix(N, reflect(-v, N), 0.6)), 0.25).room * specOcclusion(NoV, open, 0.45) * 0.8;
   for (int i = 0; i < 3; i++) {
     vec3 l = lampDir(i);
-    float nl = max(dot(N, l), 0.0), sh = i == 0 ? lit : mix(0.6, 1.0, open);
+    float nl = lampOn(i, N), sh = i == 0 ? lit : mix(0.6, 1.0, open);
     vec3 hv = normalize(l + v);
     float D = D_GGXaniso(max(dot(N, hv), 0.0), dot(along, hv), dot(across, hv), aAlong, aAcross);
     float V = V_GGXaniso(NoV, nl, dot(along, v), dot(across, v), dot(along, l), dot(across, l), aAlong, aAcross);

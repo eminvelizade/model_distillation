@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import type { Look, MascotKind, MascotPose } from "../mascots";
 import { COLOURS } from "../mascots";
-import { build, Built, MAX_FUR, MAX_SOLID, PARKED, Part } from "./looks";
-import { material, MATLIB } from "./materials";
+import { build, Built, MAX_FUR, MAX_SOLID, NAP, PARKED, Part } from "./looks";
+import { material, MATLIB, type Surface } from "./materials";
 import { BLOOM, COMMON, FUZZY, MAIN_PILE, MAIN_SURFACE, SCENE, VERT } from "./shaders";
 
 /** The 3D mascots, drawn live with three.js.
@@ -45,18 +45,32 @@ const ownGlsl = (b: Built) => b.glsl && FUZZY.replace(/\/\*CLOTH<\*\/[\s\S]*?\/\
  *  A make-your-own body in plush is pile, like Bloom. In any other material it is a bare surface: the material's
  *  header (its defines) goes first, and the material library and the material itself before the march that calls it. */
 function program(character: string, b: Built | null, look?: Look): string {
-  if (!b?.bare || !look?.material || look.material === "plush") return COMMON + character + SCENE + MAIN_PILE;
-  const m = material(look.material);
+  if (!b?.bare || !look?.material) return COMMON + character + SCENE + MAIN_PILE;
+  const m = material(look.material as Surface);
   return COMMON + "#define MAT\n" + (b.pile ? "#define PILE\n" : "") + m.header + "\n" + character + SCENE + MATLIB + "\n" + m.body + "\n" + MAIN_SURFACE;
 }
 
 /** The spec of a make-your-own mascot: its parts are lists (see ./looks.ts), so most of a Spec doesn't apply. */
+/** The body's pile in the three materials that are pile, as the shader's uPileA..D (see furM in ./shaders.ts):
+ *  [depth, clumps per unit, strands per unit, a strand's length against its width],
+ *  [how far a clump leans off the lay (radians), how hard its strands lean together, how far and how often a strand bends],
+ *  [how far a strand lies over (in depths), the shortest strand (share of the depth), how much longer the rest are, strays],
+ *  [how much whole clumps differ in height, how round a strand is shaded, the pale rim's strength, a strand's taper]. */
+const PILES: Record<string, number[][]> = {
+  // plush: thick strands combed one way, as on the reference (docs/MATERIALS.md)
+  plush: [[NAP.plush, 15, 100, 2.8], [0.65, 6.0, 0.007, 55], [0.85, 0.5, 0.3, 0.2], [0.0, 0.46, 1.0, 0.24]],
+  // cotton: a short brushed nap of fine fibres lying every way
+  cotton: [[NAP.cotton, 34, 190, 1.8], [3.14, 0.0, 0.002, 90], [0.5, 0.62, 0.3, 0.08], [0.0, 0.3, 0.55, 0.2]],
+  // boucle: thick yarn in curls and loops, in nubs of different heights
+  boucle: [[NAP.boucle, 13, 66, 3.0], [3.14, 2.0, 0.019, 76], [0.5, 0.5, 0.35, 0.1], [0.45, 0.6, 0.9, 0.2]],
+};
+
 function fuzzySpec(b: Built, look: Look): Spec {
   const main = COLOURS[look.colour] ?? COLOURS.lime, pale = look.colour === "snow";
   const glsl = FUZZY;   // (the program that reads any parts: every look shares it, so each is ready at once. See View.specialise)
   return {
     glsl, box: b.box, cam: b.cam, top: b.top, shadow: b.shadow, eye: { x: 0, y: b.eyeY, rx: 0, ry: 0 },
-    nose: [0, 0, 0, 0], blush: [0, 0, 0, 0], rest: 0, prop: pale ? COLOURS.ice : main, exposure: 1.06,
+    nose: [0, 0, 0, 0], blush: [0, 0, 0, 0], rest: 0, prop: pale ? COLOURS.ice : main, exposure: pale ? 1.12 : 1.0,
     colors: { main, accent: main, blush: main, extra: main },
   };
 }
@@ -181,6 +195,7 @@ export class View {
   };
   private earM = new THREE.Matrix4(); private earE = new THREE.Euler(); private v3 = new THREE.Vector3();
   private q = new THREE.Quaternion(); private qi = new THREE.Quaternion();
+  private pileU: Record<string, { value: THREE.Vector4 }> = {};
   private KEY = new THREE.Vector3(-0.42, 0.78, 0.5).normalize();    // big softbox, in front and above
   private FILL = new THREE.Vector3(0.85, 0.15, 0.5).normalize();    // fill from the other side
   private BACK = new THREE.Vector3(0.25, 0.6, -0.76).normalize();   // rim light, behind and above
@@ -188,6 +203,15 @@ export class View {
   constructor(private host: HTMLElement, o: ViewOptions) {
     if (o.kind === "fuzzy") this.built = build(o.look ?? { shape: "pom", colour: "lime", eyes: "bean", glasses: "none", extra: "none" });
     const K = (this.K = this.built ? fuzzySpec(this.built, o.look!) : SPECS[o.kind as MascotKind]);
+    if (this.built) {   // the body's pile, in the materials that are pile
+      const P = PILES[o.look?.material ?? "plush"] ?? PILES.plush;
+      ["uPileA", "uPileB", "uPileC", "uPileD"].forEach((u, i) => (this.pileU[u] = { value: new THREE.Vector4(P[i][0], P[i][1], P[i][2], P[i][3]) }));
+    }
+    if (this.built) {   // natural light (see the light in shaders.ts): the key low and to the side, so it models the body from side to side
+      this.KEY.set(-0.587, 0.643, 0.492).normalize();   // 40 degrees up, 50 to the left
+      this.FILL.set(0.597, 0.1, 0.796).normalize();     // the room on the other side
+      this.BACK.set(0.45, 0.5, -0.74).normalize();      // the rim, from behind and above
+    }
     this.still = !!o.still;
     this.own = this.built && !o.general ? ownGlsl(this.built) : null;
     this.look = o.look;
@@ -215,7 +239,7 @@ export class View {
       uUp: { value: new THREE.Vector3(0, 1, 0) }, uSky: { value: C("#ffffff").multiplyScalar(0.42) }, uGround: { value: C("#f1f3f7").multiplyScalar(0.24) },
       uFwd: { value: new THREE.Vector3(0, 0, 1) }, uBackdrop: { value: C("#f5f8fc") }, uDark: { value: 0 },
       uShadow: { value: new THREE.Vector2(K.shadow[0] / 2, K.shadow[1] / 2) }, uTime: { value: 0 },
-      uExposure: { value: K.exposure },
+      uExposure: { value: K.exposure }, ...this.pileU,
       uMain: { value: C(K.colors.main) }, uAccent: { value: C(K.colors.accent) }, uBlushC: { value: C(K.colors.blush) }, uExtra: { value: C(K.colors.extra) },
       uEye: { value: [new THREE.Vector4(), new THREE.Vector4()] },
       uEyeMode: { value: K.rest }, uEyeOpen: { value: 1 },
@@ -254,16 +278,23 @@ export class View {
     sc.width = sc.height = 128;
     const sx = sc.getContext("2d")!;
     const grad = sx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0, "rgba(30,40,60,0.4)");
-    grad.addColorStop(0.5, "rgba(30,40,60,0.14)");
+    if (this.built) {   // under one soft lamp to the side: deeper close to the body, trailing off away from the lamp
+      grad.addColorStop(0, "rgba(30,40,60,0.5)");
+      grad.addColorStop(0.35, "rgba(30,40,60,0.3)");
+      grad.addColorStop(0.7, "rgba(30,40,60,0.1)");
+    } else {
+      grad.addColorStop(0, "rgba(30,40,60,0.4)");
+      grad.addColorStop(0.5, "rgba(30,40,60,0.14)");
+    }
     grad.addColorStop(1, "rgba(30,40,60,0)");
     sx.fillStyle = grad;
     sx.fillRect(0, 0, 128, 128);
     const shadowTex = new THREE.CanvasTexture(sc);
-    const plane = new THREE.PlaneGeometry(K.shadow[0], K.shadow[1]);
+    const wide = this.built ? 1.12 : 1;
+    const plane = new THREE.PlaneGeometry(K.shadow[0] * wide, K.shadow[1] * wide);
     this.shadow = new THREE.Mesh(plane, new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     this.shadow.rotation.x = -Math.PI / 2;
-    this.shadow.position.set(0, 0.002, 0.04);
+    this.shadow.position.set(this.built ? 0.12 : 0, 0.002, 0.04);   // (the make-your-own mascots' lamp is on the left)
     this.shadow.renderOrder = -1;
     this.scene.add(this.shadow);
     this.disposables.push(shadowTex, plane, this.shadow.material);
@@ -349,7 +380,7 @@ export class View {
 
   applyTheme() {
     const dark = isDark();
-    (this.uniforms.uBackCol.value as THREE.Color).set("#ffffff").multiplyScalar(dark ? 0.85 : 0.58);   // the rim glow reads better on dark
+    if (!this.built) (this.uniforms.uBackCol.value as THREE.Color).set("#ffffff").multiplyScalar(dark ? 0.85 : 0.58);   // the rim glow reads better on dark
     this.shadow.material.color.set(dark ? "#000000" : "#ffffff");
     // the page behind (what a clear or mirrored body shows): the theme's canvas colour
     const rgb = getComputedStyle(document.documentElement).getPropertyValue("--canvas").trim().split(/\s+/).map(Number);
@@ -357,6 +388,16 @@ export class View {
     if (rgb.length === 3 && rgb.every((x) => Number.isFinite(x))) page.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
     else page.set(dark ? "#070a10" : "#f5f8fc");
     this.uniforms.uDark.value = dark ? 1 : 0;
+    if (this.built) {   // natural light, in linear light: a warm key (6150 K), a cooler sky (7000 K), and what the page sends back
+      const U = this.uniforms, set = (u: { value: unknown }, r: number, g: number, b: number, k: number) => (u.value as THREE.Color).setRGB(r * k, g * k, b * k);
+      set(U.uKeyCol, 1.0, 0.965, 0.915, 0.7);
+      set(U.uSky, 0.9, 0.94, 1.0, 0.4);
+      set(U.uFillCol, 1.0, 0.97, 0.93, dark ? 0.12 : 0.06);
+      set(U.uBackCol, 0.95, 0.97, 1.0, dark ? 0.75 : 0.3);    // on a dark page the rim is a lamp; on a light one the page itself does most of it
+      // the page returns 0.6 of what falls on it (the key at its angle, and the sky); a dark page is taken as a dark grey floor
+      const fr = dark ? 0.28 : page.r, fg = dark ? 0.3 : page.g, fb = dark ? 0.33 : page.b;   // (a dark page: a table that is dark to the eye, not to the light)
+      (U.uGround.value as THREE.Color).setRGB(0.6 * fr * (0.45 + 0.36), 0.6 * fg * (0.434 + 0.376), 0.6 * fb * (0.412 + 0.4));
+    }
     this.dirty = true;
     kick();
   }
