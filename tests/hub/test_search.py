@@ -121,3 +121,49 @@ def test_search_checks_dataset_and_cancels(hub):  # noqa: F811
     bob = login(hub, "bob", "bob-pass-12345")
     assert bob.get("/api/searches").json() == []
     assert bob.post("/api/searches", json={**body, "machines": [ma]}).status_code == 404
+
+
+def test_search_says_why_the_timing_run_failed(hub):  # noqa: F811
+    """A timing run that fails before any model is timed: the search shows the run's own error, not a placeholder."""
+    u = login(hub)
+    a, ma = pair(hub, u, "solo")
+    report(a)
+    body = {"name": "fails", "dataset": "tiny", "machines": [ma], "speed_ms": 5, "models": ["rfdetr/nano"], "epochs": 3}
+    sid = u.post("/api/searches", json=body).json()["id"]
+    rid = a.post("/agent/v1/claim").json()["run"]["id"]
+    tail = ("stage s01 failed (exit code 1)\n[modellab:s01] type=speed device=cuda seed=42\nTraceback (most recent call last):\n"
+            '  File "/x/modellab/stages/__init__.py", line 99, in main\n    outputs, metrics = fn(ctx)\n'
+            "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB")
+    r = a.post(f"/agent/v1/runs/{rid}/events", json={"run": {"status": "failed", "finished": time.time(), "error_tail": tail}})
+    assert r.status_code == 200, r.text
+    d = u.get(f"/api/searches/{sid}").json()
+    assert d["status"] == "failed"
+    assert "not timed" not in d["message"], d["message"]
+    assert d["message"].startswith("no candidate could be timed: the timing run failed: stage s01 failed"), d["message"]
+    assert "torch.OutOfMemoryError: CUDA out of memory" in d["message"], d["message"]
+
+    # a run that couldn't even start (e.g. a weight download failed): its one-line reason
+    sid = u.post("/api/searches", json={**body, "name": "no start"}).json()["id"]
+    rid = a.post("/agent/v1/claim").json()["run"]["id"]
+    a.post(f"/agent/v1/runs/{rid}/events", json={"run": {"status": "failed", "finished": time.time(),
+                                                        "error_tail": "could not start on this machine: curl failed"}})
+    d = u.get(f"/api/searches/{sid}").json()
+    assert d["message"] == "no candidate could be timed: the timing run failed: could not start on this machine: curl failed"
+
+
+def test_search_goes_on_without_a_candidate_that_could_not_be_timed(hub):  # noqa: F811
+    u = login(hub)
+    a, ma = pair(hub, u, "solo")
+    report(a)
+    body = {"name": "one missing", "dataset": "tiny", "machines": [ma], "speed_ms": 5, "epochs": 3,
+            "models": ["rfdetr/nano", "rfdetr/small"], "image_sizes": {"rfdetr/nano": [320]}}
+    sid = u.post("/api/searches", json=body).json()["id"]
+    run = a.post("/agent/v1/claim").json()["run"]
+    now = time.time()
+    stages = [{"name": "s01", "status": "done", "result": {"outputs": {}, "metrics": {"latency_ms": 2.0, "latency_device": "x"}}},
+              {"name": "s02", "status": "done", "result": {"outputs": {}, "metrics": {
+                  "error": "FileNotFoundError: weights for rfdetr/small missing: ['rfdetr/small']"}}}]
+    a.post(f"/agent/v1/runs/{run['id']}/events", json={"run": {"status": "done", "started": now - 5, "finished": now}, "stages": stages})
+    d = u.get(f"/api/searches/{sid}").json()
+    assert d["phase"] == "rungs" and d["message"].startswith("1 of 2 fit the budget (1 could not be timed); "), d["message"]
+    assert "weights for rfdetr/small missing" in d["state"]["archs"][1]["error"]

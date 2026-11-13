@@ -283,12 +283,20 @@ class Jobs(threading.Thread):
             except Exception as e:  # noqa: BLE001
                 raise ValueError(f"dataset {ds}: {e}") from e
         missing = weights.missing(_model_ids(p.stages))
+        # Weights only `speed` stages use may fail to download: that stage records the error for its own candidate,
+        # and the other candidates of a search's timing run are still timed.
+        needed = set(weights.required_for(_model_ids([s for s in p.stages if s["type"] != "speed"])))
         for i, k in enumerate(missing):
             self._check_cancel(rid)
             msg = f"downloading weights {k} ({i + 1}/{len(missing)})"
             log.info(f"run {rid}: {msg}")
             self._events(rid, {"status_message": msg})
-            weights.fetch(k, log=log.info)
+            try:
+                weights.fetch(k, log=log.info)
+            except Exception as e:  # noqa: BLE001
+                if k in needed:
+                    raise
+                log.warning(f"run {rid}: could not download {k} ({e}); only timing uses it, so that candidate is skipped")
         self._check_cancel(rid)
         existing = store.get_run(rid)
         if existing and existing["status"] in store.FINAL:

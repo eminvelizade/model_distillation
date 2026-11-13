@@ -192,6 +192,39 @@ def test_commands_recheck_their_arguments(home):
     assert j._execute("run_delete_files", {"run_id": rid}, say) == {"deleted": rid} and not rd.exists()
 
 
+def test_timing_runs_start_without_weights_only_timing_needs(home, monkeypatch):
+    """A search's timing run: a candidate whose weights can't be downloaded (offline machine) must not stop the others
+    from being timed. The speed stage records the error for that candidate. Weights a training stage needs still do."""
+    from types import SimpleNamespace
+
+    from modellab import datasets, store, weights
+    from modellab.agent.jobs import Jobs
+
+    monkeypatch.setattr(datasets, "_load", lambda: {"tiny": {"path": "/d"}})
+    monkeypatch.setattr(datasets, "validate_layout", lambda p: {})
+    monkeypatch.setattr(weights, "missing", lambda ids: [k for k in weights.required_for(ids) if "small" in k])
+
+    def fetch(key, log=None):
+        raise RuntimeError(f"failed to fetch {key}")
+
+    monkeypatch.setattr(weights, "fetch", fetch)
+    tracked = []
+    j = Jobs.__new__(Jobs)
+    j.agent = SimpleNamespace(cancels=set(), preparing=None, track=tracked.append)
+    j.client = FakeHub()
+    timing = ("name: t\ndataset: tiny\nstages:\n  - {name: s01, type: speed, model: rfdetr/nano, image_size: 320}\n"
+              "  - {name: s02, type: speed, model: rfdetr/small, image_size: 512}\n")
+    j.prepare({"id": "20261113-120000-t-abcdef", "name": "t", "recipe_yaml": timing, "tags": ["search"]})
+    assert tracked == ["20261113-120000-t-abcdef"], j.client.events
+    assert not any(b["run"].get("status") == "failed" for _, b in j.client.events)
+    assert store.get_run("20261113-120000-t-abcdef")["status"] == "queued"
+    train = "name: t\ndataset: tiny\nstages:\n  - {name: ft, type: finetune, model: rfdetr/small, budget: {epochs: 1}}\n"
+    j.prepare({"id": "20261113-120001-t-abcdef", "name": "t", "recipe_yaml": train, "tags": []})
+    assert tracked == ["20261113-120000-t-abcdef"]
+    failed = j.client.events[-1][1]["run"]
+    assert failed["status"] == "failed" and "could not start on this machine: failed to fetch rfdetr/small" in failed["error_tail"]
+
+
 def test_doctor_verdicts():
     from modellab.agent import doctor
 

@@ -426,6 +426,34 @@ def _recommend(spec: dict, state: dict, early: bool) -> dict | None:
             "early": early}
 
 
+NOT_TIMED = "not timed (the timing run stopped before this model)"
+
+
+def _error_line(tail: str) -> str:
+    """The line of a run's error tail that says what went wrong: the exception at the bottom of a traceback, else the
+    first line ("stage s01 failed (exit code 1)", "could not start on this machine: ...")."""
+    lines = [x.strip() for x in tail.strip().splitlines() if x.strip()]
+    if not lines:
+        return ""
+    exc = next((x for x in reversed(lines) if not x.startswith(("[", "File ", "^", "~")) and ":" in x
+                and x.split(":", 1)[0].replace(".", "").replace("_", "").isalnum()), None)
+    head = lines[0]
+    return f"{head}: {exc}" if exc and exc != head and len(lines) > 1 else head
+
+
+def _untimed_reason(state: dict, run: dict) -> str:
+    """Why no candidate has a latency: a candidate's own error, else how the timing run ended (status and error)."""
+    own = next((a["error"] for a in state["archs"] if a.get("error") and a["error"] != NOT_TIMED), None)
+    if own:
+        return own
+    line = _error_line(run.get("error_tail") or "")
+    status = run["status"]
+    if status == "done":
+        return "the timing run finished but reported no latency (is the machine's agent up to date?)"
+    said = {"failed": "failed", "interrupted": "was interrupted"}.get(status, f"ended as {status}")
+    return f"the timing run {said}" + (f": {line}" if line else " (no error reported: see the timing run's log)")
+
+
 def _over_budget(spec: dict, state: dict, extra_s: float = 0.0) -> bool:
     return bool(spec.get("gpu_hours")) and state["spent_s"] + extra_s >= spec["gpu_hours"] * 3600
 
@@ -457,7 +485,7 @@ def _step(c: sa.Connection, row: dict, owner: dict, spec: dict, state: dict) -> 
                 if m.get(k) is not None:
                     a[k] = m[k]
             if a.get("latency_ms") is None and not a.get("error"):
-                a["error"] = "not timed (the timing run stopped before this model)"
+                a["error"] = NOT_TIMED
             a["fits"] = a.get("latency_ms") is not None and a["latency_ms"] <= spec["speed_ms"]
         if r["status"] == "cancelled":
             return {"status": "cancelled", "phase": "done", "finished": time.time(), "message": "the timing run was cancelled"}
@@ -466,7 +494,7 @@ def _step(c: sa.Connection, row: dict, owner: dict, spec: dict, state: dict) -> 
             timed = [a for a in state["archs"] if a.get("latency_ms") is not None]
             if not timed:
                 return {"status": "failed", "phase": "done", "finished": time.time(),
-                        "message": "no candidate could be timed: " + (state["archs"][0].get("error") or r["status"])[:300]}
+                        "message": "no candidate could be timed: " + _untimed_reason(state, r)[:300]}
             fastest = min(timed, key=lambda a: a["latency_ms"])
             return {"status": "done", "phase": "done", "finished": time.time(),
                     "message": f"no candidate fits {spec['speed_ms']:g} ms on {spec['machine_names'][spec['target_machine']]}: "
@@ -474,7 +502,9 @@ def _step(c: sa.Connection, row: dict, owner: dict, spec: dict, state: dict) -> 
         state["configs"] = configs_for(spec, fitting)
         last = len(rung_schedule(spec)) - 1
         msg = _start_round(c, owner, spec, sid, state, state["configs"], 0 if len(state["configs"]) > 1 else last)
-        return {"phase": "rungs", "message": f"{len(fitting)} of {len(state['archs'])} fit the budget; {msg}"}
+        untimed = sum(a.get("latency_ms") is None for a in state["archs"])
+        skipped = f" ({untimed} could not be timed)" if untimed else ""
+        return {"phase": "rungs", "message": f"{len(fitting)} of {len(state['archs'])} fit the budget{skipped}; {msg}"}
 
     if phase == "rungs":
         rnd = state["rounds"][-1]
