@@ -27,7 +27,7 @@ export interface Diagnosis {
 }
 
 export const PATHS: Record<string, string> = {
-  notebook: "/notebook",
+  notebook: "/notebook", chat: "/chat",
   new: "/", searches: "/search", queue: "/queue", machines: "/machines", leaderboard: "/leaderboard", compare: "/compare", team: "/team",
 };
 export const sel = {

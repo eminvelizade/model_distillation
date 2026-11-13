@@ -296,40 +296,45 @@ def test_chat_runs_tools_and_streams(hub, monkeypatch):  # noqa: F811
     assert second_body["system"] == b["system"] and second_body["tools"] == b["tools"]
 
 
-def test_chat_speaks_as_the_chosen_mascot(hub, monkeypatch):  # noqa: F811
+def test_chat_speaks_as_bloom_whatever_mascot_an_old_tab_names(hub, monkeypatch):  # noqa: F811
     from modellab.hub import yeti
 
     u, _ = finished_search(hub)
-    fake = FakeClaude([sse_message([{"type": "text", "text": "Hello from the lab!"}], "end_turn")])
+    fake = FakeClaude([sse_message([{"type": "text", "text": "Hello from the lab!"}], "end_turn")] * 3)
     monkeypatch.setattr(yeti, "make_client", fake.client)
     u.put("/api/assistant", json={"api_key": KEY})
-    ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "who are you?"}], "mascot": "mochi"}))
+    ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "who are you?"}], "mascot": "bloom"}))
     assert ev[-1]["type"] == "done"
     system = fake.requests[1]["body"]["system"][0]["text"]
-    assert system.startswith("You are Dr. Mochi,") and "lab coat" in system and "You are Bloom" not in system
+    assert system.startswith("You are Bloom,") and "fluffy white plush cub" in system
     assert "{" not in system.split("# The ModelLab guide")[0]  # every placeholder filled in
-    assert u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "hi"}], "mascot": "clippy"}).status_code == 422
+    # a tab left open from before may name a mascot that is gone (the five that were removed, or anything else): it is
+    # answered as Bloom, not refused
+    for i, gone in enumerate(("mochi", "clippy")):
+        ev = events(u.post("/api/assistant/chat", json={"messages": [{"role": "user", "text": "hi"}], "mascot": gone}))
+        assert ev[-1]["type"] == "done" and fake.requests[2 + i]["body"]["system"][0]["text"].startswith("You are Bloom,")
 
 
-def test_each_mascot_has_its_own_voice():
+def test_the_built_in_mascot_is_bloom_here_and_in_the_web_app():
     from modellab.hub import yeti
 
-    for key, (name, _, _) in yeti.MASCOTS.items():
-        head = yeti.system_prompt(key).split("# The ModelLab guide")[0]
-        assert head.startswith(f"You are {name},") and "{" not in head
-    # Bloom (the default) and the plush ones are warm and light; Rime, the snow golem, is calm and never gushes
-    assert yeti.system_prompt() == yeti.system_prompt("bloom")
-    rime = yeti.system_prompt("rime").split("# The ModelLab guide")[0]
-    assert "warm and light" not in rime and "no exclamation marks" in rime and "fully helpful" in rime
+    assert list(yeti.MASCOTS) == ["bloom"]
+    assert yeti.system_prompt() == yeti.system_prompt("bloom") == yeti.system_prompt("rime")   # (a retired one is Bloom)
     bloom = yeti.system_prompt("bloom").split("# The ModelLab guide")[0]
+    assert bloom.startswith("You are Bloom,") and "{" not in bloom
     assert "fluffy white plush cub" in bloom and "- Be warm and light. A touch of gentle, patient encouragement is welcome; clarity comes first." in bloom
-    # the web app's list of mascots and the hub's are the same (a new mascot must be added to both)
+    # the web app's list of built-in mascots and the hub's are the same (a new one must be added to both), and so
+    # are the materials a make-your-own agent can be made of
     import re
     from pathlib import Path
-    web = Path(yeti.__file__).parents[1] / "web/src/components/yeti/mascots.ts"
-    kinds = re.findall(r'kind: "(\w+)", name: "([^"]+)"', web.read_text())
+
+    from modellab.hub import agents
+
+    web = (Path(yeti.__file__).parents[1] / "web/src/components/yeti/mascots.ts").read_text()
+    kinds = re.findall(r'kind: "(\w+)", name: "([^"]+)"', web)
     assert dict(kinds) == {k: v[0] for k, v in yeti.MASCOTS.items()}
-    assert set(yeti.Mascot.__args__) == set(yeti.MASCOTS)
+    materials = re.search(r"material: \[(.*?)\],\n", web, re.S).group(1)
+    assert re.findall(r'\["(\w+)", "[^"]+"\]', materials) == list(agents.MATERIALS)
 
 
 def test_chat_errors_and_haiku_settings(hub, monkeypatch):  # noqa: F811

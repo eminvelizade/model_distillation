@@ -129,7 +129,12 @@ async def fs_poll(body: FsPollIn, request: Request, m: dict = Depends(current_ma
 @router.post("/commands/{cid}")
 def command_update(cid: str, body: dict, request: Request, m: dict = Depends(current_machine)):
     with _engine(request).begin() as c:
-        return model.update_command(c, m, cid, body)
+        cmd = model.update_command(c, m, cid, body)
+        if cmd["status"] in ("done", "failed"):
+            from modellab.hub import plans  # an export a plan asked for: its step is read from this answer
+
+            plans.on_command_final(c, cmd)
+        return cmd
 
 
 def _release_meta(c: sa.Connection, version: str | None) -> dict:

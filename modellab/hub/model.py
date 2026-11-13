@@ -674,6 +674,9 @@ def apply_events(c: sa.Connection, m: dict, rid: str, body: dict) -> dict:
         from modellab.hub import search  # a search's trial finished: its next round may start now
 
         search.on_run_final(c, db.loads(r2["tags"], []))
+        from modellab.hub import plans  # ...and so may the next step of a plan (after the search, which it may wait on)
+
+        plans.on_run_final(c, db.loads(r2["tags"], []))
     return {"status": r2["status"], "cancel_requested": bool(r2["cancel_requested"])}
 
 

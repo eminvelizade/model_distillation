@@ -182,7 +182,73 @@ export type YetiEvent =
   | { type: "action"; decision: import("./agent").Decision } // Claude drafted or proposed an action (yeti_actions.py)
   | { type: "error"; code: string; message: string };
 
-/** POST a chat turn and read the server-sent events as they arrive (EventSource can't POST). */
+// ---------- agents, their threads and plans (hub) ----------
+export type AgentLook = import("./components/yeti/mascots").AgentLook;
+export interface Agent {
+  id: string; name: string; look: AgentLook; role: string; unread: number; created: number;
+  last: { role: string; kind: string; text: string; created: number } | null;
+  plan: { id: string; title: string; status: string } | null;   // a plan of its that is under way
+}
+export interface PlanStep {
+  id: string; kind: "run" | "search" | "pick" | "export"; title: string; detail: string | null; after?: string[];
+  status: "pending" | "running" | "done" | "failed" | "skipped" | "cancelled"; note: string | null; est_s: number | null;
+  run_id: string | null; search_id: string | null; tries: number; fixes: { what: string; why: string }[];
+  result: { map?: number | null; latency_ms?: number | null; name?: string; winner?: string; why?: string; tie?: boolean; run_id?: string;
+    tensorrt?: string; files?: string[]; folder?: string | null } | null;   // (an export: what the machine wrote)
+  run?: { status: string; progress: number; stage: string | null; name: string };
+}
+export interface Plan {
+  id: string; agent_id: string | null; title: string; goal: string | null; message: string | null;
+  status: "proposed" | "running" | "waiting" | "done" | "cancelled" | "declined";
+  steps: PlanStep[]; machines: string[]; datasets: string[]; notebook_entry: string | null;
+  est_s: number | null; gpu_s: number | null; spent_s: number; tries: number;
+  pending: { why: string | null; reasons: string[]; est_s: number | null; steps: { id: string; kind: string; title: string; detail: string | null }[] } | null;
+  created: number; updated: number; approved: number | null; finished: number | null;
+}
+/** One row of an agent's thread, as the hub keeps it. */
+export interface ThreadMsg {
+  id: string; role: "user" | "agent" | "event"; kind: "text" | "card" | "plan"; text: string; created: number;
+  about?: string | null; tools?: { id: string; label: string; href?: string | null; ok?: boolean; done: boolean }[];
+  model?: string; usage?: { input: number; output: number; cache_read: number; cache_write: number };
+  error?: { code: string; message: string } | null;
+  d?: import("./agent").Decision; state?: "shown" | "pending" | "working" | "done" | "declined" | "failed"; note?: string | null;
+  plan?: string;
+}
+export interface Thread { agent: Agent; messages: ThreadMsg[]; plans: Record<string, Plan>; more: boolean; wake: boolean }
+export interface AgentNote { id: string; text: string; by: string; created: number; updated: number }
+export type AgentEvent = Exclude<YetiEvent, { type: "start" } | { type: "action" }>
+  | { type: "start"; turn: string; note: string | null; model: string; model_label: string; mid?: string | null }
+  | { type: "action"; decision: import("./agent").Decision; mid?: string }
+  | { type: "plan"; plan: Plan; revised: boolean; mid?: string }
+  | { type: "idle" };
+
+/** POST and read the server-sent events as they arrive (EventSource can't POST). */
+async function sse<E>(url: string, body: unknown, onEvent: (e: E) => void, signal?: AbortSignal): Promise<void> {
+  const r = await fetch(url, { method: "POST", headers: { ...H, "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
+  if (!r.ok || !r.body) { await j(r); return; }
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i: number;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, i);
+      buf = buf.slice(i + 2);
+      for (const line of chunk.split("\n")) if (line.startsWith("data: ")) onEvent(JSON.parse(line.slice(6)));
+    }
+  }
+}
+
+/** One turn with an agent (or, with `wake`, its follow-up to what the hub reported): events as they come. The hub
+ *  writes the turn into the agent's thread itself. */
+export function streamAgent(agentId: string, body: { text?: string; page?: YetiPage | null; about?: string | null; retry?: boolean },
+                            onEvent: (e: AgentEvent) => void, signal?: AbortSignal, wake = false): Promise<void> {
+  return sse<AgentEvent>(`/api/agents/${agentId}/${wake ? "wake" : "messages"}`, body, onEvent, signal);
+}
+
 export async function streamYeti(body: { messages: { role: string; text: string; note?: string | null }[]; page?: YetiPage | null; mascot?: string },
                                  onEvent: (e: YetiEvent) => void, signal?: AbortSignal): Promise<void> {
   const r = await fetch("/api/assistant/chat", { method: "POST", headers: { ...H, "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
@@ -257,6 +323,26 @@ export const api = {
     post(`/api/assistant/actions/${id}`, { outcome, note }).then(j<{ result: string }>),
   diagnosis: (runId: string) => fetch(`/api/runs/${runId}/diagnosis`).then(j<import("./agent").Diagnosis>),
   actions: () => fetch("/api/actions").then(j<{ actions: { id: string; title: string; tier: string; needs: string }[]; pages: Record<string, string> }>),
+  // ---------- agents, threads, plans (hub) ----------
+  agents: (mascot?: string) => fetch(`/api/agents${mascot ? `?mascot=${mascot}` : ""}`).then(j<Agent[]>),
+  createAgent: (body: { name: string; look: AgentLook; role?: string }) => post("/api/agents", body).then(j<Agent>),
+  patchAgent: (id: string, body: { name?: string; look?: AgentLook; role?: string }) => send("PATCH", `/api/agents/${id}`, body).then(j<Agent>),
+  deleteAgent: (id: string) => send("DELETE", `/api/agents/${id}`).then(j<{ result: string }>),
+  thread: (id: string, q: { before?: number; after?: number; limit?: number } = {}) =>
+    fetch(`/api/agents/${id}/messages?${new URLSearchParams(Object.entries(q).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))}`).then(j<Thread>),
+  clearThread: (id: string) => send("DELETE", `/api/agents/${id}/messages`).then(j<{ result: string }>),
+  markRead: (id: string) => post(`/api/agents/${id}/read`).then(j<{ result: string }>),
+  record: (id: string, body: { text: string; about?: string | null; reply?: string; card?: { d: unknown; state: string; note?: string | null } }) =>
+    post(`/api/agents/${id}/record`, body).then(j<{ user: string; agent: string | null }>),
+  cardState: (id: string, mid: string, state: string, note?: string | null) => post(`/api/agents/${id}/cards/${mid}`, { state, note }).then(j<{ result: string }>),
+  plans: (open = false) => fetch(`/api/plans${open ? "?open=true" : ""}`).then(j<Plan[]>),
+  plan: (id: string) => fetch(`/api/plans/${id}`).then(j<Plan>),
+  planDo: (id: string, what: "approve" | "decline" | "cancel") => post(`/api/plans/${id}/${what}`).then(j<Plan>),
+  planResume: (id: string, how: "retry" | "skip") => post(`/api/plans/${id}/resume`, { how }).then(j<Plan>),
+  notes: () => fetch("/api/agent-notes").then(j<AgentNote[]>),
+  addNote: (text: string) => post("/api/agent-notes", { text }).then(j<AgentNote>),
+  patchNote: (id: string, text: string) => send("PATCH", `/api/agent-notes/${id}`, { text }).then(j<AgentNote>),
+  deleteNote: (id: string) => send("DELETE", `/api/agent-notes/${id}`).then(j<{ result: string }>),
   yetiDisconnect: (clientId: string) => send("DELETE", `/api/assistant/apps/${clientId}`).then(j<{ apps: YetiSettings["connector"]["apps"] }>),
 
   // ---------- searches + export (hub) ----------

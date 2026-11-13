@@ -1,0 +1,56 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  html, body { margin: 0; background: transparent; }
+  #wrap { display: inline-flex; flex-wrap: wrap; }
+  .cell { position: relative; }
+</style></head><body><div id="wrap"></div>
+<script type="module">
+// Harness: draws one or more mascots with the real engine. Query: kinds=a,b  looks=<json array of looks>  size  pose
+// yaw pitch (degrees: orbit the camera round the mascot)  dist  fov  ty (look-at height)  bg  dark=1  zoom
+// general=1 (the shared program)  own=1 (the look's own program)  noeyes=1 (a plain sample of a material)
+Math.random = () => 0;                         // the engine starts its clock at a random time: start at 0 (facing front)
+const q = new URLSearchParams(location.search);
+const num = (k, d) => (q.has(k) ? parseFloat(q.get(k)) : d);
+if (q.get("dark") === "1") document.documentElement.classList.add("dark");
+const { View } = await import("/src/components/yeti/mascot/engine.ts");
+// looks=<json array of looks>: make-your-own mascots (kind "fuzzy"), drawn after the kinds
+const looks = q.has("looks") ? JSON.parse(q.get("looks")) : [];
+const kinds = looks.length && !q.has("kinds") ? [] : (q.get("kinds") || "bloom").split(",");
+const items = kinds.map((kind) => ({ kind })).concat(looks.map((look) => ({ kind: "fuzzy", look })));
+const size = num("size", 512);
+const wrap = document.getElementById("wrap");
+if (q.has("bg")) document.body.style.background = "#" + q.get("bg");
+window.__views = [];
+window.__errors = [];
+for (const { kind, look } of items) {
+  const cell = document.createElement("div");
+  cell.className = "cell";
+  cell.style.width = cell.style.height = size + "px";
+  wrap.appendChild(cell);
+  const v = new View(cell, { kind, look, pose: q.get("pose") || "idle", follow: false, zoom: num("zoom", 1), general: q.get("general") === "1", own: q.get("own") === "1" });
+  const vec = (k) => q.get(k).split(",").map(parseFloat);
+  if (q.has("cam")) {                    // an exact camera: position, look-at, up, vertical fov, principal point offset (px)
+    const cam = v.camera;
+    cam.position.set(...vec("cam")); cam.up.set(...vec("up")); cam.lookAt(...vec("look"));
+    v.fov = num("fov", 18); cam.fov = v.fov;
+    v.resize();
+    if (q.has("pp")) { const [dx, dy] = vec("pp"); cam.setViewOffset(v.w, v.h, -dx * v.w / size, -dy * v.h / size, v.w, v.h); v.resize(); }
+  } else if (q.has("yaw") || q.has("pitch") || q.has("dist") || q.has("fov") || q.has("ty")) {
+    const cam = v.camera, yaw = num("yaw", 0) * Math.PI / 180;
+    const ty = num("ty", 0.8), cur = Math.hypot(cam.position.y - ty, cam.position.z);
+    const dist = num("dist", cur), pitch = num("pitch", 8) * Math.PI / 180;
+    cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, ty + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
+    cam.lookAt(0, ty, 0);
+    if (q.has("fov")) { v.fov = num("fov", 18); cam.fov = v.fov; }
+    v.resize();
+  }
+  if (q.get("noeyes") === "1" && v.built) {   // a plain sample of the material: no eyes (the general program reads however many parts there are)
+    v.built.solids = () => [];
+    v.update(0);
+  }
+  window.__views.push(v);
+}
+// wait for the frames to be drawn (reduced motion: one frame per change)
+await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 50))));
+window.__ready = true;
+</script></body></html>

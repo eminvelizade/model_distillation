@@ -4,14 +4,21 @@
     draft_search       fill in the Find best model form (dataset, machines, budget, candidates); nothing starts
     propose_action     any other registered action, as a card in the chat
 
-and one writes the lab's notebook (hub/notebook.py), the user's own notes, marked as written by Claude:
+two write or change a plan of several steps (hub/plans.py):
 
-    notebook_write     create an entry for an idea, or update its plan, answer or status
+    propose_plan       typed steps, stored as "proposed" and shown as a card; nothing runs until the user's Start
+    revise_plan        replace a plan's steps that haven't started; beyond what was approved, it waits for the user
 
-The three action tools change nothing on the hub. Each returns a decision, in the same shape as a one-sentence decision
-(system1/service.py), that the web app carries out: opening and filling in happen at once; anything that runs,
-cancels or deletes shows a card and waits for the user's tap. Every id is checked against the user's own data here,
-so a proposal can only name what the user could click themselves. The MCP server does not serve these tools.
+and two write what is kept between conversations:
+
+    notebook_write     the lab's notebook (hub/notebook.py): an entry for an idea, or its plan, answer or status
+    remember           a note about the user: a correction or a standing preference (hub/agents.py)
+
+The action and plan tools start nothing on the hub. An action tool returns a decision, in the same shape as a
+one-sentence decision (system1/service.py), that the web app carries out: opening and filling in happen at once;
+anything that runs, cancels or deletes shows a card and waits for the user's tap. A plan only ever starts with the
+user's own POST to /api/plans/{id}/approve. Every id is checked against the user's own data here, so a proposal can
+only name what the user could click themselves. The MCP server does not serve these tools.
 """
 
 from __future__ import annotations
@@ -23,7 +30,7 @@ import sqlalchemy as sa
 from fastapi import HTTPException
 
 from modellab import catalog
-from modellab.hub import db, model, notebook, search
+from modellab.hub import db, model, notebook, plans, search
 from modellab.hub.system1 import actions as A
 from modellab.hub.system1 import service
 from modellab.hub.system1.route import Decision
@@ -108,6 +115,63 @@ TOOLS = [
          **{k: v for k, v in _FORM.items() if k not in ("machine_id", "dataset")},
          "speed_budget_ms": {"type": "number", "exclusiveMinimum": 0, "maximum": 10000},
          "gpu_hours": {"type": "number", "exclusiveMinimum": 0, "maximum": 10000}}}},
+    {"name": "propose_plan",
+     "description": "Write a plan: several steps the hub carries out by itself once the user presses Start, with no page "
+                    "open. Use it when the request takes more than one step (train variants and compare; a quick test, "
+                    "then the full run; train, pick the better one, export it). Nothing runs when you call this: the "
+                    "plan is stored and shown as a card, and one Start approves all of it, so put everything the "
+                    "request needs into this one plan. Steps: run (queue one training run), search (a Find best "
+                    "model search), pick (choose the best of earlier run or search steps by a metric), export (export "
+                    "the model of a run, or of the run a pick chose, to ONNX and TensorRT). Run steps with nothing to "
+                    "wait for are queued together; give `after` when one must finish first. A run step that should "
+                    "train whatever a pick chose names it in `base` and leaves `model` out. The hub checks every "
+                    "machine, dataset and model, estimates the GPU time from past runs, and on its own retries a run "
+                    "that fails for a known reason (out of memory: half the batch; a NaN loss: half the learning "
+                    "rate; an interruption: re-queued), up to three tries. Look up the machine and its datasets "
+                    "first (list_machines, get_machine).",
+     "input_schema": {"type": "object", "additionalProperties": False, "required": ["title", "steps"], "properties": {
+         "title": {"type": "string", "maxLength": 120, "description": "what the plan is, in a few words"},
+         "goal": {"type": "string", "maxLength": 2000, "description": "what the user asked for, in their words"},
+         "notebook_entry": ENTRY,
+         "steps": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"type": "object", "required": ["kind"], "properties": {
+             "id": {"type": "string", "description": "s1, s2, ... (numbered in order when left out)"},
+             "kind": {"type": "string", "enum": list(plans.KINDS)},
+             "title": {"type": "string", "maxLength": 120, "description": "this step, in a few words"},
+             "after": {"type": "array", "items": {"type": "string"}, "description": "ids of earlier steps that must finish first"},
+             "run": {"type": "object", "description": "kind run: the run's settings", "required": ["machine_id", "dataset", "epochs"],
+                     "properties": _FORM | {"name": NAME, "grad_accum": _num(1, 64, "gradient accumulation steps"),
+                                            "teacher": {"type": "string", "maxLength": 64, "description": "a DINOv2/DINOv3 teacher id: distill it into the RF-DETR model first"},
+                                            "distill_epochs": _num(1, 2000, "epochs of the distillation, when there is a teacher"),
+                                            "seed": {"type": "integer", "minimum": 0}}},
+             "base": {"type": "string", "description": "kind run: the id of an earlier pick or search step; this run trains its winner again with these settings"},
+             "search": {"type": "object", "description": "kind search: the same settings as draft_search",
+                        "required": ["dataset", "target_machine_id", "speed_budget_ms", "models", "epochs"]},
+             "of": {"type": "array", "items": {"type": "string"}, "description": "kind pick: two or more earlier run or search steps to choose between"},
+             "metric": {"type": "string", "enum": list(plans.METRICS), "description": "kind pick: map (mAP 50-95, the default), map50, or latency_ms (lower wins)"},
+             "from": {"type": "string", "description": "kind export: the earlier run, pick or search step whose model to export"},
+             "run_id": {"type": "string", "maxLength": 100, "description": "kind export: a run that already finished, instead of `from`"}}}}}}},
+    {"name": "revise_plan",
+     "description": "Change a plan: replace its steps that haven't started with these (steps that ran stay, and a step "
+                    "that failed is replaced by what you give). Use it when the user asks for a change to a plan, or "
+                    "when a step failed in a way the hub couldn't fix and a different setting would. Inside what was "
+                    "approved (the same machines and datasets, the kinds of step the plan already had, within the "
+                    "approved GPU time, or with no estimate no more runs, epochs, models or input size than were "
+                    "approved) the change takes effect at once and the plan goes on; beyond it, the change waits "
+                    "for the user's OK on the plan's card: the result says which. New steps may build on the ids of "
+                    "steps that already ran.",
+     "input_schema": {"type": "object", "additionalProperties": False, "required": ["plan_id", "steps"], "properties": {
+         "plan_id": {"type": "string", "maxLength": 32},
+         "why": {"type": "string", "maxLength": 600, "description": "what changes and why, in a sentence the user will read"},
+         "steps": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"type": "object"},
+                   "description": "the steps to run from here on, in the same form as propose_plan's"}}}},
+    {"name": "remember",
+     "description": "Keep a note about this user for later conversations: a correction they made, or a standing "
+                    "preference (\"use the 5090 for quick tests\", \"always show the plan before queueing anything\"). "
+                    "One sentence, in plain words, about how to work with them, never a result or a secret. Notes are "
+                    "shown to the user, who can change or delete them. Pass `replaces` with a note's id when the new "
+                    "note takes an old one's place.",
+     "input_schema": {"type": "object", "additionalProperties": False, "required": ["note"], "properties": {
+         "note": {"type": "string", "maxLength": 300}, "replaces": {"type": "string", "maxLength": 32}}}},
 ]
 NAMES = {t["name"] for t in TOOLS}
 ARG = {"run": "run_id", "run_b": "run_b_id", "search": "search_id", "machine": "machine_id"}  # action param → tool argument
@@ -119,7 +183,8 @@ def api_tools() -> list[dict]:
 
 def pending_label(name: str, args) -> str:
     return {"draft_experiment": "Drafting the experiment", "draft_search": "Drafting the search",
-            "notebook_write": "Writing to the notebook"}.get(name, "Preparing the action")
+            "notebook_write": "Writing to the notebook", "propose_plan": "Writing a plan", "revise_plan": "Changing the plan",
+            "remember": "Making a note"}.get(name, "Preparing the action")
 
 
 def _screen(c: sa.Connection, user: dict, a: dict) -> dict:
@@ -303,8 +368,57 @@ def _write(c: sa.Connection, user: dict, a: dict) -> Output:
     return Output(said, label=label, href=f"/notebook/{e['id']}")
 
 
-def call(engine: sa.Engine, user: dict, name: str, args) -> tuple[Output, dict | None]:
+def _plan_text(p: dict) -> str:
+    steps = "; ".join(f"{s['id']} {s['kind']}: {s['title']} ({s['detail']})" for s in p["steps"])
+    est = (f" Estimated GPU time: {notebook.fmt_duration(p['est_s'])}; approving it covers up to "
+           f"{notebook.fmt_duration(p['gpu_s']).removeprefix('about ')}, retries included." if p.get("est_s")
+           else " There is no time estimate (no past runs of these models to go by).")
+    return f"\"{p['title']}\" (plan_id {p['id']}), {len(p['steps'])} step(s): {steps}.{est}"
+
+
+def _plan_tools(engine: sa.Engine, user: dict, name: str, args, agent: dict | None) -> tuple[Output, dict | None]:
+    """propose_plan, revise_plan and remember. Never raises."""
+    from modellab.hub import agents  # (agents imports yeti, which imports this module)
+
+    a = args if isinstance(args, dict) else {}
+    title = {"propose_plan": "Wrote a plan", "revise_plan": "Changed the plan"}.get(name, "Made a note")
+    log = lambda c, action, values: c.execute(db.agent_log.insert().values(  # noqa: E731
+        id=db.new_id(), user_id=user["id"], created=time.time(), model="claude", fast=True, action=action,
+        tier="draft", intent="do", values_json=db.dumps(values)))
+    try:
+        with engine.begin() as c:
+            if name == "remember":
+                n = agents.remember(c, user, a.get("note"), (agent or {}).get("name") or "the assistant", a.get("replaces"))
+                log(c, "note.remember", {"note": n["id"]})
+                return Output(f"Saved the note [{n['id']}]: {n['text']}", label="Noted for later"), None
+            if name == "propose_plan":
+                p = plans.propose(c, user, (agent or {}).get("id"), a)
+                log(c, "plan.propose", {"plan": p["id"], "steps": len(p["steps"])})
+                return Output(f"A plan card is now in the chat: {_plan_text(p)} It has NOT started: it waits for the user's "
+                              "Start, and one Start approves all of it.", label=f"Wrote a plan: {p['title']}"), {"plan": p}
+            if not isinstance(a.get("plan_id"), str):
+                raise plans.PlanError("plan_id is required")
+            p, reasons = plans.revise(c, user, a["plan_id"], a.get("steps"), a.get("why"))
+            log(c, "plan.revise", {"plan": p["id"], "beyond": bool(reasons)})
+            if reasons:
+                return Output(f"The change goes beyond what the user approved ({'; '.join(reasons)}), so it has NOT taken "
+                              "effect: it waits for the user's OK on the plan's card. The plan itself is unchanged for now.",
+                              label=f"Proposed a change to {p['title']}"), {"plan": p, "revised": True}
+            return Output(("The plan's card now shows the new steps; it still waits for the user's Start. " if p["status"] == "proposed"
+                           else "The change is inside what was approved, so it took effect and the plan goes on. ") + _plan_text(p),
+                          label=f"Changed the plan: {p['title']}"), {"plan": p, "revised": True}
+    except plans.PlanError as e:
+        return Output(str(e), error=True, label=title), None
+    except HTTPException as e:
+        return Output(f"{e.detail} (it must be one of this user's own)", error=True, label=title), None
+    except Exception as e:  # noqa: BLE001 - a broken tool must not end the conversation
+        return Output(f"{type(e).__name__}: {e}", error=True, label=title), None
+
+
+def call(engine: sa.Engine, user: dict, name: str, args, agent: dict | None = None) -> tuple[Output, dict | None]:
     """(what Claude reads, the decision for the web app or None). Never raises."""
+    if name in ("propose_plan", "revise_plan", "remember"):
+        return _plan_tools(engine, user, name, args, agent)
     title = {"draft_experiment": "Drafted an experiment", "draft_search": "Drafted a search",
              "notebook_write": "Wrote to the notebook"}.get(name, "Prepared an action")
     extra_said = ""

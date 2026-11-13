@@ -1,6 +1,9 @@
 import * as THREE from "three";
-import type { MascotKind, MascotPose } from "../mascots";
-import { BLOOM, BOP, COMMON, MOCHI, PIP, RENDER, RIME, TWINKLE, VERT } from "./shaders";
+import type { Look, MascotKind, MascotPose } from "../mascots";
+import { COLOURS } from "../mascots";
+import { build, Built, MAX_FUR, MAX_SOLID, NAP, PARKED, Part } from "./looks";
+import { material, MATLIB, type Surface } from "./materials";
+import { BLOOM, COMMON, FUZZY, MAIN_PILE, MAIN_SURFACE, SCENE, VERT } from "./shaders";
 
 /** The 3D mascots, drawn live with three.js.
  *
@@ -10,72 +13,67 @@ import { BLOOM, BOP, COMMON, MOCHI, PIP, RENDER, RIME, TWINKLE, VERT } from "./s
  *  which is then copied onto the View's. One animation loop runs the Views that are on screen, each at its own frame
  *  rate, and stops when none are. With "reduce motion" on, Views draw one still frame per change instead. */
 
-// raise: the arm's angle at the top of a wave (from straight up, outward is negative); fwd: how far forward it comes
-type Arm = { shoulder: [number, number, number]; len: number; rest: number; hide: boolean; raise?: number; fwd?: number };
 // base: where an ear meets the head (the one on the viewer's right); off: from there to its centre, in the ear's own
 // frame; yaw: how far it faces outward; lean: how far it leans outward
 type Ears = { base: [number, number, number]; off: [number, number]; yaw: number; lean: number };
 type Spec = {
   glsl: string; box: number[]; cam: [number, number, number, number]; top: number; shadow: [number, number];
-  eye: { x: number; y: number; rx: number; ry: number }; eyeZ: number; faceR: number;
-  nose: [number, number, number, number]; mouth: [number, number, number, number]; blush: [number, number, number, number];
+  eye: { x: number; y: number; rx: number; ry: number };
+  nose: [number, number, number, number]; blush: [number, number, number, number];
   rest: number; prop: string; exposure: number; colors: { main: string; accent: string; blush: string; extra: string };
-  ears?: Ears; bubbles?: boolean; arm?: Arm;
-  stoic?: boolean;          // his face never changes (Rime): no smile, no blinking, no closed eyes; a slow, stiff wave
-  frost?: boolean;          // has frost drifting round it (uFrost*)
-  props?: false;            // no sparkle or z's at all
-  head?: boolean;           // turns its own head (uHead) to watch, nod and bow; the body turns less
-  motion?: Partial<{ breathe: number; hop: number; squash: number; tilt: number }>;   // scales the usual motion
-  portrait?: [number, number, number, number];   // the camera for small views: head and shoulders
+  ears?: Ears;
 };
 
-// Shapes, faces and palette colours (ModelLab's ice scale and the Tailwind palette). Positions are in each mascot's
-// own units (floor at y = 0, facing +z); exposures were set by measuring each render against its palette swatch.
+// The built-in mascot. Positions are in his own units (floor at y = 0, facing +z).
 const SPECS: Record<MascotKind, Spec> = {
   // Bloom was measured from a photo of the real plush: the face is laid out on his surface (eye and blush x are
   // distances round the body, not across the picture), and the colours are the photo's, not the palette's.
   bloom: {
     glsl: BLOOM, box: [-1.15, -0.1, -1.08, 1.15, 2.22, 1.08], cam: [2.48, 9.9, 1.08, 17], top: 1.73, shadow: [2.6, 1.6],
-    eye: { x: 0.321, y: 0.785, rx: 0.062, ry: 0.088 }, eyeZ: 0, faceR: 1, nose: [0, 0.711, 0.055, 0.014], mouth: [0, 0, 0, 0],
+    eye: { x: 0.321, y: 0.785, rx: 0.062, ry: 0.088 }, nose: [0, 0.711, 0.055, 0.014],
     blush: [0.481, 0.62, 0, 0.1], ears: { base: [0.605, 1.34, 0.339], off: [0, 0.14], yaw: 0, lean: 0.8 }, rest: 0,
-    prop: "#68c7ea", exposure: 1.1,
+    prop: "#68c7ea", exposure: 1.04,
     colors: { main: "#eff2fa", accent: "#99d7f0", blush: "#b0f1fc", extra: "#84d1f0" },   // white fur; (accent: unused); the blush's dye; the tuft's and ears' blue
   },
-  mochi: {
-    glsl: MOCHI, box: [-1.0, -0.1, -0.92, 1.0, 1.92, 0.95], cam: [2.2, 9.6, 0.9, 17], top: 1.72, shadow: [2.1, 1.5],
-    eye: { x: 0.28, y: 1.12, rx: 0.068, ry: 0.086 }, eyeZ: 0.5813, faceR: 0.711, nose: [0, 0, 0, 0], mouth: [0, 0.885, 0.062, 0.011],
-    blush: [0.44, 0.9, 0.538, 0.12], rest: 0, prop: "#14b8a6", bubbles: true, exposure: 1.13,
-    arm: { shoulder: [0.7, 0.62, 0.12], len: 0.3, rest: Math.PI + 0.45, hide: false },
-    colors: { main: "#fb923c", accent: "#14b8a6", blush: "#ea580c", extra: "#f8fafc" },   // orange-400, teal-500, orange-600, slate-50
-  },
-  bop: {
-    glsl: BOP, box: [-0.98, -0.1, -0.86, 0.98, 2.1, 0.86], cam: [2.3, 9.6, 0.98, 17], top: 1.82, shadow: [1.9, 1.3],
-    eye: { x: 0.22, y: 1.12, rx: 0.06, ry: 0.07 }, eyeZ: 0, faceR: 0.6, nose: [0, 0, 0, 0], mouth: [0, 0.94, 0.07, 0.01],
-    blush: [0.36, 0.98, 0.42, 0.12], rest: 1, prop: "#3d82dc", exposure: 1.12,
-    colors: { main: "#3d82dc", accent: "#fbbf24", blush: "#7eb0ee", extra: "#3d82dc" },   // ice-500, amber-400, ice-400
-  },
-  twinkle: {
-    glsl: TWINKLE, box: [-1.14, -0.1, -0.64, 1.14, 2.04, 0.64], cam: [2.2, 9.6, 0.92, 17], top: 1.82, shadow: [2.0, 1.1],
-    eye: { x: 0.21, y: 1.0, rx: 0.065, ry: 0.082 }, eyeZ: 0.44, faceR: 5.0, nose: [0, 0, 0, 0], mouth: [0, 0.83, 0.07, 0.011],
-    blush: [0.39, 0.86, 0.36, 0.13], rest: 0, prop: "#f59e0b", exposure: 1.13,
-    colors: { main: "#facc15", accent: "#f59e0b", blush: "#fb923c", extra: "#facc15" },   // yellow-400, amber-500, orange-400
-  },
-  pip: {
-    glsl: PIP, box: [-0.98, -0.1, -0.86, 0.98, 1.88, 1.0], cam: [2.1, 9.4, 0.86, 17], top: 1.6, shadow: [1.9, 1.4],
-    eye: { x: 0.22, y: 0.96, rx: 0.07, ry: 0.088 }, eyeZ: 0.67, faceR: 0.7, nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0],
-    blush: [0.42, 0.74, 0.58, 0.12], rest: 0, prop: "#84cc16", exposure: 1.0,
-    colors: { main: "#a3e635", accent: "#f97316", blush: "#facc15", extra: "#a3e635" },   // lime-400, orange-500, yellow-400
-  },
-  rime: {
-    glsl: RIME, box: [-1.15, -0.1, -1.15, 1.15, 3.25, 1.15], cam: [2.2, 10.5, 1.5, 19.5], portrait: [2.75, 10.5, 2.42, 7.5],
-    top: 2.9, shadow: [0.95, 0.6],
-    eye: { x: 0.105, y: 0.02, rx: 0.019, ry: 0.019 }, eyeZ: 0.178, faceR: 0.21, nose: [0, 0, 0, 0], mouth: [0, 0, 0, 0],
-    blush: [0, 0, 0, 0], rest: 0, prop: "#7eb0ee", exposure: 1.1, stoic: true, frost: true, props: false, head: true,
-    motion: { breathe: 0.25, hop: 0, squash: 0.15, tilt: 0.5 },   // tall and made of snow: he barely bends
-    arm: { shoulder: [0.215, 1.97, 0.0], len: 1.105, rest: Math.PI + 0.082, hide: false, raise: -0.85, fwd: 0.12 },
-    colors: { main: "#f6f9fc", accent: "#7eb0ee", blush: "#7eb0ee", extra: "#7eb0ee" },   // snow; ice-400 for the frost
-  },
 };
+
+/** A make-your-own mascot's shader with this look's own parts written out in it (see glslFor), or null when a part
+ *  can't be written out. */
+const ownGlsl = (b: Built) => b.glsl && FUZZY.replace(/\/\*CLOTH<\*\/[\s\S]*?\/\*>CLOTH\*\//, () => b.glsl!.cloth).replace(/\/\*SOLID<\*\/[\s\S]*?\/\*>SOLID\*\//, () => b.glsl!.solid);
+
+/** The fragment shader of a mascot. `character` is BLOOM, or FUZZY (with a look's own parts written out, or not).
+ *  A make-your-own body in plush is pile, like Bloom. In any other material it is a bare surface: the material's
+ *  header (its defines) goes first, and the material library and the material itself before the march that calls it. */
+function program(character: string, b: Built | null, look?: Look): string {
+  if (!b?.bare || !look?.material) return COMMON + character + SCENE + MAIN_PILE;
+  const m = material(look.material as Surface);
+  return COMMON + "#define MAT\n" + (b.pile ? "#define PILE\n" : "") + m.header + "\n" + character + SCENE + MATLIB + "\n" + m.body + "\n" + MAIN_SURFACE;
+}
+
+/** The spec of a make-your-own mascot: its parts are lists (see ./looks.ts), so most of a Spec doesn't apply. */
+/** The body's pile in the three materials that are pile, as the shader's uPileA..D (see furM in ./shaders.ts):
+ *  [depth, clumps per unit, strands per unit, a strand's length against its width],
+ *  [how far a clump leans off the lay (radians), how hard its strands lean together, how far and how often a strand bends],
+ *  [how far a strand lies over (in depths), the shortest strand (share of the depth), how much longer the rest are, strays],
+ *  [how much whole clumps differ in height, how round a strand is shaded, the pale rim's strength, a strand's taper]. */
+const PILES: Record<string, number[][]> = {
+  // plush: thick strands combed one way, as on the reference (docs/MATERIALS.md)
+  plush: [[NAP.plush, 15, 100, 2.8], [0.65, 6.0, 0.007, 55], [0.85, 0.5, 0.3, 0.2], [0.0, 0.46, 1.0, 0.24]],
+  // cotton: a short brushed nap of fine fibres lying every way
+  cotton: [[NAP.cotton, 34, 190, 1.8], [3.14, 0.0, 0.002, 90], [0.5, 0.62, 0.3, 0.08], [0.0, 0.3, 0.55, 0.2]],
+  // boucle: thick yarn in curls and loops, in nubs of different heights
+  boucle: [[NAP.boucle, 13, 66, 3.0], [3.14, 2.0, 0.019, 76], [0.5, 0.5, 0.35, 0.1], [0.45, 0.6, 0.9, 0.2]],
+};
+
+function fuzzySpec(b: Built, look: Look): Spec {
+  const main = COLOURS[look.colour] ?? COLOURS.lime, pale = look.colour === "snow";
+  const glsl = FUZZY;   // (the program that reads any parts: every look shares it, so each is ready at once. See View.specialise)
+  return {
+    glsl, box: b.box, cam: b.cam, top: b.top, shadow: b.shadow, eye: { x: 0, y: b.eyeY, rx: 0, ry: 0 },
+    nose: [0, 0, 0, 0], blush: [0, 0, 0, 0], rest: 0, prop: pale ? COLOURS.ice : main, exposure: pale ? 1.12 : 1.0,
+    colors: { main, accent: main, blush: main, extra: main },
+  };
+}
 
 const C = (hex: string) => new THREE.Color(hex);
 const ease = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
@@ -141,11 +139,18 @@ function kick() { if (!raf && !document.hidden) raf = requestAnimationFrame(loop
 function loop(now: number) {
   raf = 0;
   if (document.hidden) return;
-  // if frames come slower than ~40 fps, draw every mascot with fewer pixels (and more again when there's room)
+  // If frames come slower than ~40 fps: first give the biggest make-your-own mascot on screen a program of its own
+  // (one at a time: each has to be compiled); when none is left, draw every mascot with fewer pixels. (A gap of
+  // more than a second and a half is the tab coming back, not a slow frame.)
   const ms = lastLoop ? now - lastLoop : 16;
   lastLoop = now;
-  if (ms > 25 && ms < 200) { if (++slowFrames > 30 && quality > 0.6) { quality = Math.max(0.6, quality - 0.2); slowFrames = 0; views.forEach((v) => v.resize()); } }
-  else slowFrames = Math.max(0, slowFrames - 1);
+  if (ms > 25 && ms < 1500) {
+    if (++slowFrames > 16) {
+      const next = [...views].sort((a, b) => b.gain - a.gain)[0];
+      if (next?.gain) { next.specialise(); slowFrames = 0; }
+      else if (slowFrames > 30 && quality > 0.6) { quality = Math.max(0.6, quality - 0.2); slowFrames = 0; views.forEach((v) => v.resize()); }
+    }
+  } else slowFrames = Math.max(0, slowFrames - 1);
   let any = false;
   for (const v of views) if (v.frame(now)) any = true;
   if (any) raf = requestAnimationFrame(loop);
@@ -153,10 +158,18 @@ function loop(now: number) {
 }
 
 // ---------------------------------------------------------------- one mascot
-export type ViewOptions = { kind: MascotKind; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number; portrait?: boolean };
+/** kind "fuzzy" is a make-your-own mascot: `look` says which. `still`: one picture per change, no motion (a
+ *  thumbnail). A make-your-own mascot starts on the program that reads any parts and gets one of its own when
+ *  frames come slowly (see View.specialise): `general` keeps it on the first for good, `own` starts it on the second. */
+export type ViewOptions = { kind: MascotKind | "fuzzy"; look?: Look; pose?: MascotPose; fps?: number; follow?: boolean; zoom?: number;
+  still?: boolean; general?: boolean; own?: boolean };
 
 export class View {
   private K: Spec;
+  private built: Built | null = null;   // a make-your-own mascot's parts
+  private still = false;                // a thumbnail: one picture per change
+  private own: string | null = null;    // a make-your-own mascot's shader with its own parts written out, until it is in use
+  private look?: Look;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private scene = new THREE.Scene();
@@ -170,7 +183,6 @@ export class View {
   private squash = new THREE.Group();
   private shadow: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private flake: THREE.Sprite;
-  private bubbles: THREE.Sprite[];
   private zs: THREE.Sprite[];
   private ro: ResizeObserver;
   private io: IntersectionObserver;
@@ -179,18 +191,30 @@ export class View {
   private fps: number; private follow: boolean;
   private st = {
     pose: "idle" as MascotPose, poseT: 0, t: Math.random() * 10, blinkIn: 1.6 + Math.random() * 2, blinkT: -1,
-    look: new THREE.Vector2(), lookV: new THREE.Vector2(), poke: -1, tilt: 0, tiltV: 0, flake: 0, zz: 0, bub: 0,
-    frost: Math.random() * 40, bow: 0, roll: 0,
+    look: new THREE.Vector2(), lookV: new THREE.Vector2(), poke: -1, tilt: 0, tiltV: 0, flake: 0, zz: 0,
   };
   private earM = new THREE.Matrix4(); private earE = new THREE.Euler(); private v3 = new THREE.Vector3();
-  private headM = new THREE.Matrix4(); private headE = new THREE.Euler();
   private q = new THREE.Quaternion(); private qi = new THREE.Quaternion();
+  private pileU: Record<string, { value: THREE.Vector4 }> = {};
   private KEY = new THREE.Vector3(-0.42, 0.78, 0.5).normalize();    // big softbox, in front and above
   private FILL = new THREE.Vector3(0.85, 0.15, 0.5).normalize();    // fill from the other side
   private BACK = new THREE.Vector3(0.25, 0.6, -0.76).normalize();   // rim light, behind and above
 
   constructor(private host: HTMLElement, o: ViewOptions) {
-    const K = (this.K = SPECS[o.kind]);
+    if (o.kind === "fuzzy") this.built = build(o.look ?? { shape: "pom", colour: "lime", eyes: "bean", glasses: "none", extra: "none" });
+    const K = (this.K = this.built ? fuzzySpec(this.built, o.look!) : SPECS[o.kind as MascotKind]);
+    if (this.built) {   // the body's pile, in the materials that are pile
+      const P = PILES[o.look?.material ?? "plush"] ?? PILES.plush;
+      ["uPileA", "uPileB", "uPileC", "uPileD"].forEach((u, i) => (this.pileU[u] = { value: new THREE.Vector4(P[i][0], P[i][1], P[i][2], P[i][3]) }));
+    }
+    {   // natural light (see the light in shaders.ts): the key low and to the side, so it models the body from side to side
+      this.KEY.set(-0.587, 0.643, 0.492).normalize();   // 40 degrees up, 50 to the left
+      this.FILL.set(0.597, 0.1, 0.796).normalize();     // the room on the other side
+      this.BACK.set(0.45, 0.5, -0.74).normalize();      // the rim, from behind and above
+    }
+    this.still = !!o.still;
+    this.own = this.built && !o.general ? ownGlsl(this.built) : null;
+    this.look = o.look;
     this.fps = o.fps ?? 30;
     this.follow = o.follow ?? true;
     this.canvas = document.createElement("canvas");
@@ -198,7 +222,7 @@ export class View {
     const ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("no 2D canvas");
     this.ctx = ctx;
-    const [camY, camZ, target, fov] = (o.portrait && K.portrait) || K.cam;   // small views: head and shoulders
+    const [camY, camZ, target, fov] = K.cam;
     this.fov = fov / (o.zoom ?? 1);
     this.camera = new THREE.PerspectiveCamera(this.fov, 1, 0.1, 60);
     this.camera.position.set(0, camY, camZ);
@@ -213,24 +237,37 @@ export class View {
       uFill: { value: this.FILL.clone() }, uFillCol: { value: C("#f3f6ff").multiplyScalar(0.32) },
       uBack: { value: this.BACK.clone() }, uBackCol: { value: C("#ffffff").multiplyScalar(0.58) },
       uUp: { value: new THREE.Vector3(0, 1, 0) }, uSky: { value: C("#ffffff").multiplyScalar(0.42) }, uGround: { value: C("#f1f3f7").multiplyScalar(0.24) },
-      uExposure: { value: K.exposure },
+      uFwd: { value: new THREE.Vector3(0, 0, 1) }, uBackdrop: { value: C("#f5f8fc") }, uDark: { value: 0 },
+      uShadow: { value: new THREE.Vector2(K.shadow[0] / 2, K.shadow[1] / 2) }, uTime: { value: 0 },
+      uExposure: { value: K.exposure }, ...this.pileU,
       uMain: { value: C(K.colors.main) }, uAccent: { value: C(K.colors.accent) }, uBlushC: { value: C(K.colors.blush) }, uExtra: { value: C(K.colors.extra) },
-      uPeel: { value: 0 },
-      uEye: { value: [new THREE.Vector4(), new THREE.Vector4()] }, uEyeZ: { value: K.eyeZ }, uFaceR: { value: K.faceR },
+      uEye: { value: [new THREE.Vector4(), new THREE.Vector4()] },
       uEyeMode: { value: K.rest }, uEyeOpen: { value: 1 },
-      uNose: { value: v4(K.nose) }, uMouth: { value: v4(K.mouth) },
+      uNose: { value: v4(K.nose) },
       uBlush: { value: [v4([-K.blush[0], K.blush[1], K.blush[2], K.blush[3]]), v4(K.blush)] },
       uEarC: { value: [new THREE.Vector3(), new THREE.Vector3()] }, uEarM: { value: [new THREE.Matrix3(), new THREE.Matrix3()] },
-      uArmA: { value: new THREE.Vector3() }, uArmB: { value: new THREE.Vector3() }, uArmOn: { value: 0 },
       uSway: { value: 0 },
-      uFrostT: { value: 0 }, uFrostR: { value: 1 }, uFrostC: { value: C("#3d82dc") }, uHead: { value: new THREE.Matrix3() },
     };
+    if (this.built) {   // the parts, as the lists the FUZZY shader reads
+      const B = this.built, v4s = (n: number) => Array.from({ length: n }, () => new THREE.Vector4());
+      Object.assign(this.uniforms, {
+        uNF: { value: B.fur.length }, uFA: { value: v4s(MAX_FUR) }, uFB: { value: v4s(MAX_FUR) }, uFR: { value: v4s(MAX_FUR) },
+        uFurC: { value: B.furC.map(C) }, uNS: { value: 0 }, uSA: { value: v4s(MAX_SOLID) }, uSB: { value: v4s(MAX_SOLID) },
+        uSR: { value: v4s(MAX_SOLID) }, uSolC: { value: B.solidC.map(C) }, uSolB: { value: new THREE.Vector4(0, 0, 0, 9) },
+      });
+      B.fur.slice(0, MAX_FUR).forEach((q, i) => {
+        (this.uniforms.uFA.value as THREE.Vector4[])[i].set(q.a[0], q.a[1], q.a[2], q.ty);
+        (this.uniforms.uFB.value as THREE.Vector4[])[i].set(q.b?.[0] ?? 0, q.b?.[1] ?? 0, q.b?.[2] ?? 0, q.k ?? 0);
+        (this.uniforms.uFR.value as THREE.Vector4[])[i].set(q.r[0], q.r[1], q.r[2], q.fur ?? 0);
+      });
+      this.setSolids(B.solids(0, 1, 0, 0));
+    }
     const box = new THREE.BoxGeometry(boxMax.x - boxMin.x, boxMax.y - boxMin.y, boxMax.z - boxMin.z);
     box.translate((boxMax.x + boxMin.x) / 2, (boxMax.y + boxMin.y) / 2, (boxMax.z + boxMin.z) / 2);
     this.geos.push(box);
-    this.mat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: COMMON + K.glsl + RENDER, uniforms: this.uniforms,
-      transparent: true, depthWrite: false, premultipliedAlpha: true });
+    this.mat = this.material(K.glsl);
     this.body = new THREE.Mesh(box, this.mat);
+    if (o.own) this.specialise();
     this.body.frustumCulled = false;
     this.root.add(this.squash);
     this.squash.add(this.body);
@@ -241,21 +278,24 @@ export class View {
     sc.width = sc.height = 128;
     const sx = sc.getContext("2d")!;
     const grad = sx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0, "rgba(30,40,60,0.4)");
-    grad.addColorStop(0.5, "rgba(30,40,60,0.14)");
+    // under one soft lamp to the side: deeper close to the body, trailing off away from the lamp
+    grad.addColorStop(0, "rgba(30,40,60,0.5)");
+    grad.addColorStop(0.35, "rgba(30,40,60,0.3)");
+    grad.addColorStop(0.7, "rgba(30,40,60,0.1)");
     grad.addColorStop(1, "rgba(30,40,60,0)");
     sx.fillStyle = grad;
     sx.fillRect(0, 0, 128, 128);
     const shadowTex = new THREE.CanvasTexture(sc);
-    const plane = new THREE.PlaneGeometry(K.shadow[0], K.shadow[1]);
+    const wide = 1.12;
+    const plane = new THREE.PlaneGeometry(K.shadow[0] * wide, K.shadow[1] * wide);
     this.shadow = new THREE.Mesh(plane, new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     this.shadow.rotation.x = -Math.PI / 2;
-    this.shadow.position.set(0, 0.002, 0.04);
+    this.shadow.position.set(0.12, 0.002, 0.04);   // (the lamp is on the left)
     this.shadow.renderOrder = -1;
     this.scene.add(this.shadow);
     this.disposables.push(shadowTex, plane, this.shadow.material);
 
-    // props: a sparkle while thinking, bubbles for the scientist, z's while asleep
+    // props: a sparkle while thinking, z's while asleep
     const sprite = (draw: (x: CanvasRenderingContext2D) => void) => {
       const c = document.createElement("canvas");
       c.width = c.height = 128;
@@ -277,12 +317,6 @@ export class View {
       for (let i = 0; i < 4; i++) { x.quadraticCurveTo(0, 0, 0, -56); x.quadraticCurveTo(0, 0, 56, 0); x.rotate(Math.PI / 2); }
       x.fill();
     });
-    this.bubbles = K.bubbles ? [0, 1, 2].map(() => sprite((x) => {
-      x.beginPath(); x.arc(64, 64, 50, 0, Math.PI * 2);
-      x.fillStyle = K.prop + "40"; x.fill();
-      x.lineWidth = 9; x.strokeStyle = K.prop; x.stroke();
-      x.beginPath(); x.arc(46, 46, 11, 0, Math.PI * 2); x.fillStyle = "#ffffffcc"; x.fill();
-    })) : [];
     this.zs = [0, 1].map(() => sprite((x) => {
       x.fillStyle = K.prop; x.font = "800 108px ui-sans-serif, system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
       x.fillText("z", 64, 60);
@@ -305,6 +339,31 @@ export class View {
 
   private poke = () => { this.st.poke = 0; this.dirty = true; kick(); };
 
+  private setSolids(parts: Part[]) {
+    const U = this.uniforms, n = Math.min(parts.length, MAX_SOLID);
+    for (let i = 0; i < n; i++) {
+      const q = parts[i];
+      (U.uSA.value as THREE.Vector4[])[i].set(q.a[0], q.a[1], q.a[2], q.ty);
+      (U.uSB.value as THREE.Vector4[])[i].set(q.b?.[0] ?? 0, q.b?.[1] ?? 0, q.b?.[2] ?? 0, q.col ?? 0);
+      (U.uSR.value as THREE.Vector4[])[i].set(q.r[0], q.r[1], q.r[2], q.rough ?? 0.2);
+    }
+    U.uNS.value = n;
+    // a ball round them all (their points, plus their size): outside it the shader skips the list
+    let cx = 0, cy = 0, cz = 0, k = 0;
+    const pts: [number, number, number, number][] = [];
+    for (let i = 0; i < n; i++) {
+      if (parts[i].a[1] <= PARKED + 1) continue;   // (an eye's unused places are parked far below)
+      const q = parts[i], reach = q.ty === 0 ? Math.max(q.r[0], q.r[1], q.r[2]) : q.ty === 1 ? Math.max(q.r[0], q.r[1]) : q.ty === 2 ? Math.hypot(q.b![0], q.b![1], q.b![2]) : q.r[0] + q.r[1];
+      pts.push([q.a[0], q.a[1], q.a[2], reach]);
+      if (q.ty === 1) pts.push([q.b![0], q.b![1], q.b![2], reach]);
+    }
+    for (const q of pts) { cx += q[0]; cy += q[1]; cz += q[2]; k++; }
+    if (k) { cx /= k; cy /= k; cz /= k; }
+    let rad = 0;
+    for (const q of pts) rad = Math.max(rad, Math.hypot(q[0] - cx, q[1] - cy, q[2] - cz) + q[3]);
+    (U.uSolB.value as THREE.Vector4).set(cx, cy, cz, k ? rad : -1);
+  }
+
   setPose(p: MascotPose) {
     const st = this.st;
     if (p === st.pose) return;
@@ -317,11 +376,49 @@ export class View {
 
   applyTheme() {
     const dark = isDark();
-    (this.uniforms.uBackCol.value as THREE.Color).set("#ffffff").multiplyScalar(dark ? 0.85 : 0.58);   // the rim glow reads better on dark
     this.shadow.material.color.set(dark ? "#000000" : "#ffffff");
-    (this.uniforms.uFrostC.value as THREE.Color).set(dark ? "#cfe1f8" : "#3d82dc");   // frost: pale on dark, deeper blue on light
+    // the page behind (what a clear or mirrored body shows): the theme's canvas colour
+    const rgb = getComputedStyle(document.documentElement).getPropertyValue("--canvas").trim().split(/\s+/).map(Number);
+    const page = this.uniforms.uBackdrop.value as THREE.Color;
+    if (rgb.length === 3 && rgb.every((x) => Number.isFinite(x))) page.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
+    else page.set(dark ? "#070a10" : "#f5f8fc");
+    this.uniforms.uDark.value = dark ? 1 : 0;
+    {   // natural light, in linear light: a warm key (6150 K), a cooler sky (7000 K), and what the page sends back
+      const U = this.uniforms, set = (u: { value: unknown }, r: number, g: number, b: number, k: number) => (u.value as THREE.Color).setRGB(r * k, g * k, b * k);
+      set(U.uKeyCol, 1.0, 0.965, 0.915, 0.7);
+      set(U.uSky, 0.9, 0.94, 1.0, 0.4);
+      set(U.uFillCol, 1.0, 0.97, 0.93, dark ? 0.12 : 0.06);
+      set(U.uBackCol, 0.95, 0.97, 1.0, dark ? 0.75 : 0.3);    // on a dark page the rim is a lamp; on a light one the page itself does most of it
+      // a light page returns 0.6 of what falls on it (the key at its angle, and the sky); a dark page is taken as a table that returns about 0.3
+      const fr = dark ? 0.28 : page.r, fg = dark ? 0.3 : page.g, fb = dark ? 0.33 : page.b;   // (a dark page: a table that is dark to the eye, not to the light)
+      const back = dark ? 1 : 0.6;
+      (U.uGround.value as THREE.Color).setRGB(back * fr * (0.45 + 0.36), back * fg * (0.434 + 0.376), back * fb * (0.412 + 0.4));
+    }
     this.dirty = true;
     kick();
+  }
+
+  private material(character: string) {
+    return new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: program(character, this.built, this.look), uniforms: this.uniforms,
+      transparent: true, depthWrite: false, premultipliedAlpha: true });
+  }
+
+  /** How much there is to gain by giving this mascot a program of its own: its pixels, or 0 when it has one, can't
+   *  have one, or isn't being drawn. */
+  get gain() { return this.own && this.onScreen && !this.still ? this.w * this.h : 0; }
+
+  /** Draw this make-your-own mascot with a program that has its own parts written out. It draws about two and a
+   *  half times faster and looks the same, but the program has to be compiled first (about a second on a software
+   *  renderer), where the one that reads any parts is shared by every look. So the loop calls this only when frames
+   *  come slowly, for the biggest mascot first. */
+  specialise() {
+    if (!this.own) return;
+    const old = this.mat;
+    this.mat = this.material(this.own);
+    this.own = null;
+    this.body.material = this.mat;
+    old.dispose();
+    this.dirty = true;
   }
 
   resize() {
@@ -341,7 +438,7 @@ export class View {
   /** Called by the loop: draws when it's time; returns whether this View wants more frames. */
   frame(now: number): boolean {
     if (!this.onScreen || this.w < 2) return false;
-    if (reduceMotion()) {               // still pictures: one frame per change
+    if (this.still || reduceMotion()) {               // still pictures: one frame per change
       if (this.dirty) { this.update(0); this.draw(); this.dirty = false; }
       return false;
     }
@@ -375,7 +472,6 @@ export class View {
 
   private update(dt: number) {
     const st = this.st, K = this.K, U = this.uniforms, reduce = reduceMotion();
-    const MO = { breathe: 1, hop: 1, squash: 1, tilt: 1, ...K.motion };
     st.t += dt;
     st.poseT += dt;
     const t = st.t, P = st.pose, pt = st.poseT;
@@ -392,21 +488,20 @@ export class View {
         Math.max(-1, Math.min(1, (r.top + r.height * 0.45 - pointer.y) / (window.innerHeight * 0.45))));
     } else look.set(Math.sin(t * 0.31) * 0.15, Math.sin(t * 0.23) * 0.08);
     if (dt === 0) { st.look.copy(look); } else {
-      const [k, d] = K.stoic ? [16, 7] : [38, 10];   // (Rime turns slowly)
-      [st.look.x, st.lookV.x] = spring(st.look.x, st.lookV.x, look.x, k, d);
-      [st.look.y, st.lookV.y] = spring(st.look.y, st.lookV.y, look.y, k, d);
+      [st.look.x, st.lookV.x] = spring(st.look.x, st.lookV.x, look.x, 38, 10);
+      [st.look.y, st.lookV.y] = spring(st.look.y, st.lookV.y, look.y, 38, 10);
     }
-    this.root.rotation.y = st.look.x * 0.5 * (K.head ? 0.25 : 1);   // (with a head of its own to turn, the body turns less)
-    this.root.rotation.x = -st.look.y * 0.16 * (K.head ? 0.15 : 1);
+    this.root.rotation.y = st.look.x * 0.5;
+    this.root.rotation.x = -st.look.y * 0.16;
 
-    // tilt: thinking leans in, waving leans away (or, without an arm, wiggles hello)
-    let tilt = P === "think" ? 0.07 + Math.sin(t * 1.4) * 0.035 : P === "wave" && pt < 1.7 ? 0.05 : P === "sleep" ? 0.05 : 0;
-    if (P === "wave" && !K.arm && pt < 1.6) tilt = 0.13 * Math.sin(pt * 9) * (1 - ease(pt / 1.6));
+    // tilt: thinking leans in, waving wiggles hello
+    let tilt = P === "think" ? 0.07 + Math.sin(t * 1.4) * 0.035 : P === "sleep" ? 0.05 : 0;
+    if (P === "wave" && pt < 1.6) tilt = 0.13 * Math.sin(pt * 9) * (1 - ease(pt / 1.6));
     if (dt === 0) st.tilt = tilt; else [st.tilt, st.tiltV] = spring(st.tilt, st.tiltV, tilt, 30, 8);
-    this.root.rotation.z = st.tilt * MO.tilt;
+    this.root.rotation.z = st.tilt;
 
     // breathing, squash, hop
-    const breathe = (reduce ? 0 : (P === "sleep" ? 0.02 * Math.sin(t * 1.25) : 0.012 * Math.sin(t * 1.9))) * MO.breathe;
+    const breathe = reduce ? 0 : (P === "sleep" ? 0.02 * Math.sin(t * 1.25) : 0.012 * Math.sin(t * 1.9));
     let hop = 0, sq = 0;
     if (P === "happy" && !reduce) {
       const h = pt / 0.9;
@@ -420,7 +515,6 @@ export class View {
       st.poke += dt;
       if (st.poke < 0.5) sq += -0.14 * Math.sin(Math.min(1, st.poke / 0.5) * Math.PI) * Math.exp(-st.poke * 3); else st.poke = -1;
     }
-    hop *= MO.hop; sq *= MO.squash;
     this.root.position.y = hop;
     const s = 1 + breathe + sq;
     this.squash.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s));
@@ -429,8 +523,7 @@ export class View {
 
     // eyes: blink, expressions, and a glance toward the target
     let mode = K.rest, open = 1;
-    if (K.stoic) { /* Rime's face never changes: no smile, no closed eyes, no blinking */ }
-    else if (P === "wave" || P === "happy") mode = 1;
+    if (P === "wave" || P === "happy") mode = 1;
     else if (P === "sleep") mode = 2;
     else if (mode === 0 && !reduce) {
       st.blinkIn -= dt;
@@ -440,12 +533,14 @@ export class View {
     if ((P === "wave" && pt > 1.9) || (P === "happy" && pt > 1.4) || (reduce && (P === "wave" || P === "happy"))) {
       st.pose = "idle"; st.poseT = 0;
     }
-    const E = K.eye, gx = K.stoic ? 0 : st.look.x * 0.04, gy = K.stoic ? 0 : st.look.y * 0.03;   // (pebble eyes don't glance)
+    const E = K.eye, gx = st.look.x * 0.04, gy = st.look.y * 0.03;
     (U.uEye.value as THREE.Vector4[])[0].set(-E.x + gx, E.y + gy, E.rx, E.ry);
     (U.uEye.value as THREE.Vector4[])[1].set(E.x + gx, E.y + gy, E.rx, E.ry);
     U.uEyeMode.value = mode;
     U.uEyeOpen.value = Math.max(0.05, open);
+    if (this.built) this.setSolids(this.built.solids(mode, open, gx, gy));   // its eyes are parts: open, blinking, smiling or shut
     U.uSway.value = reduce ? 0 : t * 1.4;
+    U.uTime.value = reduce ? 0 : t;
 
     const ears = K.ears;
     if (ears) {   // a little twitch now and then, a perk when waving
@@ -454,53 +549,18 @@ export class View {
         this.setEar(ears, i, sgn, tw * 0.2 + (P === "wave" ? 0.06 * Math.sin(pt * 9) : 0) + (P === "sleep" ? -0.1 : 0));
       });
     }
-    if (K.arm) {     // the arm on the viewer's right rises, waves and comes back down
-      let up = 0, ang = K.arm.raise ?? -0.38;
-      if (P === "wave") {
-        up = ease(pt / 0.4) * (1 - ease((pt - 1.45) / 0.4));
-        ang += (K.stoic ? 0.16 * Math.sin((pt - 0.4) * 6) : 0.26 * Math.sin((pt - 0.4) * 11)) * (pt > 0.4 && pt < 1.45 ? 1 : 0);
-      }
-      U.uArmOn.value = !K.arm.hide || up > 0.01 ? 1 : 0;
-      const a = K.arm.rest + (ang + Math.PI * 2 - K.arm.rest) * up;
-      const [sx, sy, sz] = K.arm.shoulder, L = K.arm.len;
-      (U.uArmA.value as THREE.Vector3).set(sx, sy, sz);
-      (U.uArmB.value as THREE.Vector3).set(sx - Math.sin(a) * L, sy + Math.cos(a) * L, sz + (K.arm.fwd ?? 0.04) * up);
-    }
-    if (K.head) {    // he turns his head to watch, nods (happy), tilts it while thinking and bows it asleep
-      const towards = dt === 0 ? 1 : 1 - Math.exp(-dt * 3);
-      st.bow += ((P === "sleep" ? 0.38 : 0) - st.bow) * towards;
-      st.roll += ((P === "think" ? 0.13 : 0) - st.roll) * towards;
-      const nod = P === "happy" && !reduce ? 0.3 * Math.sin(Math.PI * Math.min(1, pt / 1.1)) : 0;
-      this.headE.set(-st.look.y * 0.4 + nod + st.bow, st.look.x * 0.65, st.roll, "YXZ");
-      this.headM.makeRotationFromEuler(this.headE);
-      (U.uHead.value as THREE.Matrix3).setFromMatrix4(this.headM).transpose();
-    }
-    if (K.frost) {   // the frost drifts faster while thinking, slower asleep, and puffs out on a hop
-      st.frost += reduce ? 0 : dt * (P === "think" ? 2.6 : P === "sleep" ? 0.35 : 1);
-      U.uFrostT.value = st.frost;
-      U.uFrostR.value = 1 + (P === "happy" && !reduce ? 0.2 * Math.sin(Math.PI * Math.min(1, pt / 1.2)) : 0);
-    }
-
     // props
     const H = K.top, bx = K.box[3];
     st.flake += ((P === "think" ? 1 : 0) - st.flake) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 6));
-    this.flake.visible = st.flake > 0.01 && !K.bubbles && K.props !== false;
+    this.flake.visible = st.flake > 0.01;
     this.flake.material.opacity = st.flake;
     this.flake.material.rotation = reduce ? 0 : Math.sin(t * 2.0) * 0.25;
     this.flake.scale.setScalar(0.3 * (0.5 + 0.5 * st.flake));
     this.flake.position.set(bx * 0.82, H + 0.42 + (reduce ? 0 : Math.sin(t * 1.6) * 0.04), 0.3);
-    st.bub += ((P === "think" ? 1 : 0) - st.bub) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 5));
-    this.bubbles.forEach((b, i) => {
-      const k = reduce ? 0.3 + i * 0.25 : (t * 0.45 + i / 3) % 1;
-      b.visible = st.bub > 0.01;
-      b.position.set(bx * 0.62 + Math.sin(k * 7 + i * 2) * 0.06, H * 0.88 + k * 0.62, 0.3);
-      b.material.opacity = st.bub * Math.sin(Math.PI * Math.min(1, k * 1.2));
-      b.scale.setScalar(0.09 + 0.1 * k + 0.02 * i);
-    });
     st.zz += ((P === "sleep" ? 1 : 0) - st.zz) * (dt === 0 ? 1 : 1 - Math.exp(-dt * 4));
     this.zs.forEach((z, i) => {
       const k = reduce ? 0.5 + i * 0.25 : (t * 0.42 + i * 0.5) % 1;
-      z.visible = st.zz > 0.01 && K.props !== false;
+      z.visible = st.zz > 0.01;
       z.position.set(bx * 0.62 + k * 0.32, H * 0.95 + k * 0.5, 0.3);
       z.material.opacity = st.zz * Math.sin(Math.PI * k);
       z.scale.setScalar((0.15 + 0.12 * k) * (i ? 0.85 : 1));
@@ -516,6 +576,7 @@ export class View {
     (U.uFill.value as THREE.Vector3).copy(this.FILL).applyQuaternion(this.qi);
     (U.uBack.value as THREE.Vector3).copy(this.BACK).applyQuaternion(this.qi);
     (U.uUp.value as THREE.Vector3).set(0, 1, 0).applyQuaternion(this.qi);
+    (U.uFwd.value as THREE.Vector3).set(0, 0, 1).applyQuaternion(this.qi);
   }
 
   dispose() {

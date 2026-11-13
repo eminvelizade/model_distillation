@@ -20,7 +20,8 @@ import SearchPage from "./pages/Search";
 import SearchDetail from "./pages/SearchDetail";
 import Notebook from "./pages/Notebook";
 import NotebookEntryPage from "./pages/NotebookEntry";
-import { YetiProvider } from "./components/yeti/YetiContext";
+import Chat from "./pages/Chat";
+import { useYeti, YetiProvider } from "./components/yeti/YetiContext";
 import YetiDock from "./components/yeti/YetiDock";
 import { Highlighter } from "./agent";
 
@@ -139,6 +140,8 @@ function Shell() {
   const [password, setPassword] = useState(false);
   const loc = useLocation();
   const nav = useNav();
+  const { unread } = useYeti();
+  const onChat = loc.pathname.startsWith("/chat");   // the chat fills the page (and keeps its place when the agent changes)
   const waiting = q.data?.runs.filter((r) => r.status === "queued").length ?? 0;
   const busy = q.data?.runs.some((r) => r.status === "running");
 
@@ -150,7 +153,9 @@ function Shell() {
     return () => window.removeEventListener("keydown", k);
   }, []);
 
-  const badge = (to: string) => to === "/queue" && (busy || waiting > 0) ? (
+  const badge = (to: string) => to === "/chat" && unread > 0 ? (
+    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10.5px] font-semibold text-white">{unread > 9 ? "9+" : unread}</span>
+  ) : to === "/queue" && (busy || waiting > 0) ? (
     <span className="flex items-center gap-1.5">
       {busy && <LiveDot />}
       {waiting > 0 && <span className="rounded-md bg-raised px-1.5 font-mono text-[10.5px] tabular-nums text-muted ring-1 ring-inset ring-line">{waiting}</span>}
@@ -160,7 +165,7 @@ function Shell() {
 
   useEffect(() => {
     const page = loc.pathname.startsWith("/runs/") ? "Run" : loc.pathname.startsWith("/machines/") ? "Machine"
-      : loc.pathname.startsWith("/search/") ? "Search" : NAV.find((n) => n.to === loc.pathname)?.label;
+      : loc.pathname.startsWith("/search/") ? "Search" : onChat ? "Chat" : NAV.find((n) => n.to === loc.pathname)?.label;
     document.title = page ? `${page} · ModelLab` : "ModelLab";
   }, [loc.pathname]);
 
@@ -217,7 +222,7 @@ function Shell() {
 
       <main className="relative isolate min-w-0 overflow-x-clip">
         <div className="aurora pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px]" />
-        <div key={loc.pathname} className={cx("page mx-auto max-w-[1320px] px-4 py-6 sm:px-8 lg:py-10", hub && "pb-28 lg:pb-28")}>
+        <div key={onChat ? "/chat" : loc.pathname} className={cx("page mx-auto max-w-[1320px] px-4 py-6 sm:px-8 lg:py-10", hub && !onChat && "pb-28 lg:pb-28")}>
           <Routes>
             <Route path="/" element={<NewExperiment />} />
             <Route path="/queue" element={<Queue />} />
@@ -226,6 +231,8 @@ function Shell() {
             <Route path="/runs/:id" element={<RunDetail />} />
             {hub && <Route path="/search" element={<SearchPage />} />}
             {hub && <Route path="/search/:id" element={<SearchDetail />} />}
+            {hub && <Route path="/chat" element={<Chat />} />}
+            {hub && <Route path="/chat/:id" element={<Chat />} />}
             {hub && <Route path="/notebook" element={<Notebook />} />}
             {hub && <Route path="/notebook/:id" element={<NotebookEntryPage />} />}
             {hub && <Route path="/machines" element={<Machines />} />}

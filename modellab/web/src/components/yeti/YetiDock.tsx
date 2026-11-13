@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { cx, reducedMotion } from "../../ui";
 import { useMascot } from "./mascots";
@@ -14,6 +15,7 @@ const mark = (k: string) => { try { sessionStorage.setItem(k, "1"); } catch { /*
 export default function YetiDock() {
   const y = useYeti();
   const { name } = useMascot();
+  const onChat = useLocation().pathname.startsWith("/chat");   // the Chat tab is the thread itself: no corner button there
   const [pose, setPose] = useState<YetiPose>("idle");
   const [hint, setHint] = useState<YetiSuggestion | null>(null);
   const waving = useRef(0);
@@ -28,7 +30,7 @@ export default function YetiDock() {
   const hintKey = s ? `yeti-hint:${y.page?.kind}:${y.page?.id ?? ""}:${s.focus}` : null;
   useEffect(() => {
     setHint(null);
-    if (!y.available || y.open || !s || !hintKey || seen(hintKey)) return;
+    if (!y.available || y.open || onChat || !s || !hintKey || seen(hintKey)) return;
     const t = window.setTimeout(() => { setHint(s); mark(hintKey); wave(); }, 1100);
     return () => window.clearTimeout(t);
   }, [hintKey, y.open, y.available]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -52,12 +54,18 @@ export default function YetiDock() {
         </div>
       )}
       {y.open && <YetiPanel />}
-      <button onClick={toggle} onMouseEnter={wave} onFocus={wave} aria-label={y.open ? `Close ${name}` : `Ask ${name}`} title={y.open ? `Close ${name}` : `Ask ${name}`}
-        aria-expanded={y.open}
-        className={cx("group fixed bottom-3 right-3 z-40 rounded-full transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:bottom-5 sm:right-5",
-          y.open && "max-sm:hidden")}>
-        <Yeti size={68} pose={y.busy ? "think" : pose} className="block" />
-      </button>
+      {!onChat && (
+        <button onClick={toggle} onMouseEnter={wave} onFocus={wave} aria-label={y.open ? `Close ${name}` : `Ask ${name}`} title={y.open ? `Close ${name}` : `Ask ${name}`}
+          aria-expanded={y.open}
+          className={cx("group fixed bottom-3 right-3 z-40 rounded-full transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:bottom-5 sm:right-5",
+            y.open && "max-sm:hidden")}>
+          <Yeti size={68} pose={y.busy || y.agent?.plan?.status === "running" ? "think" : pose} className="block" />
+          {y.unread > 0 && !y.open && (
+            <span className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10.5px] font-semibold text-white ring-2 ring-canvas"
+              aria-label={`${y.unread} new message${y.unread === 1 ? "" : "s"}`}>{y.unread > 9 ? "9+" : y.unread}</span>
+          )}
+        </button>
+      )}
     </>
   );
 }

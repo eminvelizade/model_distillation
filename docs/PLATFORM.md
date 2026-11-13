@@ -56,12 +56,16 @@ All three write to one **notebook**: the lab's memory of what was asked, what wa
 
 ## Agents
 
-The assistants that help you develop: Bloom and the other mascots, one engine with six characters.
+The assistants that help you develop: a small team you message in the Chat tab, each with a name, a role and a
+mascot of its own. One engine, one set of tools and limits.
 
 **Today:**
-- Answers how-to questions and explains results: why a search recommended its model, why a run scored what it did or
+- Answer how-to questions and explain results: why a search recommended its model, why a run scored what it did or
   failed, PCA and attention figures, how two runs differ.
-- Read-only. Runs on Claude with your own Claude account, in the app or in a Claude app through the MCP server.
+- Do one thing from one sentence, fix known failures, and turn an idea into a notebook entry and its runs.
+- Plan work of several steps: you approve the plan once, and it runs on the hub with no page open, is checked
+  against what the runs really did, and is retried when it fails for a reason the hub knows how to fix.
+- Run on Claude with your own Claude account, in the app or (reading only) in a Claude app through the MCP server.
 
 **Next** ([AGENTS_PLAN.md](AGENTS_PLAN.md)):
 - **Two systems.** A System One model, which makes fast typed decisions, turns one sentence into the right component

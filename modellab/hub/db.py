@@ -194,6 +194,49 @@ notebook_links = sa.Table(
     Column("ref_id", String(80), primary_key=True, index=True), Column("added", Float),
 )
 
+agents = sa.Table(
+    "agents", md,  # the assistants a user talks to: a name, a look and a role; each has one thread (hub/agents.py)
+    Column("id", String(32), primary_key=True),
+    Column("owner_id", String(32), nullable=False, index=True),
+    Column("name", String(40), nullable=False),
+    Column("look", Text),  # JSON: {"base": "bloom"} for a built-in mascot, or a make-your-own look (shape, colour, eyes...)
+    Column("role", Text),  # what it is for, in the user's words: it goes into the agent's prompt
+    Column("position", Integer, default=0), Column("read_upto", Float, default=0),  # the user has seen its messages up to here
+    Column("created", Float), Column("updated", Float),
+)
+
+agent_messages = sa.Table(
+    "agent_messages", md,  # an agent's thread, kept on the hub so it can receive a result while no page is open
+    Column("id", String(32), primary_key=True),
+    Column("agent_id", String(32), nullable=False, index=True), Column("owner_id", String(32), nullable=False, index=True),
+    Column("role", String(8), nullable=False),  # user | agent | event (the hub's own report of what happened to a plan)
+    Column("kind", String(8), nullable=False),  # text | card (one action and what became of it) | plan
+    Column("text", Text), Column("data", Text),  # data: JSON (the page context, tools used, a card's decision and state...)
+    Column("created", Float, index=True),
+)
+
+agent_notes = sa.Table(
+    "agent_notes", md,  # what the agents keep in mind about a user: corrections and standing preferences
+    Column("id", String(32), primary_key=True),
+    Column("owner_id", String(32), nullable=False, index=True),
+    Column("text", Text, nullable=False), Column("by", String(40)),  # who wrote it: the user, or an agent's name
+    Column("created", Float), Column("updated", Float),
+)
+
+plans = sa.Table(
+    "plans", md,  # several typed steps the user approved once, carried out on the hub (hub/plans.py)
+    Column("id", String(32), primary_key=True),
+    Column("owner_id", String(32), nullable=False, index=True), Column("agent_id", String(32), index=True),
+    Column("title", Text), Column("goal", Text),
+    Column("status", String(12), nullable=False),  # proposed | running | waiting | done | cancelled | declined
+    Column("steps", Text),  # JSON: the typed steps, each with its state (written from what happened to its run)
+    Column("envelope", Text),  # JSON: what the approval covers (machines, datasets, GPU seconds, tries per step)
+    Column("pending", Text),  # JSON: a revision that goes beyond the envelope and waits for the user's OK
+    Column("message", Text), Column("notebook_entry", String(32)), Column("spent_s", Float, default=0),
+    Column("rev", Integer, nullable=False, default=0),  # optimistic lock, as for searches
+    Column("created", Float), Column("updated", Float, index=True), Column("approved", Float), Column("finished", Float),
+)
+
 oauth_clients = sa.Table(
     "oauth_clients", md,  # Claude apps registered for the MCP connector (OAuth dynamic client registration)
     Column("id", String(64), primary_key=True),

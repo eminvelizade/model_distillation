@@ -21,6 +21,7 @@ PAGES = {
     "compare": "Compare: results side by side",
     "team": "Team: users and their roles",
     "notebook": "Notebook: the lab's questions and ideas, the runs that tested them and what was learned",
+    "chat": "Chat: the conversations with the agents, their plans and what they keep in mind",
 }
 
 
